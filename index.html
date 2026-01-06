@@ -1705,6 +1705,7 @@ function gotoPage(p){ currentPage=p; renderTable(); }
 function sortBy(c){ if(sortColumn===c){ sortDir*=-1; } else { sortColumn=c; sortDir=1; } renderTable(); }
 el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
 
+  
 </script>
 </body>
 </html>
