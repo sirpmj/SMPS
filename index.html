@@ -329,8 +329,22 @@ button:hover{opacity:0.9}
 <label id="labelPassword">पासवर्ड</label>
 <input id="password" type="password" placeholder="मोबाइल नंबर के लास्ट 4 नंबर डालें">
 <button id="loginBtn">लॉगिन</button>
+<div id="loginInfoMsg" style="
+  display: none;
+  margin: 6px 0;
+  padding: 4px 6px;
+  background: #fff8e1;
+  border: 1px solid #ffe0a3;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 12.5px;
+  text-align: center;
+  line-height: 1.25;
+">
+
+</div>
 <button id="newUserBtn" type="button"
-style="background:#25D366;color:#fff;font-size:15px">
+style="background:#25D366;color:#fff;font-size:16px">
 🆕 New User / Register
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
@@ -737,6 +751,7 @@ async function renderMeetingUpdates(){
             <b>${r["Date"] || ""}</b> –
             ${r["Subject"] || ""}
             ${r["Time"] ? " (" + r["Time"] + ")" : ""}
+${r["Place"] || ""}
           </li>`;
       });
 
@@ -813,7 +828,7 @@ el("loginBtn").onclick = async () => {
   // 2) Fallback: Users sheet (username/password)
   const u = mobileRaw;
   if(!USERS[u] || USERS[u].password !== passInput){
-    loginMsg.textContent = "Invalid login";
+    loginMsg.textContent = "आपका डेटा पोर्टल पर उपलब्ध नहीं है। कृपया ऊपर दिए गए लिंक से रजिस्ट्रेशन करें। 👆";
     return;
   }
   currentUser = USERS[u];
@@ -1094,19 +1109,21 @@ function renderTable(){
   const pageData = filteredData.slice(start,start+rowsPerPage);
   if(pageData.length === 0){el("tableContainer").innerHTML="<p class='muted'>No records found</p>";return;}
   // Columns (skip password & role)
+// 🔥 tab-wise hidden columns
 const hiddenCols = getHiddenColumnsForTab(currentTab);
+
+// all columns but remove hidden ones
 const columns = Array.from(
   new Set(tableData.flatMap(row => Object.keys(row)))
 ).filter(c =>
-  c &&
-  !hiddenCols.has(c)
+  c && !hiddenCols.has(c)
 );
   let html = "<table><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
   pageData.forEach(row => {
     html += "<tr>";
-    columns.forEach(c => {
+columns.forEach(c => {
 
   const cl = c.toLowerCase();
 
@@ -1208,7 +1225,7 @@ function viewRecord(incomingEnc, e) {
     return;
   }
   // helper
-function rowItem(label, value) {
+ function rowItem(label, value) {
 
   // 🔥 Meetings + Announcements → ShowOnHome hide
   if (
@@ -1225,6 +1242,7 @@ function rowItem(label, value) {
     <td>${value}</td>
   </tr>`;
 }
+
   function formatDateLocal(d) {
     if (!d) return "";
     const dt = new Date(d);
@@ -1471,8 +1489,5 @@ el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
 </script>
 </body>
 </html>
-
-
-
 
 
