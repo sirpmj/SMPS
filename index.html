@@ -1453,9 +1453,10 @@ function viewRecord(incomingEnc, e) {
     rows += rowItem("समाज ID", rec["MemberID"] || rec["ID"]);
     rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || rec["Phone"]);
-rows += rowItem("फर्म ", rec["Firm"] || "");
+rows += rowItem("फर्म ", rec["Business Name"] || "");
 rows += rowItem("गोत्र  ", rec["Gotra"] || "");
-    rows += rowItem("शहर", rec[SETTINGS?.CityColumn] || rec["City"] || "");
+   rows += rowItem("गांव   ", rec["Place of origin"] || ""); 
+    rows += rowItem("वर्तमान शहर", rec[SETTINGS?.CityColumn] || rec["Current City"] || "");
     rows += rowItem("पता", rec["Address"] || "");
     let joinDate = rec["Joining Date"] || rec["Joined"] || rec["Join Date"] || rec["JoiningDate"];
     rows += rowItem("जॉइनिंग तारीख", formatDateLocal(joinDate));
@@ -1714,4 +1715,5 @@ el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
 </script>
 </body>
 </html>
+
 
