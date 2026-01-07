@@ -1107,14 +1107,39 @@ const columns = Array.from(
   pageData.forEach(row => {
     html += "<tr>";
     columns.forEach(c => {
-      if(c.toLowerCase().includes("amount") || c.toLowerCase().includes("pledged") || c.toLowerCase().includes("paid") || c.toLowerCase().includes("credit") || c.toLowerCase().includes("debit") || c.toLowerCase().includes("payment")){
-        html += `<td style='text-align:right'>${toNumber(row[c]).toLocaleString()}</td>`;
-      } else if(c.toLowerCase().includes("date")){
-        html += `<td>${formatDate(row[c])}</td>`;
-      } else{
-        html += `<td>${row[c]||""}</td>`;
-      }
-    });
+
+  const cl = c.toLowerCase();
+
+  // 🔢 ALL numeric / money columns (FINAL LIST)
+  if (
+    cl.includes("amount") ||
+    cl.includes("received") ||     // 🔥 FIX (THIS WAS MISSING)
+    cl.includes("pledged") ||
+    cl.includes("paid") ||
+    cl.includes("credit") ||
+    cl.includes("debit") ||
+    cl.includes("payment") ||
+    cl.includes("balance") ||
+    cl.includes("closing") ||
+    cl.includes("pending")
+  ) {
+    html += `<td style="text-align:right">
+      ${toNumber(row[c]).toLocaleString()}
+    </td>`;
+  }
+
+  // 📅 Date columns
+  else if (cl.includes("date")) {
+    html += `<td>${formatDate(row[c])}</td>`;
+  }
+
+  // 📝 Normal text
+  else {
+    html += `<td>${row[c] || ""}</td>`;
+  }
+
+});
+
     // Actions column
     const encId = encodeURIComponent(row['ID'] || row[SETTINGS?.MemberColumn] || row["Member"] || "");
     html += "<td>" + renderActionButtons(row, encId) + "</td>";
@@ -1446,6 +1471,7 @@ el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
 </script>
 </body>
 </html>
+
 
 
 
