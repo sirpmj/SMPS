@@ -1183,10 +1183,23 @@ function viewRecord(incomingEnc, e) {
     return;
   }
   // helper
-  function rowItem(label, value) {
-    if (value === undefined || value === null || value === "") return "";
-    return `<tr><td style="font-weight:bold;width:20%">${label}</td><td>${value}</td></tr>`;
+function rowItem(label, value) {
+
+  // 🔥 Meetings + Announcements → ShowOnHome hide
+  if (
+    (currentTab === "Meetings" || currentTab === "Announcements") &&
+    label === "ShowOnHome"
+  ) {
+    return "";
   }
+
+  if (value === undefined || value === null || value === "") return "";
+
+  return `<tr>
+    <td style="font-weight:bold;width:20%">${label}</td>
+    <td>${value}</td>
+  </tr>`;
+}
   function formatDateLocal(d) {
     if (!d) return "";
     const dt = new Date(d);
@@ -1433,6 +1446,7 @@ el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
 </script>
 </body>
 </html>
+
 
 
 
