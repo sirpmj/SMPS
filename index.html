@@ -863,16 +863,46 @@ const welcomeText = template.replace("{{Name}}", currentUser.name);
   el("welcomeMsg").style.display = "block";
   await fetchHomeSheet();
   buildTabs();
+  if (shouldShowDashboard()) {
+  el("mainDashboard").style.display = "flex";
   renderMainDashboard();
+} else {
+  el("mainDashboard").style.display = "none";
+}
+
   // default tab
   const roleTabs = ROLE_ACCESS[currentUser.role];
 currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
   loadTab(currentTab);
 }
+
+function shouldShowDashboard() {
+  if (!currentUser || !currentUser.role) return false;
+
+  const key = "ShowDashboard." + currentUser.role;
+  const val = (SETTINGS?.[key] || "").toUpperCase();
+
+  return val === "YES";
+}
+
+
+
 /* ===========================
    Fetch Home sheet row (for header settings)
    =========================== */
 async function fetchHomeSheet(){ try{ const data = await fetchSheet("Home"); if(data && data.length>0) homeInfo = data[0]; } catch(e){ console.error(e); } }
+
+function canShowCard(cardKey){
+  if (!currentUser || !currentUser.role) return false;
+
+  // Admin → always allowed
+  if (currentUser.role === "Admin") return true;
+
+  const settingKey = `ShowCard.${cardKey}.${currentUser.role}`;
+  return (SETTINGS?.[settingKey] || "").toUpperCase() === "YES";
+}
+
+
 /* ===========================
    Dashboard render
    =========================== */
@@ -887,58 +917,76 @@ async function renderMainDashboard(){
       fetchSheet("Expenses") // 🆕
     ]);
     // -------- Total Members --------
-    el("mainDashboard").innerHTML =
-      `<div class="dash-card dash-blue">
-        <h4>Total Members</h4>
-        <p>${members.length}</p>
-      </div>`;
+   if (canShowCard("TotalMembers")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-blue">
+      <h4>Total Members</h4>
+      <p>${members.length}</p>
+    </div>`;
+}
+
     // -------- Fund Balance --------
     const balance = fundLedger.reduce(
       (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])), 0
     );
-    el("mainDashboard").innerHTML +=
-      `<div class="dash-card dash-green">
-        <h4>Fund Balance (₹)</h4>
-        <p>${balance.toLocaleString()}</p>
-      </div>`;
+ if (canShowCard("FundBalance")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-green">
+      <h4>Fund Balance (₹)</h4>
+      <p>${balance.toLocaleString()}</p>
+    </div>`;
+}
+
     // -------- Boli --------
     const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
     const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
-    el("mainDashboard").innerHTML +=
-      `<div class="dash-card dash-orange">
-        <h4>Pledged / Paid / Pending Boli</h4>
-        <p>${pledgedBoli.toLocaleString()} / ${paidBoli.toLocaleString()} / ${pendingBoli.toLocaleString()}</p>
-      </div>`;
+ if (canShowCard("Boli")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-orange">
+      <h4>Pledged / Paid / Pending Boli</h4>
+      <p>${pledgedBoli.toLocaleString()} / ${paidBoli.toLocaleString()} / ${pendingBoli.toLocaleString()}</p>
+    </div>`;
+}
+
     // -------- Donation --------
     const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
     const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
-    el("mainDashboard").innerHTML +=
-      `<div class="dash-card dash-lightblue">
-        <h4>Pledged / Paid / Pending Donation</h4>
-        <p>${pledgedDonation.toLocaleString()} / ${paidDonation.toLocaleString()} / ${pendingDonation.toLocaleString()}</p>
-      </div>`;
+if (canShowCard("Donation")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-lightblue">
+      <h4>Pledged / Paid / Pending Donation</h4>
+      <p>${pledgedDonation.toLocaleString()} / ${paidDonation.toLocaleString()} / ${pendingDonation.toLocaleString()}</p>
+    </div>`;
+}
+
     // ===============================
     // 🆕 TOTAL INCOME
     // ===============================
     const totalIncome = paidBoli + paidDonation;
-    el("mainDashboard").innerHTML +=
-      `<div class="dash-card dash-purple">
-        <h4>Total Income (₹)</h4>
-        <p>${totalIncome.toLocaleString()}</p>
-      </div>`;
+  if (canShowCard("TotalIncome")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-purple">
+      <h4>Total Income (₹)</h4>
+      <p>${totalIncome.toLocaleString()}</p>
+    </div>`;
+}
+
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
 const totalExpense = expenses.reduce((s, r) => {
   return s + toNumber(r["Payment"] || r["payment"] || 0);
 }, 0);
-el("mainDashboard").innerHTML +=
-  `<div class="dash-card dash-red">
+if (canShowCard("TotalExpense")) {
+  el("mainDashboard").innerHTML += `
+    <div class="dash-card dash-red">
       <h4>Total Expense (₹)</h4>
       <p>${totalExpense.toLocaleString()}</p>
-  </div>`;
+    </div>`;
+}
+
   }catch(e){
     console.error("Dashboard error:", e);
   }
