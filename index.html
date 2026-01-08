@@ -33,6 +33,8 @@ header {
 header h1 {font-size:28px;font-weight:700;letter-spacing:1px;margin:0 0 8px;}
 header .muted {color:#e0e0e0;font-size:14px;}
 
+
+
 /* ---------- Home Info Cards ---------- */
 .prelogin-cards {display:flex; gap:20px; flex-wrap:wrap; margin-top:20px;}
 .prelogin-cards .card {flex:1; min-width:280px; background:#fff; border-top:4px solid #0b63d6;}
@@ -291,6 +293,19 @@ button:hover{opacity:0.9}
   .page-btn{padding:6px 10px;font-size:12px}
   button{padding:10px;font-size:14px}
 }
+
+<!-- Favicon for browser tab -->
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+
+<!-- Apple Touch Icon (iPhone/iPad) -->
+<link rel="apple-touch-icon" sizes="180x180" href="favicon.png" />
+
+<!-- Android / PWA Icons -->
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+
+
 /* ===== Actions column: View + WhatsApp same line ===== */
 .action-wrap {
   display: inline-flex;
@@ -325,9 +340,9 @@ button:hover{opacity:0.9}
         <div class="card login-card" style="width:100%;max-width:380px;">
          <h2 id="loginTitle" style="margin-top:0">🔐 Login</h2>
 <label id="labelMobile">User Name</label>
-<input id="username" type="text" placeholder="">
+<input id="username" type="text" placeholder="10 अंको का मोबाइल नंबर डालें">
 <label id="labelPassword">Password</label>
-<input id="password" type="password" placeholder="">
+<input id="password" type="password" placeholder="मोबाइल नंबर के लास्ट 4 नंबर डालें">
 <button id="loginBtn">लॉगिन</button>
 <div id="loginInfoMsg" style="
   display: none;
@@ -344,8 +359,8 @@ button:hover{opacity:0.9}
 
 </div>
 <button id="newUserBtn" type="button"
-style="background:#25D366;color:#fff;font-size:16px">
-🆕 New User / Register
+style="background:#008000;color:#fff;font-size:16px">
+🔐 New User / Register
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
@@ -844,9 +859,11 @@ el("logoutBtn").onclick = () => {
   el("welcomeMsg").style.display = "none";
 };
 
-console.log("User Role =", currentUser.role);
-console.log("ROLE_ACCESS =", ROLE_ACCESS);
-console.log("ROLE_ACCESS[currentUser.role] =", ROLE_ACCESS[currentUser.role]);
+if (currentUser) {
+  console.log("User Role =", currentUser.role);
+  console.log("ROLE_ACCESS[currentUser.role] =", ROLE_ACCESS[currentUser.role]);
+}
+
 /* ===========================
    OPEN APP
    =========================== */
@@ -1305,7 +1322,7 @@ function viewRecord(incomingEnc, e) {
     rows += rowItem("समाज ID", rec["MemberID"] || rec["ID"]);
     rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || rec["Phone"]);
-rows += rowItem("फर्म ", rec["Business Name"] || "");
+rows += rowItem("पेशा/व्यवसाय का नाम ", rec["Occupation / Business Name"] || "");
 rows += rowItem("गोत्र  ", rec["Gotra"] || "");
    rows += rowItem("गांव   ", rec["Place of origin"] || ""); rows += rowItem("जिला    ", rec["District"] || ""); 
     rows += rowItem("वर्तमान शहर", rec[SETTINGS?.CityColumn] || rec["Current City"] || "");
