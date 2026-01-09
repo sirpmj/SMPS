@@ -342,9 +342,18 @@ button:hover{opacity:0.9}
          <h2 id="loginTitle" style="margin-top:0">🔐 Login</h2>
 <label id="labelMobile">User Name</label>
 <input id="username" type="text" placeholder="10 अंको का मोबाइल नंबर डालें">
-<label id="labelPassword">Password</label>
-<input id="password" type="password" placeholder="मोबाइल नंबर के लास्ट 4 नंबर डालें">
-<button id="loginBtn">लॉगिन</button>
+<label>OTP</label>
+<input id="otpInput" type="text" placeholder="WhatsApp पर आया OTP डालें" style="display:none">
+
+<button id="sendOtpBtn" type="button" style="background:#0b63d6;color:#fff">
+📲 Send OTP
+</button>
+
+<button id="verifyOtpBtn" type="button" style="background:#008000;color:#fff;display:none">
+✅ Verify & Login
+</button>
+
+
 <div id="loginInfoMsg" style="
   display: none;
   margin: 6px 0;
@@ -361,7 +370,7 @@ button:hover{opacity:0.9}
 </div>
 <button id="newUserBtn" type="button"
 style="background:#008000;color:#fff;font-size:16px">
-🔐 New User / Register
+🔐 New Member Register
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
@@ -387,13 +396,14 @@ style="background:#008000;color:#fff;font-size:16px">
   <div id="appView" style="display:none">
     <div class="card">
       <div class="app-header">
+<button id="logoutBtn">🔙Logout</button>
         <div>
           <b id="userName"></b> <span id="userRole" class="muted"></span>
           <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
         </div>
         <div class="header-buttons">
          <button id="refreshBtn" type="button">⟳ Refresh</button>
-          <button id="logoutBtn">🔙Logout</button>
+          
         </div>
       </div>
       <!-- Dashboard Cards -->
@@ -435,9 +445,22 @@ style="background:#008000;color:#fff;font-size:16px">
   </div>
 </div>
 <!-- 🔻 Footer (auto-filled from Settings sheet) -->
-<footer id="footer" class="site-footer">
- </footer>
+<footer id="footer" class="site-footer"></footer>
+
 <script>
+// ✅ Safe DOM setter (prevents app crash)
+function safeSet(id, prop, value){
+  const el = document.getElementById(id);
+  if(el && value !== undefined){
+    el[prop] = value;
+  }
+}
+
+let GENERATED_OTP = null;
+let OTP_MOBILE = null;
+let OTP_TIME = 0;
+let OTP_ATTEMPTS = 0;
+
 /* ===========================
    Config / Sheet ID
    =========================== */
@@ -596,6 +619,93 @@ async function loadFooter(){
     if(footerEl) footerEl.textContent = "Footer लोड नहीं हो पाया।";
   }
 }
+
+document.getElementById("sendOtpBtn").onclick = () => {
+  const mobileRaw = document.getElementById("username").value.trim();
+  const mobile = mobileRaw.replace(/\D/g, "");
+
+  // 1️⃣ Mobile number validation
+  if (mobile.length !== 10) {
+    alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
+    return;
+  }
+
+  // 2️⃣ Check if mobile exists in MEMBERS
+  const member = MEMBERS[mobile];
+  if (!member) {
+    alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
+    return;
+  }
+
+  // 3️⃣ Generate OTP
+  GENERATED_OTP = Math.floor(100000 + Math.random() * 900000).toString();
+OTP_TIME = Date.now();
+OTP_ATTEMPTS = 0;
+
+  OTP_MOBILE = mobile;
+
+  // 4️⃣ WhatsApp message
+  const msg = `🔐 श्री मेवाड़ प्रजापत समाज – वापी
+
+आपका Login OTP है: *${GENERATED_OTP}*
+
+कृपया किसी को न बताएं।`;
+
+  const waURL = `https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`;
+  window.open(waURL, "_blank");
+
+  // 5️⃣ Show OTP input & verify button
+  document.getElementById("otpInput").style.display = "block";
+  document.getElementById("verifyOtpBtn").style.display = "block";
+  document.getElementById("sendOtpBtn").style.display = "none";
+};
+
+document.getElementById("verifyOtpBtn").onclick = () => {
+  const enteredOtp = document.getElementById("otpInput").value.trim();
+
+  if (!enteredOtp) {
+    alert("OTP डालें");
+    return;
+  }
+
+  // ⏳ OTP expiry (2 minutes)
+if(Date.now() - OTP_TIME > 2 * 60 * 1000){
+  alert("⏰ OTP expired, फिर से भेजें");
+  return;
+}
+
+// 🔢 Max attempts
+OTP_ATTEMPTS++;
+if(OTP_ATTEMPTS > 3){
+  alert("❌ OTP attempts limit exceeded");
+  return;
+}
+
+if (enteredOtp !== GENERATED_OTP) {
+  alert("❌ गलत OTP");
+  document.getElementById("otpInput").value = "";
+  return;
+}
+
+
+  const member = MEMBERS[OTP_MOBILE];
+  currentUser = {
+    name: member["Member"] || member["Name"] || "Member",
+    role: member["Role"] || "Member"
+  };
+
+  GENERATED_OTP = null;
+  OTP_MOBILE = null;
+
+  openApp();
+// ✅ save login session
+sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+  alert(`✅ स्वागत है ${currentUser.name}!`);
+};
+
+
+
 /* ===========================
    INIT
    =========================== */
@@ -605,35 +715,39 @@ async function init(){
   SETTINGS = await loadSettings();
   MEMBERS = await loadMembers();
   ROLE_ACCESS = await loadRoleAccess();
-  if(SETTINGS["HeaderTitle"]) document.querySelector("header h1").textContent = SETTINGS["HeaderTitle"];
-  if(SETTINGS["RegNo"]) document.querySelector("header .muted").textContent = "Reg No: " + SETTINGS["RegNo"];
-  if(SETTINGS["RowsPerPage"]) rowsPerPage = Number(SETTINGS["RowsPerPage"]) || rowsPerPage;
+
+  if(SETTINGS["HeaderTitle"])
+    document.querySelector("header h1").textContent = SETTINGS["HeaderTitle"];
+
+  if(SETTINGS["RegNo"])
+    document.querySelector("header .muted").textContent = "Reg No: " + SETTINGS["RegNo"];
+
+  // ✅ AUTO LOGIN (SAFE PLACE)
+  const savedUser = sessionStorage.getItem("currentUser");
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    openApp();
+    return;
+  }
+
   await renderLoginHomeStructure();
- applyLoginTexts(); 
+  applyLoginTexts();
   await renderMeetingUpdates();
   await renderAnnouncements();
-await loadFooter();
+  await loadFooter();
 }
+
 init();
+
+
+
+
 function applyLoginTexts(){
-  if(SETTINGS?.LoginTitle)
-    el("loginTitle").innerText = SETTINGS.LoginTitle;
-  if(SETTINGS?.["LoginLabels.mobile"])
-    el("labelMobile").innerText =
-      SETTINGS["LoginLabels.mobile"];
-  if(SETTINGS?.["LoginLabels.password"])
-    el("labelPassword").innerText =
-      SETTINGS["LoginLabels.password"];
-  if(SETTINGS?.["LoginPlaceholders.username"])
-    el("username").placeholder =
-      SETTINGS["LoginPlaceholders.username"];
-  if(SETTINGS?.["LoginPlaceholders.password"])
-    el("password").placeholder =
-      SETTINGS["LoginPlaceholders.password"];
-  if(SETTINGS?.LoginButtonText)
-    el("loginBtn").innerText =
-      SETTINGS.LoginButtonText;
+  safeSet("loginTitle", "innerText", SETTINGS?.LoginTitle);
+  safeSet("labelMobile", "innerText", SETTINGS?.["LoginLabels.mobile"]);
+  safeSet("username", "placeholder", SETTINGS?.["LoginPlaceholders.username"]);
 }
+
 const newUserBtn = document.getElementById("newUserBtn");
 if (newUserBtn) {
   newUserBtn.onclick = () => {
@@ -648,8 +762,8 @@ if (newUserBtn) {
     }
     // 🔹 Message from Settings
     let message =
-      SETTINGS?.NewUserWhatsAppMessage ||
-      "New User Registration";
+      SETTINGS?.NewMemberWhatsAppMessage ||
+      "New Member Registration";
 
     // 🔹 Auto fill typed mobile (if any)
     const typedMobile =
@@ -812,45 +926,9 @@ async function renderAnnouncements(){
 /* ===========================
    LOGIN / LOGOUT (Mobile + password)
    =========================== */
-el("loginBtn").onclick = async () => {
-  const mobileRaw = (el("username").value||"").trim();
-  const passInput = (el("password").value||"").trim();
 
-  if(!mobileRaw || !passInput){
-    loginMsg.textContent = "Please enter mobile and password";
-    return;
-  }
-  const mobileKey = onlyDigits(mobileRaw);
-  // 1) Try Members sheet (mobile login)
-  if(mobileKey && MEMBERS[mobileKey]){
-  const rec = MEMBERS[mobileKey];
-  const recPass = (rec["password"]||rec["Password"]||"").toString().trim();
-  if(recPass === passInput){
-    const roleRaw = (rec["Role"] || rec["role"] || "Member")
-                      .toString().trim().toLowerCase();
-    const isAdmin = roleRaw === "admin";
-    currentUser = {
-      name: rec["Member"] || rec["Name"] || rec["FullName"] || ("Member " + mobileRaw),
-      role: isAdmin ? "Admin" : "Member"
-      // ❌ access REMOVED – RoleAccess ab kaam karega
-    };
-    openApp();
-    return;
-  } else {
-    loginMsg.textContent = "Invalid mobile or password";
-    return;
-  }
-}
-  // 2) Fallback: Users sheet (username/password)
-  const u = mobileRaw;
-  if(!USERS[u] || USERS[u].password !== passInput){
-    loginMsg.textContent = "आपका डेटा पोर्टल पर उपलब्ध नहीं है। कृपया ऊपर दिए गए लिंक से रजिस्ट्रेशन करें। 👆";
-    return;
-  }
-  currentUser = USERS[u];
-  openApp();
-};
 el("logoutBtn").onclick = () => {
+sessionStorage.removeItem("currentUser"); 
   currentUser = null;
   appView.style.display = "none";
   document.querySelectorAll('.home-card').forEach(c => c.style.display='block');
