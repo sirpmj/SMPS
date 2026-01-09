@@ -396,13 +396,14 @@ style="background:#008000;color:#fff;font-size:16px">
   <div id="appView" style="display:none">
     <div class="card">
       <div class="app-header">
+  <button id="refreshBtn" type="button">⟳ Refresh</button>
 <button id="logoutBtn">🔙Logout</button>
         <div>
           <b id="userName"></b> <span id="userRole" class="muted"></span>
           <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
         </div>
         <div class="header-buttons">
-         <button id="refreshBtn" type="button">⟳ Refresh</button>
+       
           
         </div>
       </div>
@@ -448,6 +449,13 @@ style="background:#008000;color:#fff;font-size:16px">
 <footer id="footer" class="site-footer"></footer>
 
 <script>
+
+
+
+const OTP_API_URL =
+"https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec";
+
+
 // ✅ Safe DOM setter (prevents app crash)
 function safeSet(id, prop, value){
   const el = document.getElementById(id);
@@ -620,90 +628,92 @@ async function loadFooter(){
   }
 }
 
-document.getElementById("sendOtpBtn").onclick = () => {
-  const mobileRaw = document.getElementById("username").value.trim();
-  const mobile = mobileRaw.replace(/\D/g, "");
 
-  // 1️⃣ Mobile number validation
+document.addEventListener("DOMContentLoaded", () => {
+
+  const sendOtpBtn = document.getElementById("sendOtpBtn");
+  const username = document.getElementById("username"); // mobile input
+
+const OTP_API_URL =
+"https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec";
+
+
+  sendOtpBtn.onclick = async () => {
+  const mobile = (username.value || "").replace(/\D/g, "");
+
+  console.log("SEND OTP mobile =", mobile);
+
   if (mobile.length !== 10) {
-    alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
+    alert("10 digit mobile number डालें");
     return;
   }
 
-  // 2️⃣ Check if mobile exists in MEMBERS
+  try {
+    const res = await fetch(OTP_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "sendOtp",
+        mobile: mobile
+      })
+    }).then(r => r.json());
+
+    console.log("SEND OTP RESPONSE =", res);
+
+    if (!res.success) {
+      alert(res.msg || "OTP failed");
+      return;
+    }
+
+    // ✅ WhatsApp open
+    window.open(res.waUrl, "_blank");
+
+    alert("WhatsApp खुलेगा — SEND बटन दबाएँ");
+
+  } catch (e) {
+    console.error(e);
+    alert("Network error");
+  }
+};
+
+
+
+verifyOtpBtn.onclick = async () => {
+  const otp = otpInput.value.trim();
+  const mobile = username.value.replace(/\D/g, "");
+
+  const res = await fetch(OTP_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "verifyOtp", mobile, otp })
+  }).then(r => r.json());
+
+  console.log(res);
+
+  if (res.success) {
+    afterLogin(mobile);
+  } else {
+    alert(res.msg);
+  }
+};
+
+
+  // ✅ LOGIN SUCCESS
+ function afterLogin(mobile) {
   const member = MEMBERS[mobile];
   if (!member) {
-    alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
+    alert("Member data not found");
     return;
   }
 
-  // 3️⃣ Generate OTP
-  GENERATED_OTP = Math.floor(100000 + Math.random() * 900000).toString();
-OTP_TIME = Date.now();
-OTP_ATTEMPTS = 0;
-
-  OTP_MOBILE = mobile;
-
-  // 4️⃣ WhatsApp message
-  const msg = `🔐 श्री मेवाड़ प्रजापत समाज – वापी
-
-आपका Login OTP है: *${GENERATED_OTP}*
-
-कृपया किसी को न बताएं।`;
-
-  const waURL = `https://wa.me/91${mobile}?text=${encodeURIComponent(msg)}`;
-  window.open(waURL, "_blank");
-
-  // 5️⃣ Show OTP input & verify button
-  document.getElementById("otpInput").style.display = "block";
-  document.getElementById("verifyOtpBtn").style.display = "block";
-  document.getElementById("sendOtpBtn").style.display = "none";
-};
-
-document.getElementById("verifyOtpBtn").onclick = () => {
-  const enteredOtp = document.getElementById("otpInput").value.trim();
-
-  if (!enteredOtp) {
-    alert("OTP डालें");
-    return;
-  }
-
-  // ⏳ OTP expiry (2 minutes)
-if(Date.now() - OTP_TIME > 2 * 60 * 1000){
-  alert("⏰ OTP expired, फिर से भेजें");
-  return;
-}
-
-// 🔢 Max attempts
-OTP_ATTEMPTS++;
-if(OTP_ATTEMPTS > 3){
-  alert("❌ OTP attempts limit exceeded");
-  return;
-}
-
-if (enteredOtp !== GENERATED_OTP) {
-  alert("❌ गलत OTP");
-  document.getElementById("otpInput").value = "";
-  return;
-}
-
-
-  const member = MEMBERS[OTP_MOBILE];
   currentUser = {
-    name: member["Member"] || member["Name"] || "Member",
-    role: member["Role"] || "Member"
+    name: member.Member || member.Name || "User",
+    role: member.Role || "Member"
   };
 
-  GENERATED_OTP = null;
-  OTP_MOBILE = null;
-
-  openApp();
-// ✅ save login session
-sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-
-  alert(`✅ स्वागत है ${currentUser.name}!`);
-};
-
+  sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
+  openApp(); // existing function
+}
 
 
 /* ===========================
@@ -933,7 +943,7 @@ sessionStorage.removeItem("currentUser");
   appView.style.display = "none";
   document.querySelectorAll('.home-card').forEach(c => c.style.display='block');
   loginView.style.display = "block";
-  el("username").value = ""; el("password").value = "";
+  el("username").value = "";
   loginMsg.textContent = "";
   el("welcomeMsg").style.display = "none";
 };
@@ -979,6 +989,22 @@ function shouldShowDashboard() {
   const val = (SETTINGS?.[key] || "").toUpperCase();
 
   return val === "YES";
+}
+
+const refreshBtn = el("refreshBtn");
+if (refreshBtn) {
+  refreshBtn.style.display = "inline-flex";
+  refreshBtn.disabled = false;
+
+  refreshBtn.onclick = async () => {
+    refreshBtn.innerText = "⟳ Refreshing...";
+    refreshBtn.disabled = true;
+
+    await loadTab(currentTab);   // current tab reload
+
+    refreshBtn.innerText = "⟳ Refresh";
+    refreshBtn.disabled = false;
+  };
 }
 
 
@@ -1107,12 +1133,6 @@ async function loadRoleAccess() {
 /* ===========================
    Tabs & Tables
    =========================== */
-// ❌ Refresh button disable (login-safe)
-const refreshBtn = el("refreshBtn");
-if (refreshBtn) {
-  refreshBtn.onclick = null;
-  refreshBtn.style.display = "none";
-}
 /* ---------- BUILD TABS ---------- */
 function buildTabs() {
   // 🛑 LOGIN GUARD (MOST IMPORTANT)
