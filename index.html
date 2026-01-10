@@ -70,6 +70,8 @@ header .muted {color:#e0e0e0;font-size:14px;}
 .dash-orange{background:#fff4e6}
 .dash-lightblue{background:#e7f5ff}
 .dash-red{background:#fff0f0}
+.dash-purple { background:#f3e8ff; }
+
 /* ---------- Login ---------- */
 .login-wrap{display:flex;flex-direction:column;gap:15px;padding:5px}
 .login-card h2{text-align:center;margin-bottom:15px}
@@ -457,10 +459,6 @@ function safeSet(id, prop, value){
   }
 }
 
-let GENERATED_OTP = null;
-let OTP_MOBILE = null;
-let OTP_TIME = 0;
-let OTP_ATTEMPTS = 0;
 
 /* ===========================
    Config / Sheet ID
@@ -471,7 +469,13 @@ const SHEET_ID = "1Ws2WH9ZT7-aBSlJAKqBHCWqTO57Ayxvj2ZPQxSSVUiI";
    =========================== */
 const el = id => document.getElementById(id);
 const loginView = el("loginView"), appView = el("appView"), loginMsg = el("loginMsg");
-let currentUser = null, currentTab = "", tableData = [], currentPage = 1, rowsPerPage = 20, sortColumn = "", sortDir = 1;
+let currentUser = null,
+    currentTab = "",
+    tableData = [],
+    currentPage = 1,
+    rowsPerPage = 20,   // default fallback (temporary)
+    sortColumn = "",
+    sortDir = 1;
 let homeInfo = {}, USERS = {}, TEMPLATES = {}, SETTINGS = {}, MEMBERS = {}, ROLE_ACCESS = {};
 /* ---------------------------
    Utility helpers
@@ -531,11 +535,16 @@ async function fetchSheet(sheetName){
   }catch(e){ console.error('fetchSheet error', e); return []; }
 }
 // 🔍 Global search listener (ALL tabs)
-const searchBox = document.getElementById("searchInput");
-searchBox.addEventListener("input", () => {
-  currentPage = 1;        // search pe first page
-  renderTable();          // re-render table
-});
+let searchBox = document.getElementById("searchInput");
+
+if (searchBox && !searchBox._bound) {
+  searchBox.addEventListener("input", () => {
+    currentPage = 1;
+    renderTable();
+  });
+  searchBox._bound = true;
+}
+
 /* ===========================
    Load data: Users, Templates, Settings, Members
    =========================== */
@@ -700,6 +709,8 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 
   sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
   openApp();
+resetIdleTimer();
+
 };
 
 
@@ -711,6 +722,14 @@ async function init(){
   USERS = await loadUsers();
   TEMPLATES = await loadTemplates();
   SETTINGS = await loadSettings();
+// 🔢 Rows per page from Settings
+if (SETTINGS?.RowsPerPage) {
+  const rpp = parseInt(SETTINGS.RowsPerPage, 10);
+  if (!isNaN(rpp) && rpp > 0) {
+    rowsPerPage = rpp;
+  }
+}
+
   MEMBERS = await loadMembers();
   ROLE_ACCESS = await loadRoleAccess();
 
@@ -1637,7 +1656,39 @@ function renderPagination(total){
 }
 function gotoPage(p){ currentPage=p; renderTable(); }
 function sortBy(c){ if(sortColumn===c){ sortDir*=-1; } else { sortColumn=c; sortDir=1; } renderTable(); }
-el("searchInput").oninput = ()=>{ currentPage=1; renderTable(); };
+
+
+/* ===========================
+   AUTO LOGOUT (IDLE TIMER)
+   =========================== */
+
+// ⏱️ 10 मिनट inactivity पर logout
+const IDLE_LIMIT = 10 * 60 * 1000; // 10 minutes
+let idleTimer = null;
+
+// 🔁 Reset timer on activity
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+
+  idleTimer = setTimeout(() => {
+    autoLogout();
+  }, IDLE_LIMIT);
+}
+
+// 🚪 Auto logout function
+function autoLogout() {
+  alert("लंबे समय से कोई activity नहीं हुई। सुरक्षा कारणों से logout किया गया है।");
+  sessionStorage.removeItem("currentUser");
+  location.reload();
+}
+
+// 👂 User activity listeners
+["click", "mousemove", "keydown", "scroll", "touchstart"].forEach(evt => {
+  document.addEventListener(evt, resetIdleTimer, { passive: true });
+});
+
+
+
 </script>
 </body>
 </html>
