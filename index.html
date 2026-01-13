@@ -377,7 +377,7 @@ button:hover{opacity:0.9}
 </div>
 <button id="newUserBtn" type="button"
 style="background:#008000;color:#fff;font-size:16px">
-🔐 New Member Register
+🔐 New / Update Member Register
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
@@ -1766,9 +1766,16 @@ function autoLogout() {
       })
     }).then(r => r.json());
 
-    regMsg.innerText = res.success
-  ? "✅ Registration submitted. Approval pending."
-  : "❌ " + (res.msg || "Error saving data");
+    if (res.success) {
+  if (res.msg === "updated") {
+    regMsg.innerText = "✅ आपकी जानकारी सफलतापूर्वक अपडेट हो गई है";
+  } else {
+    regMsg.innerText = "✅ पंजीकरण सफल, अनुमोदन लंबित";
+  }
+} else {
+  regMsg.innerText = "❌ " + (res.msg || "Error saving data");
+}
+
 
   };
 
@@ -1857,6 +1864,5 @@ district
 </script>
 </body>
 </html>
-
 
 
