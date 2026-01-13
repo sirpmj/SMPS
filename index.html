@@ -16,6 +16,8 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 
+
+
 <style>
 /* ---------- Global ---------- */
 body {
@@ -172,6 +174,9 @@ input, select, button {
     font-size: 13px;
   }
 }
+
+
+
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
 .site-footer {
@@ -450,6 +455,70 @@ style="background:#008000;color:#fff;font-size:16px">
 <!-- 🔻 Footer (auto-filled from Settings sheet) -->
 <footer id="footer" class="site-footer"></footer>
 
+<div id="regModal"
+style="display:none;position:fixed;inset:0;
+background:rgba(0,0,0,.5);
+z-index:999999;align-items:center;justify-content:center">
+
+  <div style="background:#fff;padding:20px;border-radius:10px;width:380px">
+
+    <h3 style="margin-top:0">नया सदस्य पंजीकरण</h3>
+
+    <label>पूरा नाम :</label>
+    <input id="rName" placeholder="पूरा नाम लिखें" style="width:100%">
+    <label>मोबाइल :</label>
+<input id="rMobile"
+  placeholder="10 अंकों का मोबाइल"
+  type="tel"
+  maxlength="10"
+  inputmode="numeric"
+  oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)" style="width:100%">
+    <label>गोत्र :</label>
+    <input id="rGotra" placeholder="गोत्र" style="width:100%">
+    <label>व्यवसाय / फर्म :</label>
+    <input id="rOccupation" placeholder="व्यवसाय या फर्म का नाम" style="width:100%">
+    <label>गाँव का नाम :</label>
+    <input id="rOrigin" placeholder="गाँव" style="width:100%">
+    <label>वर्तमान शहर :</label>
+    <input id="rCity" placeholder="वर्तमान शहर" style="width:100%">
+    <label>जिला :</label>
+    <input id="rDistrict" placeholder="जिला" style="width:100%"><br>
+    <button id="regSubmit"
+      style="background:#008000;color:#fff;padding:8px 14px;border:none;border-radius:6px">
+      Submit
+    </button>
+
+    <button
+      style="margin-left:10px;padding:8px 14px"
+      onclick="document.getElementById('regModal').style.display='none'">
+      Cancel
+    </button>
+
+    <div id="regMsg" style="margin-top:10px"></div>
+
+  </div>
+</div>
+
+<style>
+#regModal label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 3px;      /* 🔽 6 → 3 */
+  margin-bottom: 2px;  /* 🔽 extra control */
+  display: block;
+}
+
+#regModal input {
+  width: 100%;
+  padding: 3px 6px;    /* 🔽 padding kam */
+  font-size: 13px;
+  margin-bottom: 8px;  /* 🔽 6 → 4 */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+</style>
+
+
 <script>
 // ✅ Safe DOM setter (prevents app crash)
 function safeSet(id, prop, value){
@@ -647,7 +716,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
 
   sendOtpBtn.disabled = true;
 
-  const res = await fetch("https://script.google.com/macros/s/AKfycbyV_jxRxDksvJzEH9CvzDrXD6dZBpjCsr36Yu4j8X4Hi8WCGPrfFVNm3gN9N5vvMe-oTA/exec", {
+  const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
     method: "POST",
     body: JSON.stringify({
       action: "sendOtp",
@@ -661,6 +730,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     alert(res.msg);
     return;
   }
+
 
   window.open(res.waUrl, "_blank");
 
@@ -684,7 +754,7 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 
   verifyOtpBtn.disabled = true;
 
-  const res = await fetch("https://script.google.com/macros/s/AKfycbyV_jxRxDksvJzEH9CvzDrXD6dZBpjCsr36Yu4j8X4Hi8WCGPrfFVNm3gN9N5vvMe-oTA/exec", {
+  const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
     method: "POST",
     body: JSON.stringify({
       action: "verifyOtp",
@@ -712,6 +782,7 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 resetIdleTimer();
 
 };
+
 
 
 
@@ -765,42 +836,13 @@ function applyLoginTexts(){
   safeSet("username", "placeholder", SETTINGS?.["LoginPlaceholders.username"]);
 }
 
-const newUserBtn = document.getElementById("newUserBtn");
-if (newUserBtn) {
-  newUserBtn.onclick = () => {
-    // 🔹 Mobile from Settings
-    const mobile =
-      SETTINGS?.NewUserWhatsAppMobile ||
-      SETTINGS?.AdminMobile ||
-      "";
-    if (!mobile) {
-      alert("WhatsApp mobile Settings में नहीं मिला");
-      return;
-    }
-    // 🔹 Message from Settings
-    let message =
-      SETTINGS?.NewMemberWhatsAppMessage ||
-      "New Member Registration";
+document.addEventListener("click", function (e) {
+  if (e.target && e.target.id === "newUserBtn") {
+    e.preventDefault();
+    document.getElementById("regModal").style.display = "flex";
+  }
+});
 
-    // 🔹 Auto fill typed mobile (if any)
-    const typedMobile =
-      document.getElementById("username")?.value || "";
-    if (typedMobile) {
-      message = message.replace(
-        "{{UserMobile}}",
-        typedMobile
-      );
-    }
-    // 🔹 Base URL from Settings
-    const baseURL =
-      SETTINGS?.WhatsAppBaseURL ||
-      "https://wa.me/{{Mobile}}?text={{Message}}";
-    const waURL = baseURL
-      .replace("{{Mobile}}", encodeURIComponent(mobile))
-      .replace("{{Message}}", encodeURIComponent(message));
-    window.open(waURL, "_blank");
-  };
-}
 /* ===========================
    Render Home (pre-login)
    =========================== */
@@ -1567,6 +1609,10 @@ function printPopupReceiptContent(title, bodyHtml) {
 <!-- Dynamic footer (replace existing footer element) -->
 <footer id="footer" class="site-footer" aria-label="Site footer">
   </footer>
+
+
+
+
       </body>
     </html>
   `;
@@ -1686,6 +1732,125 @@ function autoLogout() {
 ["click", "mousemove", "keydown", "scroll", "touchstart"].forEach(evt => {
   document.addEventListener(evt, resetIdleTimer, { passive: true });
 });
+
+(function () {
+
+  const WEB_APP = "https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec";
+
+  const openBtn = document.getElementById("openRegister");
+  const box = document.getElementById("regBox");
+
+  if (!openBtn || !box) return;
+
+  openBtn.onclick = () => box.style.display = "flex";
+
+  document.getElementById("regSubmit").onclick = async () => {
+
+    const name = rName.value.trim();
+    const mobile = rMobile.value.replace(/\D/g, "");
+
+    if (!name || mobile.length !== 10) {
+      alert("Name & mobile required");
+      return;
+    }
+
+    regMsg.innerText = "Saving...";
+
+    const res = await fetch(WEB_APP, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "newRegistration",
+        name,
+        mobile,
+        city: rCity.value
+      })
+    }).then(r => r.json());
+
+    regMsg.innerText = res.success
+  ? "✅ Registration submitted. Approval pending."
+  : "❌ " + (res.msg || "Error saving data");
+
+  };
+
+})();
+
+(function () {
+
+  const btn = document.getElementById("newUserBtn");
+  const modal = document.getElementById("regModal");
+
+  // 🔒 Safety check (page break नहीं होगा)
+  if (!btn || !modal) return;
+
+  btn.addEventListener("click", () => {
+    modal.style.display = "flex";
+  });
+
+})();
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+
+  const submitBtn = document.getElementById("regSubmit");
+
+  if (!submitBtn) {
+    console.error("❌ regSubmit button not found");
+    return;
+  }
+
+  submitBtn.addEventListener("click", async function (e) {
+    e.preventDefault();
+
+    console.log("✅ Submit clicked");
+
+    const name = document.getElementById("rName").value.trim();
+    const mobile = document.getElementById("rMobile").value.replace(/\D/g, "");
+    const gotra = document.getElementById("rGotra").value.trim();
+    const occupation = document.getElementById("rOccupation").value.trim();
+    const origin = document.getElementById("rOrigin").value.trim();
+    const district = document.getElementById("rDistrict").value.trim();
+
+    const city = document.getElementById("rCity").value.trim();
+
+    if (!name || mobile.length !== 10) {
+      alert("पूरा नाम और 10 अंकों का मोबाइल जरूरी है");
+      return;
+    }
+
+    document.getElementById("regMsg").innerText = "Submitting...";
+
+    try {
+      const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "newRegistration",
+          name,
+          mobile,
+          gotra,
+          occupation,
+          origin,
+          city,
+district
+        })
+      }).then(r => r.json());
+
+      document.getElementById("regMsg").innerText =
+        res.success
+          ? "✅ Registration submitted. Approval pending."
+          : "❌ Error saving data";
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById("regMsg").innerText = "❌ Network error";
+    }
+  });
+
+});
+
+
 
 
 
