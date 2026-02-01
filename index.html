@@ -21,7 +21,7 @@
 <style>
 /* ---------- Global ---------- */
 body {
-  font-family:'Segoe UI',sans-serif;
+   font-family: 'Noto Sans Devanagari','Segoe UI',sans-serif;
   background:linear-gradient(120deg,#f0f7ff,#d9ecff);
   margin:0;
   padding:0;
@@ -110,6 +110,7 @@ p {
 input, select, button {
   padding: 3px 6px !important;
   font-size: 13px;
+margin-bottom: 4px;
   line-height: 1.1;
 }
 /* Dashboard boxes / cards tighter */
@@ -230,6 +231,7 @@ input, select, button {
   cursor: pointer;
   transition: 0.3s;
   font-size: 16px;
+margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -264,8 +266,20 @@ table{width:100%;border-collapse:collapse;min-width:500px}
 th,td{padding:10px;border:1px solid #ddd;font-size:13px;text-align:left}
 th{background:#f0f4ff;position:sticky;top:0;z-index:1;cursor:pointer}
 tr:hover{background:#f5faff}
+
+
 /* ---------- Search & Pagination ---------- */
-.search-input{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-bottom:10px;font-size:14px}
+.search-input{width:340px;            /* 🔥 fixed width */
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid #ccc;
+align:center;margin-top:0px;margin-bottom:0px;
+  
+  font-size:14px;
+  height:28px;
+  box-sizing:border-box;
+}
+
 .pagination{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
 .page-btn{padding:8px 12px;border:1px solid #ccc;border-radius:6px;background:#f0f0f0;cursor:pointer;font-size:13px}
 .page-btn.active{background:#0b63d6;color:#fff;border-color:#0b63d6}
@@ -329,7 +343,24 @@ button:hover{opacity:0.9}
 }
 .welcome-box{background:#fff4e6;padding:10px;border-radius:8px;margin-bottom:12px;border:1px solid #ffe1c7;color:#6a4b00}
 </style>
+
+
+<!-- ===== PDFMAKE (Hindi Supported) ===== -->
+<!-- Hindi Font -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&display=swap" rel="stylesheet">
+
+<!-- HTML to PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+
 </head>
+
+<!-- Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+
+
 <body>
 <div class="wrap">
   <header>
@@ -402,10 +433,26 @@ style="background:#008000;color:#fff;font-size:16px">
   <!-- App View -->
   <div id="appView" style="display:none">
     <div class="card">
-      <div class="app-header">
+      <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+
   <button id="refreshBtn" type="button">⟳ Refresh</button>
-<button id="logoutBtn">🔙Logout</button>
-        <div>
+
+  <button id="exportExcelBtn" style="display:none" onclick="exportExcel()">
+    📊 Excel
+  </button>
+
+  <button id="exportPDFBtn" style="display:none" onclick="exportPDF()">
+    📄 PDF
+  </button>
+
+  <button id="logoutBtn">🔙 Logout</button>
+
+</div>
+
+
+
+
+
           <b id="userName"></b> <span id="userRole" class="muted"></span>
           <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
         </div>
@@ -419,14 +466,48 @@ style="background:#008000;color:#fff;font-size:16px">
       <!-- Tabs -->
       <div class="tabs" id="tabs"></div>
       <!-- Search -->
-      <input type="text" id="searchInput" class="search-input" placeholder="Search in table..." style="display:none">
+      <!-- Search + Page wrapper -->
+
+
+<div id="searchWrapper"
+     style="display:none; align-items:center; gap:4px; margin-top:4px;margin-bottom:4px;">
+
+<select id="yearFilter" style="padding:6px;border-radius:6px">
+  <option value="">All Year</option>
+</select>
+
+  <!-- PAGE SIZE FIRST -->
+  <select id="pageSize"style="padding:6px;border-radius:6px">
+    <option value="10">10</option>
+    <option value="20">20</option>
+    <option value="50">50</option>
+    <option value="custom">Custom</option>
+    <option value="all">All</option>
+  </select>
+
+  <!-- CUSTOM INPUT -->
+  <input type="number" id="customSize"
+         placeholder="Custom"
+         min="1"
+         style="width:80px; display:none;">
+
+  <!-- SEARCH AFTER PAGE -->
+  <input type="text" id="searchInput"
+         class="search-input"
+         placeholder=" 🔍 Search in table...">
+
+</div>
+
       <!-- Content Table -->
-      <div id="contentArea" class="table-wrap"></div>
+      <div id="contentArea" class="table-wrap pdf-area"></div>
+
       <!-- Pagination -->
       <div class="pagination" id="pagination"></div>
     </div>
   </div>
 </div>
+
+
 <!-- Receipt Popup -->
 <div id="receiptPopup">
   <div class="popup-content" role="dialog" aria-modal="true">
@@ -613,6 +694,10 @@ if (searchBox && !searchBox._bound) {
   });
   searchBox._bound = true;
 }
+
+
+
+
 
 /* ===========================
    Load data: Users, Templates, Settings, Members
@@ -987,20 +1072,51 @@ async function renderAnnouncements(){
    =========================== */
 
 el("logoutBtn").onclick = () => {
-sessionStorage.removeItem("currentUser"); 
+
+  // 🔐 Session clear
+  sessionStorage.removeItem("currentUser");
   currentUser = null;
+
+  // 🧹 JS memory clear
+  currentTab = "";
+  tableData = [];
+  currentPage = 1;
+  sortColumn = "";
+  sortDir = 1;
+
+  // 🧹 UI clear
+  el("tabs").innerHTML = "";
+  el("contentArea").innerHTML = "";
+  el("pagination").innerHTML = "";
+  el("mainDashboard").innerHTML = "";
+  el("searchWrapper").style.display = "none";
+  el("searchInput").value = "";
+
+  // ❌ App hide
   appView.style.display = "none";
-  document.querySelectorAll('.home-card').forEach(c => c.style.display='block');
+
+  // ✅ Login show
   loginView.style.display = "block";
+  document.querySelectorAll('.home-card')
+    .forEach(c => c.style.display = 'block');
+
+  // reset login fields
   el("username").value = "";
+  el("otpInput").value = "";
+  el("otpInput").style.display = "none";
+  el("sendOtpBtn").style.display = "block";
+  el("verifyOtpBtn").style.display = "none";
+
   loginMsg.textContent = "";
   el("welcomeMsg").style.display = "none";
 };
 
-if (currentUser) {
+
+if (currentUser && currentUser.role && ROLE_ACCESS[currentUser.role]) {
   console.log("User Role =", currentUser.role);
-  console.log("ROLE_ACCESS[currentUser.role] =", ROLE_ACCESS[currentUser.role]);
+  console.log("ROLE_ACCESS =", ROLE_ACCESS[currentUser.role]);
 }
+
 
 /* ===========================
    OPEN APP
@@ -1228,38 +1344,105 @@ function setActiveTab(name){
 }
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName) {
-  el("contentArea").innerHTML =
-    "<div class='muted'>Loading " + sheetName + "...</div>";
-  el("searchInput").style.display = "none";
-  el("searchInput").value = "";
-  el("pagination").innerHTML = "";
   try {
-    // 1. Fetch the sheet data
+    // 🔹 Loading message
+    el("contentArea").innerHTML =
+      "<div class='muted'>Loading " + sheetName + "...</div>";
+
+    // 🔹 Reset UI safely
+    if (el("searchInput")) {
+      el("searchInput").style.display = "none";
+      el("searchInput").value = "";
+    }
+    if (el("pagination")) el("pagination").innerHTML = "";
+
+    // 🔹 Fetch sheet data
     tableData = await fetchSheet(sheetName);
-    // 2. Apply Active filter ONLY for Member tab
-    if (sheetName === "Members") {
-      const activeValue = (SETTINGS?.ActiveStatusValue || "Active").toLowerCase();
-      // ✅ Filter rows safely: trim, toLowerCase, check exact match
+
+    // 🔹 Safety check
+    if (!Array.isArray(tableData)) {
+      console.error("fetchSheet returned:", tableData);
+      throw "Invalid data";
+    }
+
+    // 🔹 Members tab Active filter (SAFE)
+    if (sheetName === "Members" && window.SETTINGS) {
+      const activeValue =
+        String(SETTINGS.ActiveStatusValue || "Active")
+          .trim()
+          .toLowerCase();
+
       tableData = tableData.filter(row => {
-        if (!row.hasOwnProperty("Status")) return false;
-        const status = String(row.Status || "").trim().toLowerCase();
-        return status === activeValue;
+        if (!row || row.Status === undefined) return false;
+        return String(row.Status).trim().toLowerCase() === activeValue;
       });
     }
-    // 3. Check if any data available
-    if (!tableData.length) {
+
+    // 🔹 No data
+    if (tableData.length === 0) {
       el("contentArea").innerHTML =
         "<div class='muted'>No data in " + sheetName + "</div>";
       return;
     }
-    // 4. Render table
+
+    // 🔹 Prepare UI
     el("contentArea").innerHTML = "<div id='tableContainer'></div>";
-    el("searchInput").style.display = "block";
+
+    if (el("searchInput")) el("searchInput").style.display = "block";
+    if (el("searchWrapper")) el("searchWrapper").style.display = "flex";
+
+    if (document.getElementById("exportExcelBtn"))
+      document.getElementById("exportExcelBtn").style.display = "inline-block";
+
+    if (document.getElementById("exportPDFBtn"))
+      document.getElementById("exportPDFBtn").style.display = "inline-block";
+
+    // ✅ Year filter (ONLY if function exists)
+    if (typeof fillYearFilter === "function") {
+      fillYearFilter(tableData);
+    }
+
+    // ✅ Settings apply (ONLY if exists)
+    if (typeof applyYearSettings === "function") {
+      applyYearSettings();
+    }
+
+    // ✅ Render table (MUST exist)
     renderTable();
+
   } catch (e) {
-    console.error(e);
+    console.error("loadTab error:", e);
+    el("contentArea").innerHTML =
+      "<div class='muted'>Error loading data</div>";
   }
 }
+
+
+function fillYearFilter(data){
+  const yearSelect = document.getElementById("yearFilter");
+  if(!yearSelect) return;
+
+  // old options clear
+  yearSelect.innerHTML = `<option value="">All Year</option>`;
+
+  const years = new Set();
+
+  data.forEach(r => {
+    const y = r["Year"] || r["year"];
+    if(y) years.add(String(y));
+  });
+
+  // latest year first
+  [...years].sort((a,b)=>b-a).forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    yearSelect.appendChild(opt);
+  });
+}
+
+
+
 /* ---------- RENDER TABLE ---------- */
 function renderTable(){
   // 🛑 safety guards
@@ -1267,6 +1450,28 @@ function renderTable(){
   let filteredData = [...tableData];
   const searchVal =
     el("searchInput").value.trim().toLowerCase();
+
+
+if(searchVal){
+  filteredData = filteredData.filter(r =>
+    Object.values(r).some(v =>
+      String(v || "").toLowerCase().includes(searchVal)
+    )
+  );
+}
+
+// YEAR
+const year =
+  document.getElementById("yearFilter")?.value;
+
+if(year){
+  filteredData = filteredData.filter(r =>
+    String(r.Year) === year
+  );
+}
+
+
+
   // Role + tab config (safe)
   const tabConfig =
     ROLE_ACCESS?.[currentUser.role]?.[currentTab];
@@ -1283,6 +1488,63 @@ function renderTable(){
       })
     );
   }
+
+// 📅 YEAR FILTER
+const selectedYear =
+  document.getElementById("yearFilter")?.value ||
+  SETTINGS?.DefaultYear ||
+  "";
+
+// 🔒 STRICT filter
+if (selectedYear) {
+  filteredData = filteredData.filter(r =>
+    String(r.Year || "").trim() === String(selectedYear)
+  );
+}
+
+
+
+function fillYearFilter(data){
+  const sel = document.getElementById("yearFilter");
+  if(!sel) return;
+
+  sel.innerHTML = `<option value="">All Year</option>`;
+  const years = new Set();
+
+  data.forEach(r=>{
+    if(r.Year) years.add(String(r.Year));
+  });
+
+  [...years].sort((a,b)=>b-a).forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    sel.appendChild(opt);
+  });
+}
+
+
+function applyYearSettings() {
+  const yf = document.getElementById("yearFilter");
+  if (!yf || !window.SETTINGS) return;
+
+  // Enable / Disable Year Filter
+  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
+    yf.style.display = "none";
+    yf.value = ""; // All Year
+    return;
+  }
+
+  yf.style.display = "inline-block";
+
+  // 🔒 FORCE Default Year
+  if (SETTINGS.DefaultYear) {
+    yf.value = String(SETTINGS.DefaultYear);
+  }
+}
+
+
+
   /* ======================
      🔐 OWN / ALL FILTER
      ====================== */
@@ -1704,6 +1966,90 @@ function gotoPage(p){ currentPage=p; renderTable(); }
 function sortBy(c){ if(sortColumn===c){ sortDir*=-1; } else { sortColumn=c; sortDir=1; } renderTable(); }
 
 
+function getVisibleTableData() {
+  const table = document.querySelector("#contentArea table");
+  if (!table) return { headers: [], rows: [] };
+
+  const headers = Array.from(table.querySelectorAll("thead th"))
+    .map(th => th.innerText.trim());
+
+  const rows = Array.from(table.querySelectorAll("tbody tr"))
+    .map(tr =>
+      Array.from(tr.children).map(td => td.innerText.trim())
+    );
+
+  return { headers, rows };
+}
+
+
+function exportExcel() {
+  const { headers, rows } = getVisibleTableData();
+
+  if (!rows.length) {
+    alert("Export ke liye koi data nahi hai");
+    return;
+  }
+
+  const data = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, currentTab || "Data");
+
+  XLSX.writeFile(wb, `${currentTab || "Tab"}_Export.xlsx`);
+}
+
+
+function exportPDF() {
+
+  const table = document.querySelector("#contentArea table");
+  if (!table) {
+    alert("Table nahi mila");
+    return;
+  }
+
+  // 1️⃣ Clone table
+  const clone = table.cloneNode(true);
+
+  // 2️⃣ 🔥 Har row ka LAST column remove (Action / Edit / Delete)
+  clone.querySelectorAll("tr").forEach(row => {
+    if (row.children.length > 0) {
+      row.children[row.children.length - 1].remove();
+    }
+  });
+
+  // 3️⃣ PDF wrapper + header
+  const wrapper = document.createElement("div");
+  wrapper.className = "pdf-area";
+  wrapper.innerHTML = `
+    <h2 style="text-align:center;">श्री मेवाड़ प्रजापत समाज – वापी</h2>
+    <div style="text-align:center;font-size:12px;">
+      Date: ${new Date().toLocaleDateString('hi-IN')}
+    </div>
+    <hr>
+  `;
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+
+  // 4️⃣ Generate PDF (A4 Landscape)
+  html2pdf().from(wrapper).set({
+    margin: 8,
+    filename: "Samaj_Report.pdf",
+    html2canvas: {
+      scale: 2
+    },
+    jsPDF: {
+      unit: "mm",
+      format: "a4",
+      orientation: "landscape"   // 🔥 table ke liye best
+    }
+  }).save().then(() => {
+    wrapper.remove();
+  });
+}
+
+
+
 /* ===========================
    AUTO LOGOUT (IDLE TIMER)
    =========================== */
@@ -1829,12 +2175,54 @@ if (res.adminWa) {
 
 });
 
+document.addEventListener("DOMContentLoaded", function () {
+
+  const pageSize = document.getElementById("pageSize");
+  const customSize = document.getElementById("customSize");
+
+  if (!pageSize) return;
+
+  pageSize.addEventListener("change", function () {
+
+    if (this.value === "custom") {
+      customSize.style.display = "inline-block";
+      customSize.value = "";
+      customSize.focus();
+      return;
+    }
+
+    customSize.style.display = "none";
+
+    if (this.value === "all") {
+      rowsPerPage = 999999;
+    } else {
+      rowsPerPage = parseInt(this.value, 10);
+    }
+
+    currentPage = 1;
+    renderTable();   // 🔥 existing search ke sath
+  });
+
+  customSize.addEventListener("input", function () {
+
+    const val = parseInt(this.value, 10);
+    if (!val || val <= 0) return;
+
+    rowsPerPage = val;
+    currentPage = 1;
+    renderTable();
+  });
+
+});
 
 
+document.getElementById("yearFilter").addEventListener("change", () => {
+  currentPage = 1;
+  renderTable();
+});
 
 
 </script>
 </body>
 </html>
-
 
