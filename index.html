@@ -751,23 +751,32 @@ function isTodayBirthday(birthday) {
 
   let birthDate;
 
-  // अगर already Date object format है
+  // अगर Apps Script से ISO format आ रहा है
   if (birthday.includes("T")) {
     birthDate = new Date(birthday);
   }
-  // अगर dd/MM/yyyy format है
+
+  // अगर Sheet में dd/MM/yyyy है
   else if (birthday.includes("/")) {
     const parts = birthday.split("/");
-    birthDate = new Date(parts[2], parts[1]-1, parts[0]);
+    birthDate = new Date(
+      parseInt(parts[2]),      // year
+      parseInt(parts[1]) - 1,  // month
+      parseInt(parts[0])       // day
+    );
   }
+
   else {
     return false;
   }
 
-  return (
-    birthDate.getDate() === todayDay &&
-    birthDate.getMonth() === todayMonth
-  );
+  const birthDay = birthDate.getDate();
+  const birthMonth = birthDate.getMonth();
+
+  console.log("Today:", todayDay, todayMonth);
+  console.log("Birthday:", birthDay, birthMonth);
+
+  return (birthDay === todayDay && birthMonth === todayMonth);
 }
 
 
