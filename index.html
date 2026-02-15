@@ -740,19 +740,27 @@ async function loadSettings(){
 
 
 
-// 🔹 Existing functions के नीचे add करें
 
-function isTodayBirthday(birthday){
-  if(!birthday) return false;
+function isTodayBirthday(birthday) {
+
+  if (!birthday) return false;
+
+  // Expect format: dd/MM/yyyy
+  const parts = birthday.split("/");
+
+  if (parts.length !== 3) return false;
+
+  const day = parts[0];
+  const month = parts[1];
 
   const today = new Date();
-  const b = new Date(birthday);
+  const todayDay = String(today.getDate()).padStart(2, "0");
+  const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
 
-  return (
-    b.getDate() === today.getDate() &&
-    b.getMonth() === today.getMonth()
-  );
+  return (day === todayDay && month === todayMonth);
 }
+
+
 
 
 
