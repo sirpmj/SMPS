@@ -741,13 +741,10 @@ async function loadSettings(){
 
 
 
-function isTodayBirthday(birthday) {
+function isTodayBirthday(dateString) {
+  if (!dateString) return false;
 
-  if (!birthday) return false;
-
-  // Expect format: dd/MM/yyyy
-  const parts = birthday.split("/");
-
+  const parts = dateString.split("/");
   if (parts.length !== 3) return false;
 
   const day = parts[0];
@@ -757,7 +754,7 @@ function isTodayBirthday(birthday) {
   const todayDay = String(today.getDate()).padStart(2, "0");
   const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
 
-  return (day === todayDay && month === todayMonth);
+  return day === todayDay && month === todayMonth;
 }
 
 
