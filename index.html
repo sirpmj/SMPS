@@ -1923,44 +1923,42 @@ function printPopupReceiptContent(title, bodyHtml) {
 
 
 
+
+
 function renderMembers(data) {
 
   const tbody = document.getElementById("memberTableBody");
   tbody.innerHTML = "";
 
-  data.forEach(member => {
+  data.forEach(function(member) {
 
     const isBirthday = isTodayBirthday(member.Birthday);
 
-    let row = `
-    <tr class="${isBirthday ? 'birthdayRow' : ''}">
-      <td>${member.MemberID}</td>
+    let row = "<tr class='" + (isBirthday ? "birthdayRow" : "") + "'>";
 
-      <td>
-        ${member.Name}
-        ${isBirthday ? ' 🎂' : ''}
-      </td>
+    row += "<td>" + (member.MemberID || "") + "</td>";
 
-      <td>${member.Birthday || ''}</td>
+    row += "<td>" + (member.Name || "");
+    if(isBirthday) row += " 🎂";
+    row += "</td>";
 
-      <td>${member.Mobile}</td>
+    row += "<td>" + (member.Birthday || "") + "</td>";
 
-      <td>
-        ${isBirthday ? `
-          <button onclick="sendBirthday('${member.Mobile}','${member.Name}')">
-            🎂 Send Wish
-          </button>
-        ` : `
-          <button onclick="sendWhatsApp('${member.Mobile}','${member.Name}')">
-            WhatsApp
-          </button>
-        `}
-      </td>
-    </tr>`;
+    row += "<td>" + (member.Mobile || "") + "</td>";
+
+    if(isBirthday){
+      row += "<td><button onclick=\"sendBirthday('" + member.Mobile + "','" + member.Name + "')\">🎂 Send Wish</button></td>";
+    } else {
+      row += "<td><button onclick=\"sendWhatsApp('" + member.Mobile + "','" + member.Name + "')\">WhatsApp</button></td>";
+    }
+
+    row += "</tr>";
 
     tbody.innerHTML += row;
+
   });
 }
+
 
 
       </body>
