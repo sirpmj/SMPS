@@ -741,20 +741,33 @@ async function loadSettings(){
 
 
 
-function isTodayBirthday(dateString) {
-  if (!dateString) return false;
+function isTodayBirthday(birthday) {
 
-  const parts = dateString.split("/");
-  if (parts.length !== 3) return false;
-
-  const day = parts[0];
-  const month = parts[1];
+  if (!birthday) return false;
 
   const today = new Date();
-  const todayDay = String(today.getDate()).padStart(2, "0");
-  const todayMonth = String(today.getMonth() + 1).padStart(2, "0");
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
 
-  return day === todayDay && month === todayMonth;
+  let birthDate;
+
+  // अगर already Date object format है
+  if (birthday.includes("T")) {
+    birthDate = new Date(birthday);
+  }
+  // अगर dd/MM/yyyy format है
+  else if (birthday.includes("/")) {
+    const parts = birthday.split("/");
+    birthDate = new Date(parts[2], parts[1]-1, parts[0]);
+  }
+  else {
+    return false;
+  }
+
+  return (
+    birthDate.getDate() === todayDay &&
+    birthDate.getMonth() === todayMonth
+  );
 }
 
 
