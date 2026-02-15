@@ -176,6 +176,10 @@ margin-bottom: 4px;
   }
 }
 
+.birthdayRow{
+  background:#fff3cd;
+  font-weight:bold;
+}
 
 
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
@@ -732,6 +736,27 @@ async function loadSettings(){
   });
   return settings;
 }
+
+
+
+
+// 🔹 Existing functions के नीचे add करें
+
+function isTodayBirthday(birthday){
+  if(!birthday) return false;
+
+  const today = new Date();
+  const b = new Date(birthday);
+
+  return (
+    b.getDate() === today.getDate() &&
+    b.getMonth() === today.getMonth()
+  );
+}
+
+
+
+
 async function loadMembers(){
   const data = await fetchSheet("Members");
   const map = {};
@@ -1674,6 +1699,30 @@ function getUserMobileFromMembers(name){
   }
   return "";
 }
+
+
+function sendBirthday(mobile,name){
+
+  fetch(WEB_APP_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      action:"sendBirthday",
+      mobile:mobile,
+      name:name
+    })
+  })
+  .then(r=>r.json())
+  .then(res=>{
+    if(res.success){
+      window.open(res.waUrl,"_blank");
+    } else {
+      alert(res.msg);
+    }
+  });
+
+}
+
+
 /* ===========================
    VIEW record (popup)
    =========================== */
@@ -1873,6 +1922,45 @@ function printPopupReceiptContent(title, bodyHtml) {
   </footer>
 
 
+
+function renderMembers(data) {
+
+  const tbody = document.getElementById("memberTableBody");
+  tbody.innerHTML = "";
+
+  data.forEach(member => {
+
+    const isBirthday = isTodayBirthday(member.Birthday);
+
+    let row = `
+    <tr class="${isBirthday ? 'birthdayRow' : ''}">
+      <td>${member.MemberID}</td>
+
+      <td>
+        ${member.Name}
+        ${isBirthday ? ' 🎂' : ''}
+      </td>
+
+      <td>${member.Birthday || ''}</td>
+
+      <td>${member.Mobile}</td>
+
+      <td>
+        ${isBirthday ? `
+          <button onclick="sendBirthday('${member.Mobile}','${member.Name}')">
+            🎂 Send Wish
+          </button>
+        ` : `
+          <button onclick="sendWhatsApp('${member.Mobile}','${member.Name}')">
+            WhatsApp
+          </button>
+        `}
+      </td>
+    </tr>`;
+
+    tbody.innerHTML += row;
+  });
+}
 
 
       </body>
@@ -2225,4 +2313,3 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 </script>
 </body>
 </html>
-
