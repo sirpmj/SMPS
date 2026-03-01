@@ -1,4 +1,4 @@
-const CACHE_NAME = "smps-app-v2";
+const CACHE_NAME = "smps-app-v1";
 
 const urlsToCache = [
   "./",
