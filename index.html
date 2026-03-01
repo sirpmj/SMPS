@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="hi">
 <head>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4a90e2">
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
@@ -2336,5 +2339,10 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 
 
 </script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(() => console.log("Service Worker Registered"));
+}
+
 </body>
 </html>
