@@ -1454,6 +1454,9 @@ async function loadTab(sheetName) {
 
  // ✅ Year filter (Members tab पर नहीं)
 if(sheetName === "Members"){
+showTodayBirthday(tableData);
+showUpcomingBirthdays(tableData);
+}
 
 
   if (typeof fillYearFilter === "function") {
@@ -1606,7 +1609,114 @@ function applyYearSettings() {
 }
 
 
+function getBirthdayDate(birthday){
 
+if(!birthday) return null;
+
+if(birthday.includes("T")){
+return new Date(birthday);
+}
+
+if(birthday.includes("/")){
+const p = birthday.split("/");
+if(p.length === 3){
+return new Date(p[2], p[1]-1, p[0]);
+}
+if(p.length === 2){
+return new Date(new Date().getFullYear(), p[1]-1, p[0]);
+}
+}
+
+return null;
+
+}
+
+function showTodayBirthday(data){
+
+const today = new Date();
+let html = "";
+
+data.forEach(m=>{
+
+const bdate = getBirthdayDate(m.Birthday);
+if(!bdate) return;
+
+if(
+bdate.getDate() === today.getDate() &&
+bdate.getMonth() === today.getMonth()
+){
+
+html += `
+<div style="padding:8px;border-bottom:1px solid #ddd">
+🎂 <b>${m.Name}</b>
+(${m.Birthday})
+<button onclick="sendBirthdayWish('${m.Name}','${m.Mobile}')">
+Wish
+</button>
+</div>
+`;
+
+}
+
+});
+
+if(html){
+document.getElementById("birthdaySection").innerHTML =
+"<h3>🎂 Today Birthday</h3>" + html;
+}
+
+}
+
+function showUpcomingBirthdays(data){
+
+const today = new Date();
+let html = "";
+
+data.forEach(m=>{
+
+const bdate = getBirthdayDate(m.Birthday);
+if(!bdate) return;
+
+const next = new Date(today.getFullYear(), bdate.getMonth(), bdate.getDate());
+
+const diff = (next - today)/(1000*60*60*24);
+
+if(diff > 0 && diff <= 7){
+
+html += `
+<div style="padding:6px;border-bottom:1px solid #ddd">
+🎂 ${m.Name} - ${m.Birthday}
+<button onclick="sendBirthdayWish('${m.Name}','${m.Mobile}')">
+Wish
+</button>
+</div>
+`;
+
+}
+
+});
+
+if(html){
+
+document.getElementById("birthdaySection").innerHTML +=
+"<h3>📅 Upcoming Birthdays</h3>" + html;
+
+}
+
+}
+
+function sendBirthdayWish(name,mobile){
+
+const msg =
+"🎂 Happy Birthday " + name +
+"%0A%0AShri Mewar Prajapat Samaj Vapi";
+
+const url =
+"https://wa.me/91"+mobile+"?text="+msg;
+
+window.open(url,"_blank");
+
+}
 
 
 
