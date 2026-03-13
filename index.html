@@ -2442,6 +2442,73 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 });
 
 
+
+
+
+function showTodayBirthday(data){
+
+if(!Array.isArray(data)) return;
+
+const today = new Date();
+const dd = String(today.getDate()).padStart(2,'0');
+const mm = String(today.getMonth()+1).padStart(2,'0');
+
+const todayStr = dd + "/" + mm;
+
+const todayList = data.filter(m =>
+String(m.Birthday || "").trim() === todayStr
+);
+
+if(todayList.length){
+
+const names = todayList.map(m=>m.Name).join(", ");
+
+alert("🎂 Today Birthday: " + names);
+
+}
+
+}
+
+
+
+function showUpcomingBirthdays(data){
+
+const box = document.getElementById("birthdaySection");
+if(!box) return;
+
+const today = new Date();
+let html = "";
+
+data.forEach(m=>{
+
+if(!m.Birthday) return;
+
+const parts = m.Birthday.split("/");
+if(parts.length!==2) return;
+
+const d = parseInt(parts[0]);
+const mth = parseInt(parts[1])-1;
+
+const nextDate = new Date(today.getFullYear(),mth,d);
+
+const diff = (nextDate - today)/(1000*60*60*24);
+
+if(diff >=0 && diff <=7){
+
+html += `
+<div style="padding:6px;border-bottom:1px solid #ddd;">
+🎂 ${m.Name} - ${m.Birthday}
+</div>
+`;
+
+}
+
+});
+
+box.innerHTML = html ? "<b>Upcoming Birthdays</b>"+html : "";
+
+}
+
 </script>
 <script>
 if ('serviceWorker' in navigator) {
