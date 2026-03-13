@@ -1531,16 +1531,7 @@ if(searchVal){
   );
 }
 
-// YEAR
-const year =
-  document.getElementById("yearFilter")?.value;
 
-// YEAR FILTER (Members tab पर apply नहीं होगा)
-if (year && currentTab !== "Members") {
-  filteredData = filteredData.filter(r =>
-    String(r.Year) === year
-  );
-}
 
 
 
