@@ -1441,7 +1441,14 @@ async function loadTab(sheetName) {
     }
 
     // 🔹 Prepare UI
-    el("contentArea").innerHTML = "<div id='tableContainer'></div>";
+if(sheetName === "Members"){
+el("contentArea").innerHTML = `
+<div id="birthdaySection" style="margin-bottom:15px;"></div>
+<div id="tableContainer"></div>
+`;
+}else{
+el("contentArea").innerHTML = "<div id='tableContainer'></div>";
+}
 
     if (el("searchInput")) el("searchInput").style.display = "block";
     if (el("searchWrapper")) el("searchWrapper").style.display = "flex";
