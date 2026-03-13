@@ -1441,14 +1441,7 @@ async function loadTab(sheetName) {
     }
 
     // 🔹 Prepare UI
-if(sheetName === "Members"){
-el("contentArea").innerHTML = `
-<div id="birthdaySection" style="margin-bottom:15px;"></div>
-<div id="tableContainer"></div>
-`;
-}else{
-el("contentArea").innerHTML = "<div id='tableContainer'></div>";
-}
+    el("contentArea").innerHTML = "<div id='tableContainer'></div>";
 
     if (el("searchInput")) el("searchInput").style.display = "block";
     if (el("searchWrapper")) el("searchWrapper").style.display = "flex";
@@ -1461,7 +1454,6 @@ el("contentArea").innerHTML = "<div id='tableContainer'></div>";
 
  // ✅ Year filter (Members tab पर नहीं)
 if(sheetName === "Members"){
-
 
 
   if (typeof fillYearFilter === "function") {
@@ -1483,29 +1475,14 @@ if(sheetName === "Members"){
 
 }
 
-// ✅ Render table (MUST exist)
-renderTable();
+    // ✅ Render table (MUST exist)
+    renderTable();
 
-// birthday system
-if(sheetName === "Members"){
-
-setTimeout(()=>{
-
-try{
-showTodayBirthday(tableData);
-}catch(e){
-console.log("Birthday error",e);
-}
-
-},300);
-
-}
-
-} catch (e) {
-  console.error("loadTab error:", e);
-  el("contentArea").innerHTML =
-    "<div class='muted'>Error loading data</div>";
-}
+  } catch (e) {
+    console.error("loadTab error:", e);
+    el("contentArea").innerHTML =
+      "<div class='muted'>Error loading data</div>";
+  }
 }
 
 
@@ -1629,114 +1606,7 @@ function applyYearSettings() {
 }
 
 
-function getBirthdayDate(birthday){
 
-if(!birthday) return null;
-
-if(birthday.includes("T")){
-return new Date(birthday);
-}
-
-if(birthday.includes("/")){
-const p = birthday.split("/");
-if(p.length === 3){
-return new Date(p[2], p[1]-1, p[0]);
-}
-if(p.length === 2){
-return new Date(new Date().getFullYear(), p[1]-1, p[0]);
-}
-}
-
-return null;
-
-}
-
-function showTodayBirthday(data){
-
-const today = new Date();
-let html = "";
-
-data.forEach(m=>{
-
-const bdate = getBirthdayDate(m.Birthday);
-if(!bdate) return;
-
-if(
-bdate.getDate() === today.getDate() &&
-bdate.getMonth() === today.getMonth()
-){
-
-html += `
-<div style="padding:8px;border-bottom:1px solid #ddd">
-🎂 <b>${m.Name}</b>
-(${m.Birthday})
-<button onclick="sendBirthdayWish('${m.Name}','${m.Mobile}')">
-Wish
-</button>
-</div>
-`;
-
-}
-
-});
-
-if(html){
-document.getElementById("birthdaySection").innerHTML =
-"<h3>🎂 Today Birthday</h3>" + html;
-}
-
-}
-
-function showUpcomingBirthdays(data){
-
-const today = new Date();
-let html = "";
-
-data.forEach(m=>{
-
-const bdate = getBirthdayDate(m.Birthday);
-if(!bdate) return;
-
-const next = new Date(today.getFullYear(), bdate.getMonth(), bdate.getDate());
-
-const diff = (next - today)/(1000*60*60*24);
-
-if(diff > 0 && diff <= 7){
-
-html += `
-<div style="padding:6px;border-bottom:1px solid #ddd">
-🎂 ${m.Name} - ${m.Birthday}
-<button onclick="sendBirthdayWish('${m.Name}','${m.Mobile}')">
-Wish
-</button>
-</div>
-`;
-
-}
-
-});
-
-if(html){
-
-document.getElementById("birthdaySection").innerHTML +=
-"<h3>📅 Upcoming Birthdays</h3>" + html;
-
-}
-
-}
-
-function sendBirthdayWish(name,mobile){
-
-const msg =
-"🎂 Happy Birthday " + name +
-"%0A%0AShri Mewar Prajapat Samaj Vapi";
-
-const url =
-"https://wa.me/91"+mobile+"?text="+msg;
-
-window.open(url,"_blank");
-
-}
 
 
 
@@ -2481,34 +2351,7 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 
 
 
-function showTodayBirthday(data){
 
-const box = document.getElementById("birthdaySection");
-if(!box) return;
-
-const today = new Date();
-const dd = String(today.getDate()).padStart(2,'0');
-const mm = String(today.getMonth()+1).padStart(2,'0');
-
-const list = data.filter(m=>{
-if(!m.Birthday) return false;
-
-const p = m.Birthday.split("/");
-if(p.length < 2) return false;
-
-return p[0] === dd && p[1] === mm;
-});
-
-if(list.length){
-
-box.innerHTML =
-"<div style='padding:10px;background:#fff3cd;border-radius:8px'>🎂 Today Birthday: "
-+ list.map(i=>i.Name).join(", ")
-+ "</div>";
-
-}
-
-}
 
 
 
