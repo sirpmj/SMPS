@@ -1567,12 +1567,7 @@ const selectedYear =
   SETTINGS?.DefaultYear ||
   "";
 
-// 🔒 STRICT filter
-if (selectedYear) {
-  filteredData = filteredData.filter(r =>
-    String(r.Year || "").trim() === String(selectedYear)
-  );
-}
+
 
 
 
