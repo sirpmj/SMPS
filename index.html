@@ -1441,11 +1441,8 @@ async function loadTab(sheetName) {
     }
 
     // 🔹 Prepare UI
-if(sheetName === "Members"){
-  el("contentArea").innerHTML = `
-  <div id="birthdaySection" style="margin-bottom:15px;"></div>
-  <div id="tableContainer"></div>
-  `;
+el("contentArea").innerHTML = "<div id='tableContainer'></div>";
+
 }else{
   el("contentArea").innerHTML = "<div id='tableContainer'></div>";
 }
@@ -2471,43 +2468,7 @@ alert("🎂 Today Birthday: " + names);
 
 
 
-function showUpcomingBirthdays(data){
 
-const box = document.getElementById("birthdaySection");
-if(!box) return;
-
-const today = new Date();
-let html = "";
-
-data.forEach(m=>{
-
-if(!m.Birthday) return;
-
-const parts = m.Birthday.split("/");
-if(parts.length!==2) return;
-
-const d = parseInt(parts[0]);
-const mth = parseInt(parts[1])-1;
-
-const nextDate = new Date(today.getFullYear(),mth,d);
-
-const diff = (nextDate - today)/(1000*60*60*24);
-
-if(diff >=0 && diff <=7){
-
-html += `
-<div style="padding:6px;border-bottom:1px solid #ddd;">
-🎂 ${m.Name} - ${m.Birthday}
-</div>
-`;
-
-}
-
-});
-
-box.innerHTML = html ? "<b>Upcoming Birthdays</b>"+html : "";
-
-}
 
 </script>
 <script>
