@@ -1558,8 +1558,11 @@ const selectedYear =
   SETTINGS?.DefaultYear ||
   "";
 
-
-
+if (selectedYear && currentTab !== "Members") {
+  filteredData = filteredData.filter(r =>
+    String(r.Year || "").trim() === String(selectedYear)
+  );
+}
 
 
 function fillYearFilter(data){
