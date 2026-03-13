@@ -1461,7 +1461,6 @@ el("contentArea").innerHTML = "<div id='tableContainer'></div>";
 
  // ✅ Year filter (Members tab पर नहीं)
 if(sheetName === "Members"){
-showTodayBirthday(tableData);
 }
 
 
@@ -1484,14 +1483,29 @@ showTodayBirthday(tableData);
 
 }
 
-    // ✅ Render table (MUST exist)
-    renderTable();
+// ✅ Render table (MUST exist)
+renderTable();
 
-  } catch (e) {
-    console.error("loadTab error:", e);
-    el("contentArea").innerHTML =
-      "<div class='muted'>Error loading data</div>";
-  }
+// birthday system
+if(sheetName === "Members"){
+
+setTimeout(()=>{
+
+try{
+showTodayBirthday(tableData);
+}catch(e){
+console.log("Birthday error",e);
+}
+
+},300);
+
+}
+
+} catch (e) {
+  console.error("loadTab error:", e);
+  el("contentArea").innerHTML =
+    "<div class='muted'>Error loading data</div>";
+}
 }
 
 
@@ -2467,7 +2481,34 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 
 
 
+function showTodayBirthday(data){
 
+const box = document.getElementById("birthdaySection");
+if(!box) return;
+
+const today = new Date();
+const dd = String(today.getDate()).padStart(2,'0');
+const mm = String(today.getMonth()+1).padStart(2,'0');
+
+const list = data.filter(m=>{
+if(!m.Birthday) return false;
+
+const p = m.Birthday.split("/");
+if(p.length < 2) return false;
+
+return p[0] === dd && p[1] === mm;
+});
+
+if(list.length){
+
+box.innerHTML =
+"<div style='padding:10px;background:#fff3cd;border-radius:8px'>🎂 Today Birthday: "
++ list.map(i=>i.Name).join(", ")
++ "</div>";
+
+}
+
+}
 
 
 
