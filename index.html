@@ -1441,8 +1441,10 @@ async function loadTab(sheetName) {
     }
 
     // 🔹 Prepare UI
-    el("contentArea").innerHTML = "<div id='tableContainer'></div>";
-
+el("contentArea").innerHTML = `
+<div id="birthdaySection" style="margin-bottom:15px;"></div>
+<div id="tableContainer"></div>
+`;
     if (el("searchInput")) el("searchInput").style.display = "block";
     if (el("searchWrapper")) el("searchWrapper").style.display = "flex";
 
@@ -1453,7 +1455,12 @@ async function loadTab(sheetName) {
       document.getElementById("exportPDFBtn").style.display = "inline-block";
 
  // ✅ Year filter (Members tab पर नहीं)
-if (sheetName !== "Members") {
+if(sheetName === "Members"){
+
+showTodayBirthday(tableData);
+showUpcomingBirthdays(tableData);
+
+}
 
   if (typeof fillYearFilter === "function") {
     fillYearFilter(tableData);
@@ -1603,6 +1610,93 @@ function applyYearSettings() {
     yf.value = String(SETTINGS.DefaultYear);
   }
 }
+
+
+
+function showTodayBirthday(data){
+
+const today = new Date();
+const dd = String(today.getDate()).padStart(2,'0');
+const mm = String(today.getMonth()+1).padStart(2,'0');
+
+const todayStr = dd + "/" + mm;
+
+const todayList = data.filter(m =>
+String(m.Birthday).trim() === todayStr
+);
+
+if(todayList.length){
+
+let names = todayList.map(m=>m.Name).join(", ");
+
+alert("🎂 Today Birthday: " + names);
+
+}
+
+}
+
+
+
+function showUpcomingBirthdays(data){
+
+const today = new Date();
+let html = "";
+
+data.forEach(m=>{
+
+if(!m.Birthday) return;
+
+const parts = m.Birthday.split("/");
+if(parts.length!==2) return;
+
+const d = parseInt(parts[0]);
+const mth = parseInt(parts[1]) - 1;
+
+const nextDate = new Date(today.getFullYear(),mth,d);
+
+const diff = (nextDate - today)/(1000*60*60*24);
+
+if(diff >=0 && diff <=7){
+
+html += `
+<div style="padding:6px;border-bottom:1px solid #ddd;">
+🎂 ${m.Name} - ${m.Birthday}
+<button onclick="sendBirthdayWish('${m.Name}','${m.Mobile}')">
+Wish
+</button>
+</div>
+`;
+
+}
+
+});
+
+if(html){
+
+document.getElementById("birthdaySection").innerHTML =
+"<h3>Upcoming Birthdays</h3>" + html;
+
+}
+
+}
+
+
+
+
+function sendBirthdayWish(name,mobile){
+
+const msg =
+"🎂 Happy Birthday " + name +
+"%0A%0AShri Prajapati Samaj Vapi";
+
+const url =
+"https://wa.me/91"+mobile+"?text="+msg;
+
+window.open(url,"_blank");
+
+}
+
+
 
 
 
