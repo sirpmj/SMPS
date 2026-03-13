@@ -1452,15 +1452,27 @@ async function loadTab(sheetName) {
     if (document.getElementById("exportPDFBtn"))
       document.getElementById("exportPDFBtn").style.display = "inline-block";
 
-    // ✅ Year filter (ONLY if function exists)
-    if (typeof fillYearFilter === "function") {
-      fillYearFilter(tableData);
-    }
+ // ✅ Year filter (Members tab पर नहीं)
+if (sheetName !== "Members") {
 
-    // ✅ Settings apply (ONLY if exists)
-    if (typeof applyYearSettings === "function") {
-      applyYearSettings();
-    }
+  if (typeof fillYearFilter === "function") {
+    fillYearFilter(tableData);
+  }
+
+  if (typeof applyYearSettings === "function") {
+    applyYearSettings();
+  }
+
+  if (document.getElementById("yearFilter"))
+    document.getElementById("yearFilter").style.display = "inline-block";
+
+} else {
+
+  // Members tab → Year filter hide
+  if (document.getElementById("yearFilter"))
+    document.getElementById("yearFilter").style.display = "none";
+
+}
 
     // ✅ Render table (MUST exist)
     renderTable();
@@ -1474,28 +1486,32 @@ async function loadTab(sheetName) {
 
 
 function fillYearFilter(data){
+
   const yearSelect = document.getElementById("yearFilter");
   if(!yearSelect) return;
 
-  // old options clear
   yearSelect.innerHTML = `<option value="">All Year</option>`;
 
   const years = new Set();
 
   data.forEach(r => {
+
+    if(!r) return;
+
     const y = r["Year"] || r["year"];
+
     if(y) years.add(String(y));
+
   });
 
-  // latest year first
   [...years].sort((a,b)=>b-a).forEach(y=>{
     const opt = document.createElement("option");
     opt.value = y;
     opt.textContent = y;
     yearSelect.appendChild(opt);
   });
-}
 
+}
 
 
 /* ---------- RENDER TABLE ---------- */
@@ -1519,7 +1535,8 @@ if(searchVal){
 const year =
   document.getElementById("yearFilter")?.value;
 
-if(year){
+// YEAR FILTER (Members tab पर apply नहीं होगा)
+if (year && currentTab !== "Members") {
   filteredData = filteredData.filter(r =>
     String(r.Year) === year
   );
