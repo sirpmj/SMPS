@@ -1352,8 +1352,17 @@ const expensesY = filterYear(expenses,"Date");
 }
 
     // -------- Boli --------
-const pledgedBoli = boliY.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
-const paidBoli = boliY.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+let boliFiltered = boli;
+
+if(year !== "all"){
+  boliFiltered = boli.filter(r=>{
+    if(!r["Date"]) return false;
+    return new Date(r["Date"]).getFullYear() == year;
+  });
+}
+
+const pledgedBoli = boliFiltered.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+const paidBoli = boliFiltered.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
 
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
  if (canShowCard("Boli")) {
@@ -1365,8 +1374,17 @@ const paidBoli = boliY.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
 }
 
     // -------- Donation --------
-const pledgedDonation = donationY.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
-const paidDonation = donationY.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+let donationFiltered = donation;
+
+if(year !== "all"){
+  donationFiltered = donation.filter(r=>{
+    if(!r["Date"]) return false;
+    return new Date(r["Date"]).getFullYear() == year;
+  });
+}
+
+const pledgedDonation = donationFiltered.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+const paidDonation = donationFiltered.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
 
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
 if (canShowCard("Donation")) {
@@ -1392,7 +1410,17 @@ if (canShowCard("Donation")) {
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
-const totalExpense = expensesY.reduce((s,r)=>{
+let expensesFiltered = expenses;
+
+if(year !== "all"){
+  expensesFiltered = expenses.filter(r=>{
+    if(!r["Date"]) return false;
+    return new Date(r["Date"]).getFullYear() == year;
+  });
+}
+
+const totalExpense = expensesFiltered.reduce((s, r) => {
+
  return s + toNumber(r["Payment"] || r["payment"] || 0);
 },0);
 if (canShowCard("TotalExpense")) {
