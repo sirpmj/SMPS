@@ -785,6 +785,7 @@ function isTodayBirthday(birthday) {
 
 
 function getNextBirthdayDays(birthday){
+
   if(!birthday) return 999;
 
   const parts = birthday.split("/");
@@ -794,18 +795,21 @@ function getNextBirthdayDays(birthday){
   const month = parseInt(parts[1]) - 1;
 
   const today = new Date();
+  today.setHours(0,0,0,0);
+
   const year = today.getFullYear();
 
   let nextBirthday = new Date(year, month, day);
+  nextBirthday.setHours(0,0,0,0);
 
   if(nextBirthday < today){
     nextBirthday = new Date(year + 1, month, day);
   }
 
   const diff = nextBirthday - today;
+
   return Math.floor(diff / (1000*60*60*24));
 }
-
 
 
 async function loadMembers(){
