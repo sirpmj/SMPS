@@ -1514,23 +1514,29 @@ function renderTable(){
 
   let filteredData = [...tableData];
 
-  /* ======================
-     🔍 SEARCH
-     ====================== */
-
   const searchEl = el("searchInput");
   const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
-  if (searchVal) {
-    filteredData = filteredData.filter(row =>
-      Object.entries(row).some(([k,v])=>{
-        if(!k) return false;
-        const key = k.toLowerCase();
-        if(key==="password" || key==="role") return false;
-        return String(v ?? "").toLowerCase().includes(searchVal);
-      })
+  if(searchVal){
+    filteredData = filteredData.filter(r =>
+      Object.values(r).some(v =>
+        String(v || "").toLowerCase().includes(searchVal)
+      )
     );
   }
+
+  const selectedYear =
+    document.getElementById("yearFilter")?.value ||
+    SETTINGS?.DefaultYear ||
+    "";
+
+  if (selectedYear && currentTab !== "Members") {
+    filteredData = filteredData.filter(r =>
+      String(r.Year || "").trim() === String(selectedYear)
+    );
+  }
+
+
 
 
   /* ======================
@@ -1696,18 +1702,6 @@ function renderTable(){
 }
 
 
-const selectedYear =
-  document.getElementById("yearFilter")?.value ||
-  SETTINGS?.DefaultYear ||
-  "";
-
-if (selectedYear && currentTab !== "Members") {
-  filteredData = filteredData.filter(r => {
-    const yr = r["Year"] || r["year"] || "";
-    if (!yr) return true;
-    return String(yr).trim() === String(selectedYear);
-  });
-}
 
 
 function fillYearFilter(data){
@@ -1732,9 +1726,11 @@ function fillYearFilter(data){
 
 }
 
+
 function applyYearSettings(){
 
   const yf = document.getElementById("yearFilter");
+
   if (!yf || !window.SETTINGS) return;
 
   if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
@@ -1750,6 +1746,7 @@ function applyYearSettings(){
   }
 
 }
+
 
 /* ===========================
    Actions: View / WhatsApp / Edit / Delete
