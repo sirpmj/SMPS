@@ -1506,33 +1506,7 @@ if(sheetName === "Members"){
 }
 
 
-function fillYearFilter(data){
 
-  const yearSelect = document.getElementById("yearFilter");
-  if(!yearSelect) return;
-
-  yearSelect.innerHTML = `<option value="">All Year</option>`;
-
-  const years = new Set();
-
-  data.forEach(r => {
-
-    if(!r) return;
-
-    const y = r["Year"] || r["year"];
-
-    if(y) years.add(String(y));
-
-  });
-
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    yearSelect.appendChild(opt);
-  });
-
-}
 
 
 /* ---------- RENDER TABLE ---------- */
@@ -1553,10 +1527,18 @@ function renderTable(){
     );
   }
 
-}
+  const selectedYear =
+    document.getElementById("yearFilter")?.value ||
+    SETTINGS?.DefaultYear ||
+    "";
 
+  if (selectedYear && currentTab !== "Members") {
+    filteredData = filteredData.filter(r =>
+      String(r.Year || "").trim() === String(selectedYear)
+    );
+  }
 
-
+  
 
   // Role + tab config (safe)
   const tabConfig =
