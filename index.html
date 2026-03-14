@@ -1663,7 +1663,15 @@ const columns = Array.from(
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
   pageData.forEach(row => {
-    html += "<tr>";
+
+  let rowClass = "";
+
+  if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
+    rowClass = "birthdayRow";
+  }
+
+  html += `<tr class="${rowClass}">`;
+
 columns.forEach(c => {
 
   const cl = c.toLowerCase();
