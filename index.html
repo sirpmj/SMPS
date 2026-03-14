@@ -705,6 +705,7 @@ if (searchBox && !searchBox._bound) {
 
 
 
+
 /* ===========================
    Load data: Users, Templates, Settings, Members
    =========================== */
@@ -1202,9 +1203,7 @@ currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
 }
 
 function shouldShowDashboard() {
-
-  // login nahi hai → dashboard show karo
-  if (!currentUser) return true;
+  if (!currentUser || !currentUser.role) return false;
 
   const key = "ShowDashboard." + currentUser.role;
   const val = (SETTINGS?.[key] || "").toUpperCase();
@@ -1250,91 +1249,15 @@ function canShowCard(cardKey){
    Dashboard render
    =========================== */
 async function renderMainDashboard(){
-
   el("mainDashboard").style.display="flex";
-  el("mainDashboard").innerHTML="";
-
   try{
-
-    // ✅ YEAR FILTER FIX
-    const selectedYear =
-      document.getElementById("yearFilter")?.value ||
-      SETTINGS?.DefaultYear ||
-      "";
-
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members"),
       fetchSheet("Boli"),
       fetchSheet("Donation"),
       fetchSheet("Fund Ledger"),
-      fetchSheet("Expenses")
+      fetchSheet("Expenses") // 🆕
     ]);
-
-    // 📅 YEAR FILTER
-    const filteredBoli = selectedYear
-      ? boli.filter(r => String(r.Year || "") === String(selectedYear))
-      : boli;
-
-    const filteredDonation = selectedYear
-      ? donation.filter(r => String(r.Year || "") === String(selectedYear))
-      : donation;
-
-    const filteredExpenses = selectedYear
-      ? expenses.filter(r => String(r.Year || "") === String(selectedYear))
-      : expenses;
-
-    // 📊 CALCULATIONS
-    const totalMembers = members.length;
-
-    const totalBoli = filteredBoli.reduce(
-      (sum,r)=> sum + toNumber(r.Amount),0
-    );
-
-    const totalDonation = filteredDonation.reduce(
-      (sum,r)=> sum + toNumber(r.Amount),0
-    );
-
-    const totalExpenses = filteredExpenses.reduce(
-      (sum,r)=> sum + toNumber(r.Amount),0
-    );
-
-    const balance =
-      totalBoli + totalDonation - totalExpenses;
-
-    // 📦 DASHBOARD HTML
-    el("mainDashboard").innerHTML = `
-      <div class="card">
-        <h3>Total Members</h3>
-        <p>${totalMembers}</p>
-      </div>
-
-      <div class="card">
-        <h3>Total Boli</h3>
-        <p>${totalBoli.toLocaleString()}</p>
-      </div>
-
-      <div class="card">
-        <h3>Total Donation</h3>
-        <p>${totalDonation.toLocaleString()}</p>
-      </div>
-
-      <div class="card">
-        <h3>Total Expenses</h3>
-        <p>${totalExpenses.toLocaleString()}</p>
-      </div>
-
-      <div class="card">
-        <h3>Balance</h3>
-        <p>${balance.toLocaleString()}</p>
-      </div>
-    `;
-
-  }
-  catch(err){
-    console.error("Dashboard error:",err);
-  }
-
-}
     // -------- Total Members --------
    if (canShowCard("TotalMembers")) {
   el("mainDashboard").innerHTML += `
@@ -1357,21 +1280,9 @@ async function renderMainDashboard(){
 }
 
     // -------- Boli --------
-// -------- Boli --------
-const filteredBoli = selectedYear
-  ? boli.filter(r => String(r.Year || "") === String(selectedYear))
-  : boli;
-
-const pledgedBoli = filteredBoli.reduce(
-  (s,r)=>s+toNumber(r["Pledged Boli"]),0
-);
-
-const paidBoli = filteredBoli.reduce(
-  (s,r)=>s+toNumber(r["Paid Boli"]),0
-);
-
-const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
-
+    const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+    const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+    const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
  if (canShowCard("Boli")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-orange">
@@ -1381,20 +1292,9 @@ const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
 }
 
     // -------- Donation --------
- const filteredDonation = selectedYear
-  ? donation.filter(r => String(r.Year || "") === String(selectedYear))
-  : donation;
-
-const pledgedDonation = filteredDonation.reduce(
-  (s,r)=>s+toNumber(r["Pledged Donation"]),0
-);
-
-const paidDonation = filteredDonation.reduce(
-  (s,r)=>s+toNumber(r["Paid Donation"]),0
-);
-
-const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
-
+    const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+    const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+    const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
 if (canShowCard("Donation")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-lightblue">
@@ -1418,14 +1318,9 @@ if (canShowCard("Donation")) {
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
-const filteredExpense = selectedYear
-  ? expenses.filter(r => String(r.Year || "") === String(selectedYear))
-  : expenses;
-
-const totalExpense = filteredExpense.reduce((s,r)=>{
-  return s + toNumber(r["Payment"] || 0);
-},0);
-
+const totalExpense = expenses.reduce((s, r) => {
+  return s + toNumber(r["Payment"] || r["payment"] || 0);
+}, 0);
 if (canShowCard("TotalExpense")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-red">
@@ -1558,7 +1453,8 @@ async function loadTab(sheetName) {
       document.getElementById("exportPDFBtn").style.display = "inline-block";
 
  // ✅ Year filter (Members tab पर नहीं)
-if(sheetName !== "Members"){
+if(sheetName === "Members"){
+
 
   if (typeof fillYearFilter === "function") {
     fillYearFilter(tableData);
@@ -1573,11 +1469,11 @@ if(sheetName !== "Members"){
 
 } else {
 
+  // Members tab → Year filter hide
   if (document.getElementById("yearFilter"))
     document.getElementById("yearFilter").style.display = "none";
 
 }
-
 
     // ✅ Render table (MUST exist)
     renderTable();
@@ -1590,214 +1486,91 @@ if(sheetName !== "Members"){
 }
 
 
+function fillYearFilter(data){
 
+  const yearSelect = document.getElementById("yearFilter");
+  if(!yearSelect) return;
+
+  yearSelect.innerHTML = `<option value="">All Year</option>`;
+
+  const years = new Set();
+
+  data.forEach(r => {
+
+    if(!r) return;
+
+    const y = r["Year"] || r["year"];
+
+    if(y) years.add(String(y));
+
+  });
+
+  [...years].sort((a,b)=>b-a).forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    yearSelect.appendChild(opt);
+  });
+
+}
 
 
 /* ---------- RENDER TABLE ---------- */
 function renderTable(){
-
+  // 🛑 safety guards
   if (!currentUser || !currentTab || !Array.isArray(tableData)) return;
-
   let filteredData = [...tableData];
-
-  const searchEl = el("searchInput");
-  const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : "";
-
-  // 🔍 SEARCH
-  if(searchVal){
-    filteredData = filteredData.filter(r =>
-      Object.values(r).some(v =>
-        String(v || "").toLowerCase().includes(searchVal)
-      )
-    );
-  }
-
-  // 📅 YEAR FILTER
-  const selectedYear =
-    document.getElementById("yearFilter")?.value ||
-    SETTINGS?.DefaultYear ||
-    "";
-
-  if (selectedYear && currentTab !== "Members") {
-    filteredData = filteredData.filter(r =>
-      String(r.Year || "").trim() === String(selectedYear)
-    );
-  }
+  const searchVal =
+    el("searchInput").value.trim().toLowerCase();
 
 
-
-  /* ======================
-     🔐 OWN / ALL FILTER
-     ====================== */
-
-  const tabConfig =
-    ROLE_ACCESS?.[currentUser.role]?.[currentTab];
-
-  if (tabConfig?.tabScope?.toLowerCase() === "own") {
-    filteredData = filteredData.filter(row => {
-
-      const member =
-        row[SETTINGS?.MemberColumn] ||
-        row["Member"] ||
-        row["Name"] ||
-        "";
-
-      return member.trim() === currentUser.name.trim();
-
-    });
-  }
-
-  /* ======================
-     🔃 SORTING
-     ====================== */
-
-  if (sortColumn) {
-
-    filteredData.sort((a,b)=>{
-
-      let va = a[sortColumn] ?? "";
-      let vb = b[sortColumn] ?? "";
-
-      const na = toNumber(va);
-      const nb = toNumber(vb);
-
-      if(!isNaN(na) && !isNaN(nb) && (na!==0 || nb!==0)){
-        return (na-nb) * sortDir;
-      }
-
-      return String(va).localeCompare(String(vb),"en",{
-        numeric:true,
-        sensitivity:"base"
-      }) * sortDir;
-
-    });
-
-  }
-
-  /* ======================
-     📄 PAGINATION
-     ====================== */
-
-  const totalPages =
-    Math.ceil(filteredData.length / rowsPerPage) || 1;
-
-  if(currentPage > totalPages) currentPage = 1;
-
-  const start = (currentPage-1)*rowsPerPage;
-
-  const pageData =
-    filteredData.slice(start,start+rowsPerPage);
-
-  if(pageData.length===0){
-
-    el("tableContainer").innerHTML =
-      "<p class='muted'>No records found</p>";
-
-    return;
-
-  }
-
-  /* ======================
-     📊 COLUMNS
-     ====================== */
-
-  const hiddenCols =
-    getHiddenColumnsForTab(currentTab);
-
-  const columns = Array.from(
-    new Set(tableData.flatMap(r=>Object.keys(r)))
-  ).filter(c=> c && !hiddenCols.has(c));
-
-  let html =
-    "<table><thead><tr>";
-
-  columns.forEach(c=>{
-    html +=
-      `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`;
-  });
-
-  html += "<th>Actions</th></tr></thead><tbody>";
-
-  /* ======================
-     📋 ROWS
-     ====================== */
-
-  pageData.forEach(row=>{
-
-    html += "<tr>";
-
-    columns.forEach(c=>{
-
-      const cl = c.toLowerCase();
-
-      if(
-        cl.includes("amount") ||
-        cl.includes("received") ||
-        cl.includes("pledged") ||
-        cl.includes("paid") ||
-        cl.includes("credit") ||
-        cl.includes("debit") ||
-        cl.includes("payment") ||
-        cl.includes("balance") ||
-        cl.includes("closing") ||
-        cl.includes("pending")
-      ){
-
-        html += `<td style="text-align:right">
-        ${toNumber(row[c]).toLocaleString()}
-        </td>`;
-
-      }
-
-      else if(cl.includes("date")){
-
-        html += `<td>${formatDate(row[c])}</td>`;
-
-      }
-
-      else{
-
-        html += `<td>${row[c] || ""}</td>`;
-
-      }
-
-    });
-
-    const encId =
-      encodeURIComponent(
-        row["ID"] ||
-        row[SETTINGS?.MemberColumn] ||
-        row["Member"] ||
-        ""
-      );
-
-    html +=
-      "<td>" +
-      renderActionButtons(row,encId) +
-      "</td>";
-
-    html += "</tr>";
-
-  });
-
-  html += "</tbody></table>";
-
-  el("tableContainer").innerHTML = html;
-
-  renderPagination(totalPages);
-
+if(searchVal){
+  filteredData = filteredData.filter(r =>
+    Object.values(r).some(v =>
+      String(v || "").toLowerCase().includes(searchVal)
+    )
+  );
 }
 
 
 
 
-function fillYearFilter(data){
 
+  // Role + tab config (safe)
+  const tabConfig =
+    ROLE_ACCESS?.[currentUser.role]?.[currentTab];
+  /* ======================
+     🔍 SEARCH (ALL TABS)
+     ====================== */
+  if (searchVal) {
+    filteredData = filteredData.filter(row =>
+      Object.entries(row).some(([k, v]) => {
+        if (!k) return false;
+        const key = k.toLowerCase();
+        if (key === "password" || key === "role") return false;
+        return String(v ?? "").toLowerCase().includes(searchVal);
+      })
+    );
+  }
+
+// 📅 YEAR FILTER
+const selectedYear =
+  document.getElementById("yearFilter")?.value ||
+  SETTINGS?.DefaultYear ||
+  "";
+
+if (selectedYear && currentTab !== "Members") {
+  filteredData = filteredData.filter(r =>
+    String(r.Year || "").trim() === String(selectedYear)
+  );
+}
+
+
+function fillYearFilter(data){
   const sel = document.getElementById("yearFilter");
   if(!sel) return;
 
   sel.innerHTML = `<option value="">All Year</option>`;
-
   const years = new Set();
 
   data.forEach(r=>{
@@ -1810,31 +1583,130 @@ function fillYearFilter(data){
     opt.textContent = y;
     sel.appendChild(opt);
   });
-
 }
 
 
-function applyYearSettings(){
-
+function applyYearSettings() {
   const yf = document.getElementById("yearFilter");
-
   if (!yf || !window.SETTINGS) return;
 
+  // Enable / Disable Year Filter
   if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
     yf.style.display = "none";
-    yf.value = "";
+    yf.value = ""; // All Year
     return;
   }
 
   yf.style.display = "inline-block";
 
+  // 🔒 FORCE Default Year
   if (SETTINGS.DefaultYear) {
     yf.value = String(SETTINGS.DefaultYear);
   }
-
 }
 
 
+
+
+
+
+
+  /* ======================
+     🔐 OWN / ALL FILTER
+     ====================== */
+  if (tabConfig?.tabScope?.toLowerCase() === "own") {
+    filteredData = filteredData.filter(row => {
+      const member =
+        row[SETTINGS?.MemberColumn] ||
+        row["Member"] ||
+        row["Name"] ||
+        "";
+      return member.trim() === currentUser.name.trim();
+    });
+  }
+  /* ======================
+     🔃 SORTING (SAFE)
+     ====================== */
+  if (sortColumn) {
+    filteredData.sort((a, b) => {
+      let va = a[sortColumn] ?? "";
+      let vb = b[sortColumn] ?? "";
+      const na = toNumber(va);
+      const nb = toNumber(vb);
+      // number sort
+      if (!isNaN(na) && !isNaN(nb) && (na !== 0 || nb !== 0)) {
+        return (na - nb) * sortDir;
+      }
+      // text sort
+      return String(va).localeCompare(String(vb), "en", {
+        numeric: true,
+        sensitivity: "base"
+      }) * sortDir;
+    });
+  }
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+  if(currentPage > totalPages) currentPage = 1;
+  const start = (currentPage-1)*rowsPerPage;
+  const pageData = filteredData.slice(start,start+rowsPerPage);
+  if(pageData.length === 0){el("tableContainer").innerHTML="<p class='muted'>No records found</p>";return;}
+  // Columns (skip password & role)
+// 🔥 tab-wise hidden columns
+const hiddenCols = getHiddenColumnsForTab(currentTab);
+
+// all columns but remove hidden ones
+const columns = Array.from(
+  new Set(tableData.flatMap(row => Object.keys(row)))
+).filter(c =>
+  c && !hiddenCols.has(c)
+);
+  let html = "<table><thead><tr>";
+  columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
+  html += "<th>Actions</th></tr></thead><tbody>";
+  pageData.forEach(row => {
+    html += "<tr>";
+columns.forEach(c => {
+
+  const cl = c.toLowerCase();
+
+  // 🔢 ALL numeric / money columns (FINAL LIST)
+  if (
+    cl.includes("amount") ||
+    cl.includes("received") ||     // 🔥 FIX (THIS WAS MISSING)
+    cl.includes("pledged") ||
+    cl.includes("paid") ||
+    cl.includes("credit") ||
+    cl.includes("debit") ||
+    cl.includes("payment") ||
+    cl.includes("balance") ||
+    cl.includes("closing") ||
+    cl.includes("pending")
+  ) {
+    html += `<td style="text-align:right">
+      ${toNumber(row[c]).toLocaleString()}
+    </td>`;
+  }
+
+  // 📅 Date columns
+  else if (cl.includes("date")) {
+    html += `<td>${formatDate(row[c])}</td>`;
+  }
+
+  // 📝 Normal text
+  else {
+    html += `<td>${row[c] || ""}</td>`;
+  }
+
+});
+
+    // Actions column
+    const encId = encodeURIComponent(row['ID'] || row[SETTINGS?.MemberColumn] || row["Member"] || "");
+    html += "<td>" + renderActionButtons(row, encId) + "</td>";
+    html += "</tr>";
+  });
+  html += "</tbody></table>";	
+  el("tableContainer").innerHTML = html;
+  renderPagination(totalPages);
+}
 /* ===========================
    Actions: View / WhatsApp / Edit / Delete
    =========================== */
@@ -2471,14 +2343,14 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-const yearFilterEl = document.getElementById("yearFilter");
+document.getElementById("yearFilter").addEventListener("change", () => {
+  currentPage = 1;
+  renderTable();
+});
 
-if (yearFilterEl) {
-  yearFilterEl.addEventListener("change", () => {
-    currentPage = 1;
-    renderTable();
-  });
-}
+
+
+
 
 
 
