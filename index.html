@@ -703,41 +703,6 @@ if (searchBox && !searchBox._bound) {
 }
 
 
-function fillYearFilter(data){
-  const sel = document.getElementById("yearFilter");
-  if(!sel) return;
-
-  sel.innerHTML = `<option value="">All Year</option>`;
-  const years = new Set();
-
-  data.forEach(r=>{
-    if(r.Year) years.add(String(r.Year));
-  });
-
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    sel.appendChild(opt);
-  });
-}
-
-function applyYearSettings(){
-  const yf = document.getElementById("yearFilter");
-  if (!yf || !window.SETTINGS) return;
-
-  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
-    yf.style.display = "none";
-    yf.value = "";
-    return;
-  }
-
-  yf.style.display = "inline-block";
-
-  if (SETTINGS.DefaultYear) {
-    yf.value = String(SETTINGS.DefaultYear);
-  }
-}
 
 
 /* ===========================
@@ -1567,20 +1532,6 @@ function renderTable(){
     );
   }
 
-  /* ======================
-     📅 YEAR FILTER
-     ====================== */
-
-  const selectedYear =
-    document.getElementById("yearFilter")?.value ||
-    SETTINGS?.DefaultYear ||
-    "";
-
-  if (selectedYear && currentTab !== "Members") {
-    filteredData = filteredData.filter(r =>
-      String(r.Year || "").trim() === String(selectedYear)
-    );
-  }
 
   /* ======================
      🔐 OWN / ALL FILTER
@@ -1744,6 +1695,61 @@ function renderTable(){
 
 }
 
+
+const selectedYear =
+  document.getElementById("yearFilter")?.value ||
+  SETTINGS?.DefaultYear ||
+  "";
+
+if (selectedYear && currentTab !== "Members") {
+  filteredData = filteredData.filter(r => {
+    const yr = r["Year"] || r["year"] || "";
+    if (!yr) return true;
+    return String(yr).trim() === String(selectedYear);
+  });
+}
+
+
+function fillYearFilter(data){
+
+  const sel = document.getElementById("yearFilter");
+  if(!sel) return;
+
+  sel.innerHTML = `<option value="">All Year</option>`;
+
+  const years = new Set();
+
+  data.forEach(r=>{
+    if(r.Year) years.add(String(r.Year));
+  });
+
+  [...years].sort((a,b)=>b-a).forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    sel.appendChild(opt);
+  });
+
+}
+
+function applyYearSettings(){
+
+  const yf = document.getElementById("yearFilter");
+  if (!yf || !window.SETTINGS) return;
+
+  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
+    yf.style.display = "none";
+    yf.value = "";
+    return;
+  }
+
+  yf.style.display = "inline-block";
+
+  if (SETTINGS.DefaultYear) {
+    yf.value = String(SETTINGS.DefaultYear);
+  }
+
+}
 
 /* ===========================
    Actions: View / WhatsApp / Edit / Delete
