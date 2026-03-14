@@ -1723,8 +1723,12 @@ else {
       let mobile = (row["Mobile"] || "").replace(/\D/g,"");
 
       const msg =
-      "🎂 Happy Birthday " + (row["Member"] || "") +
-      " जी! श्री मेवाड़ प्रजापत समाज वापी की ओर से हार्दिक शुभकामनाएँ।";
+     const msg =
+"🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n" +
+"👋 जय श्रीयादे माता की!\n\n" +
+"🎂 Happy Birthday " + (row["Member"] || "") + " जी!\n" +
+"श्री मेवाड़ प्रजापत समाज वापी की ओर से आपको जन्मदिन की हार्दिक शुभकामनाएँ।\n\n" +
+"🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏";
 
       const wa =
       "https://api.whatsapp.com/send?phone=91"+mobile+
