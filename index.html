@@ -703,7 +703,41 @@ if (searchBox && !searchBox._bound) {
 }
 
 
+function fillYearFilter(data){
+  const sel = document.getElementById("yearFilter");
+  if(!sel) return;
 
+  sel.innerHTML = `<option value="">All Year</option>`;
+  const years = new Set();
+
+  data.forEach(r=>{
+    if(r.Year) years.add(String(r.Year));
+  });
+
+  [...years].sort((a,b)=>b-a).forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    sel.appendChild(opt);
+  });
+}
+
+function applyYearSettings(){
+  const yf = document.getElementById("yearFilter");
+  if (!yf || !window.SETTINGS) return;
+
+  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
+    yf.style.display = "none";
+    yf.value = "";
+    return;
+  }
+
+  yf.style.display = "inline-block";
+
+  if (SETTINGS.DefaultYear) {
+    yf.value = String(SETTINGS.DefaultYear);
+  }
+}
 
 
 /* ===========================
@@ -1473,8 +1507,7 @@ async function loadTab(sheetName) {
       document.getElementById("exportPDFBtn").style.display = "inline-block";
 
  // ✅ Year filter (Members tab पर नहीं)
-if(sheetName === "Members"){
-
+if(sheetName !== "Members"){
 
   if (typeof fillYearFilter === "function") {
     fillYearFilter(tableData);
@@ -1489,11 +1522,11 @@ if(sheetName === "Members"){
 
 } else {
 
-  // Members tab → Year filter hide
   if (document.getElementById("yearFilter"))
     document.getElementById("yearFilter").style.display = "none";
 
 }
+
 
     // ✅ Render table (MUST exist)
     renderTable();
@@ -1516,16 +1549,27 @@ function renderTable(){
 
   let filteredData = [...tableData];
 
+  /* ======================
+     🔍 SEARCH
+     ====================== */
+
   const searchEl = el("searchInput");
   const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
-  if(searchVal){
-    filteredData = filteredData.filter(r =>
-      Object.values(r).some(v =>
-        String(v || "").toLowerCase().includes(searchVal)
-      )
+  if (searchVal) {
+    filteredData = filteredData.filter(row =>
+      Object.entries(row).some(([k,v])=>{
+        if(!k) return false;
+        const key = k.toLowerCase();
+        if(key==="password" || key==="role") return false;
+        return String(v ?? "").toLowerCase().includes(searchVal);
+      })
     );
   }
+
+  /* ======================
+     📅 YEAR FILTER
+     ====================== */
 
   const selectedYear =
     document.getElementById("yearFilter")?.value ||
@@ -1538,169 +1582,169 @@ function renderTable(){
     );
   }
 
-  
-
-  // Role + tab config (safe)
-  const tabConfig =
-    ROLE_ACCESS?.[currentUser.role]?.[currentTab];
-  /* ======================
-     🔍 SEARCH (ALL TABS)
-     ====================== */
-  if (searchVal) {
-    filteredData = filteredData.filter(row =>
-      Object.entries(row).some(([k, v]) => {
-        if (!k) return false;
-        const key = k.toLowerCase();
-        if (key === "password" || key === "role") return false;
-        return String(v ?? "").toLowerCase().includes(searchVal);
-      })
-    );
-  }
-
-
-
-
-function fillYearFilter(data){
-  const sel = document.getElementById("yearFilter");
-  if(!sel) return;
-
-  sel.innerHTML = `<option value="">All Year</option>`;
-  const years = new Set();
-
-  data.forEach(r=>{
-    if(r.Year) years.add(String(r.Year));
-  });
-
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    sel.appendChild(opt);
-  });
-}
-
-
-function applyYearSettings() {
-  const yf = document.getElementById("yearFilter");
-  if (!yf || !window.SETTINGS) return;
-
-  // Enable / Disable Year Filter
-  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
-    yf.style.display = "none";
-    yf.value = ""; // All Year
-    return;
-  }
-
-  yf.style.display = "inline-block";
-
-  // 🔒 FORCE Default Year
-  if (SETTINGS.DefaultYear) {
-    yf.value = String(SETTINGS.DefaultYear);
-  }
-}
-
-
-
-
-
-
-
   /* ======================
      🔐 OWN / ALL FILTER
      ====================== */
+
+  const tabConfig =
+    ROLE_ACCESS?.[currentUser.role]?.[currentTab];
+
   if (tabConfig?.tabScope?.toLowerCase() === "own") {
     filteredData = filteredData.filter(row => {
+
       const member =
         row[SETTINGS?.MemberColumn] ||
         row["Member"] ||
         row["Name"] ||
         "";
+
       return member.trim() === currentUser.name.trim();
+
     });
   }
+
   /* ======================
-     🔃 SORTING (SAFE)
+     🔃 SORTING
      ====================== */
+
   if (sortColumn) {
-    filteredData.sort((a, b) => {
+
+    filteredData.sort((a,b)=>{
+
       let va = a[sortColumn] ?? "";
       let vb = b[sortColumn] ?? "";
+
       const na = toNumber(va);
       const nb = toNumber(vb);
-      // number sort
-      if (!isNaN(na) && !isNaN(nb) && (na !== 0 || nb !== 0)) {
-        return (na - nb) * sortDir;
+
+      if(!isNaN(na) && !isNaN(nb) && (na!==0 || nb!==0)){
+        return (na-nb) * sortDir;
       }
-      // text sort
-      return String(va).localeCompare(String(vb), "en", {
-        numeric: true,
-        sensitivity: "base"
+
+      return String(va).localeCompare(String(vb),"en",{
+        numeric:true,
+        sensitivity:"base"
       }) * sortDir;
+
     });
+
   }
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+
+  /* ======================
+     📄 PAGINATION
+     ====================== */
+
+  const totalPages =
+    Math.ceil(filteredData.length / rowsPerPage) || 1;
+
   if(currentPage > totalPages) currentPage = 1;
+
   const start = (currentPage-1)*rowsPerPage;
-  const pageData = filteredData.slice(start,start+rowsPerPage);
-  if(pageData.length === 0){el("tableContainer").innerHTML="<p class='muted'>No records found</p>";return;}
-  // Columns (skip password & role)
-// 🔥 tab-wise hidden columns
-const hiddenCols = getHiddenColumnsForTab(currentTab);
 
-// all columns but remove hidden ones
-const columns = Array.from(
-  new Set(tableData.flatMap(row => Object.keys(row)))
-).filter(c =>
-  c && !hiddenCols.has(c)
-);
-  let html = "<table><thead><tr>";
-  columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
-  html += "<th>Actions</th></tr></thead><tbody>";
-  pageData.forEach(row => {
-    html += "<tr>";
-columns.forEach(c => {
+  const pageData =
+    filteredData.slice(start,start+rowsPerPage);
 
-  const cl = c.toLowerCase();
+  if(pageData.length===0){
 
-  // 🔢 ALL numeric / money columns (FINAL LIST)
-  if (
-    cl.includes("amount") ||
-    cl.includes("received") ||     // 🔥 FIX (THIS WAS MISSING)
-    cl.includes("pledged") ||
-    cl.includes("paid") ||
-    cl.includes("credit") ||
-    cl.includes("debit") ||
-    cl.includes("payment") ||
-    cl.includes("balance") ||
-    cl.includes("closing") ||
-    cl.includes("pending")
-  ) {
-    html += `<td style="text-align:right">
-      ${toNumber(row[c]).toLocaleString()}
-    </td>`;
+    el("tableContainer").innerHTML =
+      "<p class='muted'>No records found</p>";
+
+    return;
+
   }
 
-  // 📅 Date columns
-  else if (cl.includes("date")) {
-    html += `<td>${formatDate(row[c])}</td>`;
-  }
+  /* ======================
+     📊 COLUMNS
+     ====================== */
 
-  // 📝 Normal text
-  else {
-    html += `<td>${row[c] || ""}</td>`;
-  }
+  const hiddenCols =
+    getHiddenColumnsForTab(currentTab);
 
-});
+  const columns = Array.from(
+    new Set(tableData.flatMap(r=>Object.keys(r)))
+  ).filter(c=> c && !hiddenCols.has(c));
 
-    // Actions column
-    const encId = encodeURIComponent(row['ID'] || row[SETTINGS?.MemberColumn] || row["Member"] || "");
-    html += "<td>" + renderActionButtons(row, encId) + "</td>";
-    html += "</tr>";
+  let html =
+    "<table><thead><tr>";
+
+  columns.forEach(c=>{
+    html +=
+      `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`;
   });
-  html += "</tbody></table>";	
+
+  html += "<th>Actions</th></tr></thead><tbody>";
+
+  /* ======================
+     📋 ROWS
+     ====================== */
+
+  pageData.forEach(row=>{
+
+    html += "<tr>";
+
+    columns.forEach(c=>{
+
+      const cl = c.toLowerCase();
+
+      if(
+        cl.includes("amount") ||
+        cl.includes("received") ||
+        cl.includes("pledged") ||
+        cl.includes("paid") ||
+        cl.includes("credit") ||
+        cl.includes("debit") ||
+        cl.includes("payment") ||
+        cl.includes("balance") ||
+        cl.includes("closing") ||
+        cl.includes("pending")
+      ){
+
+        html += `<td style="text-align:right">
+        ${toNumber(row[c]).toLocaleString()}
+        </td>`;
+
+      }
+
+      else if(cl.includes("date")){
+
+        html += `<td>${formatDate(row[c])}</td>`;
+
+      }
+
+      else{
+
+        html += `<td>${row[c] || ""}</td>`;
+
+      }
+
+    });
+
+    const encId =
+      encodeURIComponent(
+        row["ID"] ||
+        row[SETTINGS?.MemberColumn] ||
+        row["Member"] ||
+        ""
+      );
+
+    html +=
+      "<td>" +
+      renderActionButtons(row,encId) +
+      "</td>";
+
+    html += "</tr>";
+
+  });
+
+  html += "</tbody></table>";
+
   el("tableContainer").innerHTML = html;
+
   renderPagination(totalPages);
+
 }
+
+
 /* ===========================
    Actions: View / WhatsApp / Edit / Delete
    =========================== */
