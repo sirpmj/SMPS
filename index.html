@@ -784,28 +784,29 @@ function isTodayBirthday(birthday) {
 
 
 
-
 function getNextBirthdayDays(birthday){
   if(!birthday) return 999;
 
   const parts = birthday.split("/");
-  if(parts.length !== 3) return 999;
+  if(parts.length < 2) return 999;
 
   const day = parseInt(parts[0]);
   const month = parseInt(parts[1]) - 1;
 
   const today = new Date();
-  const currentYear = today.getFullYear();
+  const year = today.getFullYear();
 
-  let nextBirthday = new Date(currentYear, month, day);
+  let nextBirthday = new Date(year, month, day);
 
   if(nextBirthday < today){
-    nextBirthday = new Date(currentYear + 1, month, day);
+    nextBirthday = new Date(year + 1, month, day);
   }
 
   const diff = nextBirthday - today;
   return Math.floor(diff / (1000*60*60*24));
 }
+
+
 
 async function loadMembers(){
   const data = await fetchSheet("Members");
@@ -1732,8 +1733,13 @@ else {
 
   if(c === "Birthday"){
 
-    let cell = row[c] || "";
+let cell = row[c] || "";
 
+// birthday short format
+if(cell.includes("/")){
+  const p = cell.split("/");
+  cell = p[0] + "/" + p[1];
+}
     if(currentTab === "Members" && isTodayBirthday(cell)){
 
       let mobile = (row["Mobile"] || "").replace(/\D/g,"");
