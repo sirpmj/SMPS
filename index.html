@@ -1537,21 +1537,23 @@ function fillYearFilter(data){
 
 /* ---------- RENDER TABLE ---------- */
 function renderTable(){
-  // 🛑 safety guards
+
   if (!currentUser || !currentTab || !Array.isArray(tableData)) return;
+
   let filteredData = [...tableData];
-  const searchVal =
-    el("searchInput").value.trim().toLowerCase();
 
+  const searchEl = el("searchInput");
+  const searchVal = searchEl ? searchEl.value.trim().toLowerCase() : "";
 
-if(searchVal){
-  filteredData = filteredData.filter(r =>
-    Object.values(r).some(v =>
-      String(v || "").toLowerCase().includes(searchVal)
-    )
-  );
+  if(searchVal){
+    filteredData = filteredData.filter(r =>
+      Object.values(r).some(v =>
+        String(v || "").toLowerCase().includes(searchVal)
+      )
+    );
+  }
+
 }
-
 
 
 
@@ -1573,19 +1575,7 @@ if(searchVal){
     );
   }
 
-// 📅 YEAR FILTER
-const selectedYear =
-  document.getElementById("yearFilter")?.value ||
-  SETTINGS?.DefaultYear ||
-  "";
 
-if (selectedYear && currentTab !== "Members") {
-  filteredData = filteredData.filter(r => {
-    const yr = r["Year"] || r["year"] || "";
-    if (!yr) return true; // agar year nahi hai to data show karo
-    return String(yr).trim() === String(selectedYear);
-  });
-}
 
 
 function fillYearFilter(data){
