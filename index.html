@@ -1202,7 +1202,9 @@ currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
 }
 
 function shouldShowDashboard() {
-  if (!currentUser || !currentUser.role) return false;
+
+  // login nahi hai → dashboard show karo
+  if (!currentUser) return true;
 
   const key = "ShowDashboard." + currentUser.role;
   const val = (SETTINGS?.[key] || "").toUpperCase();
@@ -1249,17 +1251,90 @@ function canShowCard(cardKey){
    =========================== */
 async function renderMainDashboard(){
 
-
   el("mainDashboard").style.display="flex";
-el("mainDashboard").innerHTML = "";
+  el("mainDashboard").innerHTML="";
+
   try{
+
+    // ✅ YEAR FILTER FIX
+    const selectedYear =
+      document.getElementById("yearFilter")?.value ||
+      SETTINGS?.DefaultYear ||
+      "";
+
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members"),
       fetchSheet("Boli"),
       fetchSheet("Donation"),
       fetchSheet("Fund Ledger"),
-      fetchSheet("Expenses") // 🆕
+      fetchSheet("Expenses")
     ]);
+
+    // 📅 YEAR FILTER
+    const filteredBoli = selectedYear
+      ? boli.filter(r => String(r.Year || "") === String(selectedYear))
+      : boli;
+
+    const filteredDonation = selectedYear
+      ? donation.filter(r => String(r.Year || "") === String(selectedYear))
+      : donation;
+
+    const filteredExpenses = selectedYear
+      ? expenses.filter(r => String(r.Year || "") === String(selectedYear))
+      : expenses;
+
+    // 📊 CALCULATIONS
+    const totalMembers = members.length;
+
+    const totalBoli = filteredBoli.reduce(
+      (sum,r)=> sum + toNumber(r.Amount),0
+    );
+
+    const totalDonation = filteredDonation.reduce(
+      (sum,r)=> sum + toNumber(r.Amount),0
+    );
+
+    const totalExpenses = filteredExpenses.reduce(
+      (sum,r)=> sum + toNumber(r.Amount),0
+    );
+
+    const balance =
+      totalBoli + totalDonation - totalExpenses;
+
+    // 📦 DASHBOARD HTML
+    el("mainDashboard").innerHTML = `
+      <div class="card">
+        <h3>Total Members</h3>
+        <p>${totalMembers}</p>
+      </div>
+
+      <div class="card">
+        <h3>Total Boli</h3>
+        <p>${totalBoli.toLocaleString()}</p>
+      </div>
+
+      <div class="card">
+        <h3>Total Donation</h3>
+        <p>${totalDonation.toLocaleString()}</p>
+      </div>
+
+      <div class="card">
+        <h3>Total Expenses</h3>
+        <p>${totalExpenses.toLocaleString()}</p>
+      </div>
+
+      <div class="card">
+        <h3>Balance</h3>
+        <p>${balance.toLocaleString()}</p>
+      </div>
+    `;
+
+  }
+  catch(err){
+    console.error("Dashboard error:",err);
+  }
+
+}
     // -------- Total Members --------
    if (canShowCard("TotalMembers")) {
   el("mainDashboard").innerHTML += `
@@ -1282,15 +1357,21 @@ el("mainDashboard").innerHTML = "";
 }
 
     // -------- Boli --------
-    const filteredBoli = selectedYear
+// -------- Boli --------
+const filteredBoli = selectedYear
   ? boli.filter(r => String(r.Year || "") === String(selectedYear))
   : boli;
 
-const pledgedBoli = filteredBoli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
-const paidBoli = filteredBoli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+const pledgedBoli = filteredBoli.reduce(
+  (s,r)=>s+toNumber(r["Pledged Boli"]),0
+);
 
-    const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
-    const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
+const paidBoli = filteredBoli.reduce(
+  (s,r)=>s+toNumber(r["Paid Boli"]),0
+);
+
+const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
+
  if (canShowCard("Boli")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-orange">
@@ -1300,15 +1381,20 @@ const paidBoli = filteredBoli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
 }
 
     // -------- Donation --------
-    const filteredDonation = selectedYear
+ const filteredDonation = selectedYear
   ? donation.filter(r => String(r.Year || "") === String(selectedYear))
   : donation;
 
-const pledgedDonation = filteredDonation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
-const paidDonation = filteredDonation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+const pledgedDonation = filteredDonation.reduce(
+  (s,r)=>s+toNumber(r["Pledged Donation"]),0
+);
 
-    const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
-    const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
+const paidDonation = filteredDonation.reduce(
+  (s,r)=>s+toNumber(r["Paid Donation"]),0
+);
+
+const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
+
 if (canShowCard("Donation")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-lightblue">
