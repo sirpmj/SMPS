@@ -1711,10 +1711,36 @@ columns.forEach(c => {
     html += `<td>${formatDate(row[c])}</td>`;
   }
 
- // 📝 Normal text
-  else {
+// 📝 Normal text
+else {
+
+  if(c === "Birthday"){
+
+    let cell = row[c] || "";
+
+    if(currentTab === "Members" && isTodayBirthday(cell)){
+
+      let mobile = (row["Mobile"] || "").replace(/\D/g,"");
+
+      const msg =
+      "🎂 Happy Birthday " + (row["Member"] || "") +
+      " जी! श्री मेवाड़ प्रजापत समाज वापी की ओर से हार्दिक शुभकामनाएँ।";
+
+      const wa =
+      "https://api.whatsapp.com/send?phone=91"+mobile+
+      "&text="+encodeURIComponent(msg);
+
+      cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
+    }
+
+    html += `<td>${cell}</td>`;
+  }
+
+  else{
     html += `<td>${row[c] || ""}</td>`;
   }
+
+}
 
 });
 
