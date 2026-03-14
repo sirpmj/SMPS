@@ -1256,6 +1256,7 @@ const selectedYear =
   "";
 
   el("mainDashboard").style.display="flex";
+el("mainDashboard").innerHTML = "";
   try{
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members"),
@@ -2366,11 +2367,14 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-document.getElementById("yearFilter").addEventListener("change", () => {
-  currentPage = 1;
-  renderTable();
-});
+const yearFilterEl = document.getElementById("yearFilter");
 
+if (yearFilterEl) {
+  yearFilterEl.addEventListener("change", () => {
+    currentPage = 1;
+    renderTable();
+  });
+}
 
 
 
