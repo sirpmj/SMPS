@@ -1728,7 +1728,10 @@ columns.forEach(c => {
     html += `<td>${formatDate(row[c])}</td>`;
   }
 
-if(c === "Birthday"){
+// 📝 Normal text
+else {
+
+  if(c === "Birthday"){
 
 let cell = row[c] || "";
 
@@ -1737,11 +1740,11 @@ if(cell.includes("/")){
   const p = cell.split("/");
   cell = p[0] + "/" + p[1];
 }
-
 if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
 
-  let mobile = (row["Mobile"] || "").replace(/\D/g,"");
+      let mobile = (row["Mobile"] || "").replace(/\D/g,"");
 
+      
 const msg =
 "🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n" +
 "👋 जय श्रीयादे माता की!\n\n" +
@@ -1754,15 +1757,24 @@ const msg =
 "💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐\n\n"+
 "🙏 श्री मेवाड़ प्रजापत समाज, वापी 🙏";
 
-const wa =
-"https://api.whatsapp.com/send?phone=91"+mobile+
-"&text="+encodeURIComponent(msg);
+      const wa =
+      "https://api.whatsapp.com/send?phone=91"+mobile+
+      "&text="+encodeURIComponent(msg);
 
-cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
+      cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
+    }
+
+    html += `<td>${cell}</td>`;
+  }
+
+  else{
+    html += `<td>${row[c] || ""}</td>`;
+  }
+
 }
 
-html += `<td>${cell}</td>`;
-}
+});
+
 
     // Actions column
     const encId = encodeURIComponent(row['ID'] || row[SETTINGS?.MemberColumn] || row["Member"] || "");
