@@ -469,9 +469,16 @@ style="background:#008000;color:#fff;font-size:16px">
         </div>
       </div>
       <!-- Dashboard Cards -->
-      <div class="dashboard" id="mainDashboard"></div>
-      <!-- Tabs -->
-      <div class="tabs" id="tabs"></div>
+    <!-- Year Filter -->
+<select id="yearFilter" onchange="loadDashboard()">
+  <option value="all">All Years</option>
+</select>
+
+<!-- Dashboard Cards -->
+<div class="dashboard" id="mainDashboard"></div>
+
+<!-- Tabs -->
+<div class="tabs" id="tabs"></div>
       <!-- Search -->
       <!-- Search + Page wrapper -->
 
@@ -704,7 +711,27 @@ if (searchBox && !searchBox._bound) {
 
 
 
+function populateYears(data){
 
+  const years = new Set();
+
+  data.forEach(row=>{
+    if(row["Date"]){
+      const d = new Date(row["Date"]);
+      years.add(d.getFullYear());
+    }
+  });
+
+  const select = document.getElementById("yearFilter");
+
+  years.forEach(y=>{
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = y;
+    select.appendChild(opt);
+  });
+
+}
 
 /* ===========================
    Load data: Users, Templates, Settings, Members
@@ -1276,7 +1303,27 @@ function canShowCard(cardKey){
 async function renderMainDashboard(){
   el("mainDashboard").style.display="flex";
   try{
+
+const year = document.getElementById("yearFilter")?.value || "all";
+
+
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
+// Year filter
+function filterYear(data, col){
+  if(year === "all") return data;
+  return data.filter(r=>{
+    if(!r[col]) return false;
+    const d = new Date(r[col]);
+    return d.getFullYear() == year;
+  });
+}
+
+const boliY = filterYear(boli,"Date");
+const donationY = filterYear(donation,"Date");
+const fundLedgerY = filterYear(fundLedger,"Date");
+const expensesY = filterYear(expenses,"Date");
+
+
       fetchSheet("Members"),
       fetchSheet("Boli"),
       fetchSheet("Donation"),
@@ -1293,9 +1340,9 @@ async function renderMainDashboard(){
 }
 
     // -------- Fund Balance --------
-    const balance = fundLedger.reduce(
-      (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])), 0
-    );
+    const balance = fundLedgerY.reduce(
+ (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])),0
+);
  if (canShowCard("FundBalance")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-green">
@@ -1305,8 +1352,9 @@ async function renderMainDashboard(){
 }
 
     // -------- Boli --------
-    const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
-    const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+const pledgedBoli = boliY.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+const paidBoli = boliY.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
  if (canShowCard("Boli")) {
   el("mainDashboard").innerHTML += `
@@ -1317,8 +1365,9 @@ async function renderMainDashboard(){
 }
 
     // -------- Donation --------
-    const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
-    const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+const pledgedDonation = donationY.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+const paidDonation = donationY.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
 if (canShowCard("Donation")) {
   el("mainDashboard").innerHTML += `
@@ -1343,9 +1392,9 @@ if (canShowCard("Donation")) {
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
-const totalExpense = expenses.reduce((s, r) => {
-  return s + toNumber(r["Payment"] || r["payment"] || 0);
-}, 0);
+const totalExpense = expensesY.reduce((s,r)=>{
+ return s + toNumber(r["Payment"] || r["payment"] || 0);
+},0);
 if (canShowCard("TotalExpense")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-red">
