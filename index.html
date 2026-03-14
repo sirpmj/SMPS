@@ -469,16 +469,9 @@ style="background:#008000;color:#fff;font-size:16px">
         </div>
       </div>
       <!-- Dashboard Cards -->
-    <!-- Year Filter -->
-<select id="yearFilter" onchange="loadDashboard()">
-  <option value="all">All Years</option>
-</select>
-
-<!-- Dashboard Cards -->
-<div class="dashboard" id="mainDashboard"></div>
-
-<!-- Tabs -->
-<div class="tabs" id="tabs"></div>
+      <div class="dashboard" id="mainDashboard"></div>
+      <!-- Tabs -->
+      <div class="tabs" id="tabs"></div>
       <!-- Search -->
       <!-- Search + Page wrapper -->
 
@@ -711,27 +704,7 @@ if (searchBox && !searchBox._bound) {
 
 
 
-function populateYears(data){
 
-  const years = new Set();
-
-  data.forEach(row=>{
-    if(row["Date"]){
-      const d = new Date(row["Date"]);
-      years.add(d.getFullYear());
-    }
-  });
-
-  const select = document.getElementById("yearFilter");
-
-  years.forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    select.appendChild(opt);
-  });
-
-}
 
 /* ===========================
    Load data: Users, Templates, Settings, Members
@@ -1303,27 +1276,7 @@ function canShowCard(cardKey){
 async function renderMainDashboard(){
   el("mainDashboard").style.display="flex";
   try{
-
-const year = document.getElementById("yearFilter")?.value || "all";
-
-
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
-// Year filter
-function filterYear(data, col){
-  if(year === "all") return data;
-  return data.filter(r=>{
-    if(!r[col]) return false;
-    const d = new Date(r[col]);
-    return d.getFullYear() == year;
-  });
-}
-
-const boliY = filterYear(boli,"Date");
-const donationY = filterYear(donation,"Date");
-const fundLedgerY = filterYear(fundLedger,"Date");
-const expensesY = filterYear(expenses,"Date");
-
-
       fetchSheet("Members"),
       fetchSheet("Boli"),
       fetchSheet("Donation"),
@@ -1340,9 +1293,9 @@ const expensesY = filterYear(expenses,"Date");
 }
 
     // -------- Fund Balance --------
-    const balance = fundLedgerY.reduce(
- (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])),0
-);
+    const balance = fundLedger.reduce(
+      (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])), 0
+    );
  if (canShowCard("FundBalance")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-green">
@@ -1352,18 +1305,8 @@ const expensesY = filterYear(expenses,"Date");
 }
 
     // -------- Boli --------
-let boliFiltered = boli;
-
-if(year !== "all"){
-  boliFiltered = boli.filter(r=>{
-    if(!r["Date"]) return false;
-    return new Date(r["Date"]).getFullYear() == year;
-  });
-}
-
-const pledgedBoli = boliFiltered.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
-const paidBoli = boliFiltered.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
-
+    const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+    const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
  if (canShowCard("Boli")) {
   el("mainDashboard").innerHTML += `
@@ -1374,18 +1317,8 @@ const paidBoli = boliFiltered.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
 }
 
     // -------- Donation --------
-let donationFiltered = donation;
-
-if(year !== "all"){
-  donationFiltered = donation.filter(r=>{
-    if(!r["Date"]) return false;
-    return new Date(r["Date"]).getFullYear() == year;
-  });
-}
-
-const pledgedDonation = donationFiltered.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
-const paidDonation = donationFiltered.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
-
+    const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+    const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
 if (canShowCard("Donation")) {
   el("mainDashboard").innerHTML += `
@@ -1410,19 +1343,9 @@ if (canShowCard("Donation")) {
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
-let expensesFiltered = expenses;
-
-if(year !== "all"){
-  expensesFiltered = expenses.filter(r=>{
-    if(!r["Date"]) return false;
-    return new Date(r["Date"]).getFullYear() == year;
-  });
-}
-
-const totalExpense = expensesFiltered.reduce((s, r) => {
-
- return s + toNumber(r["Payment"] || r["payment"] || 0);
-},0);
+const totalExpense = expenses.reduce((s, r) => {
+  return s + toNumber(r["Payment"] || r["payment"] || 0);
+}, 0);
 if (canShowCard("TotalExpense")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-red">
@@ -1825,17 +1748,13 @@ if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
 
       let mobile = (row["Mobile"] || "").replace(/\D/g,"");
 
-      
 const msg =
-"🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n" +
+"🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n\n" +
 "👋 जय श्रीयादे माता की!\n\n" +
-"🎂 जन्मदिन की हार्दिक शुभकामनाएँ " + (row["Member"] || "") + " जी! 🎉\n" +
-"ईश्वर से प्रार्थना है कि आपका जीवन\n"+
-"सदैव सुख, शांति, समृद्धि और\n"+
-"अच्छे स्वास्थ्य से परिपूर्ण रहे।\n\n"+
-"आपका यह विशेष दिन आपके जीवन में\n"+
-"नई खुशियाँ और सफलता लेकर आए।\n\n"+
-"💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐\n\n"+
+"🎂 जन्मदिन की हार्दिक शुभकामनाएँ " + (row["Member"] || "") + " जी! 🎉\n\n" +
+"ईश्वर से प्रार्थना है कि आपका जीवन सदैव सुख, शांति, समृद्धि और अच्छे स्वास्थ्य से परिपूर्ण रहे।\n\n" +
+"आपका यह विशेष दिन आपके जीवन में नई खुशियाँ और सफलता लेकर आए।\n\n" +
+"💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐\n\n" +
 "🙏 श्री मेवाड़ प्रजापत समाज, वापी 🙏";
 
       const wa =
