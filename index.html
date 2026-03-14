@@ -1249,6 +1249,12 @@ function canShowCard(cardKey){
    Dashboard render
    =========================== */
 async function renderMainDashboard(){
+
+const selectedYear =
+  document.getElementById("yearFilter")?.value ||
+  SETTINGS?.DefaultYear ||
+  "";
+
   el("mainDashboard").style.display="flex";
   try{
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
@@ -1280,7 +1286,13 @@ async function renderMainDashboard(){
 }
 
     // -------- Boli --------
-    const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+    const filteredBoli = selectedYear
+  ? boli.filter(r => String(r.Year || "") === String(selectedYear))
+  : boli;
+
+const pledgedBoli = filteredBoli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+const paidBoli = filteredBoli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+
     const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
  if (canShowCard("Boli")) {
@@ -1292,7 +1304,13 @@ async function renderMainDashboard(){
 }
 
     // -------- Donation --------
-    const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+    const filteredDonation = selectedYear
+  ? donation.filter(r => String(r.Year || "") === String(selectedYear))
+  : donation;
+
+const pledgedDonation = filteredDonation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+const paidDonation = filteredDonation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+
     const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
 if (canShowCard("Donation")) {
@@ -1318,9 +1336,14 @@ if (canShowCard("Donation")) {
 // ===============================
 // 🆕 TOTAL EXPENSE
 // ===============================
-const totalExpense = expenses.reduce((s, r) => {
-  return s + toNumber(r["Payment"] || r["payment"] || 0);
-}, 0);
+const filteredExpense = selectedYear
+  ? expenses.filter(r => String(r.Year || "") === String(selectedYear))
+  : expenses;
+
+const totalExpense = filteredExpense.reduce((s,r)=>{
+  return s + toNumber(r["Payment"] || 0);
+},0);
+
 if (canShowCard("TotalExpense")) {
   el("mainDashboard").innerHTML += `
     <div class="dash-card dash-red">
