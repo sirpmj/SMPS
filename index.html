@@ -1276,6 +1276,7 @@ function canShowCard(cardKey){
 async function renderMainDashboard(){
 
   el("mainDashboard").style.display="flex";
+
   el("mainDashboard").innerHTML="";
 
   try{
@@ -1492,6 +1493,16 @@ async function loadTab(sheetName) {
         return String(row.Status).trim().toLowerCase() === activeValue;
       });
     }
+
+
+// 🔹 Year Filter apply
+const selectedYear = getSelectedYear();
+
+if (selectedYear && sheetName !== "Members") {
+  tableData = tableData.filter(r =>
+    String(r.Year || "").trim() === String(selectedYear)
+  );
+}
 
     // 🔹 No data
     if (tableData.length === 0) {
