@@ -1461,101 +1461,70 @@ function setActiveTab(name){
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName) {
   try {
-    // 🔹 Loading message
+
     el("contentArea").innerHTML =
       "<div class='muted'>Loading " + sheetName + "...</div>";
 
-    // 🔹 Reset UI safely
     if (el("searchInput")) {
       el("searchInput").style.display = "none";
       el("searchInput").value = "";
     }
+
     if (el("pagination")) el("pagination").innerHTML = "";
 
-    // 🔹 Fetch sheet data
+    // fetch data
     tableData = await fetchSheet(sheetName);
 
-    // 🔹 Safety check
     if (!Array.isArray(tableData)) {
       console.error("fetchSheet returned:", tableData);
       throw "Invalid data";
     }
 
-    // 🔹 Members tab Active filter (SAFE)
+    // Members Active filter
     if (sheetName === "Members" && window.SETTINGS) {
+
       const activeValue =
         String(SETTINGS.ActiveStatusValue || "Active")
-          .trim()
-          .toLowerCase();
+        .trim()
+        .toLowerCase();
 
-      tableData = tableData.filter(row => {
-        if (!row || row.Status === undefined) return false;
-        return String(row.Status).trim().toLowerCase() === activeValue;
-      });
+      tableData = tableData.filter(row =>
+        String(row.Status || "").trim().toLowerCase() === activeValue
+      );
+
     }
 
+    // Year filter
+    const selectedYear = getSelectedYear();
 
-// 🔹 Year Filter apply
-const selectedYear = getSelectedYear();
+    if (selectedYear && sheetName !== "Members") {
+      tableData = tableData.filter(r =>
+        String(r.Year || "").trim() === String(selectedYear)
+      );
+    }
 
-if (selectedYear && sheetName !== "Members") {
-  tableData = tableData.filter(r =>
-    String(r.Year || "").trim() === String(selectedYear)
-  );
-}
-
-    // 🔹 No data
     if (tableData.length === 0) {
       el("contentArea").innerHTML =
         "<div class='muted'>No data in " + sheetName + "</div>";
       return;
     }
 
-    // 🔹 Prepare UI
     el("contentArea").innerHTML = "<div id='tableContainer'></div>";
 
     if (el("searchInput")) el("searchInput").style.display = "block";
     if (el("searchWrapper")) el("searchWrapper").style.display = "flex";
 
-    if (document.getElementById("exportExcelBtn"))
-      document.getElementById("exportExcelBtn").style.display = "inline-block";
-
-    if (document.getElementById("exportPDFBtn"))
-      document.getElementById("exportPDFBtn").style.display = "inline-block";
-
- // ✅ Year filter (Members tab पर नहीं)
-if(sheetName === "Members"){
-
-
-  if (typeof fillYearFilter === "function") {
-    fillYearFilter(tableData);
-  }
-
-  if (typeof applyYearSettings === "function") {
-    applyYearSettings();
-  }
-
-  if (document.getElementById("yearFilter"))
-    document.getElementById("yearFilter").style.display = "inline-block";
-
-} else {
-
-  // Members tab → Year filter hide
-  if (document.getElementById("yearFilter"))
-    document.getElementById("yearFilter").style.display = "none";
-
-}
-
-    // ✅ Render table (MUST exist)
     renderTable();
 
   } catch (e) {
+
     console.error("loadTab error:", e);
+
     el("contentArea").innerHTML =
       "<div class='muted'>Error loading data</div>";
+
   }
 }
-
 
 function fillYearFilter(data){
 
