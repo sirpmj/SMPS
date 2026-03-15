@@ -1274,90 +1274,125 @@ function canShowCard(cardKey){
    Dashboard render
    =========================== */
 async function renderMainDashboard(){
+
   el("mainDashboard").style.display="flex";
+  el("mainDashboard").innerHTML="";
+
   try{
+
+    const selectedYear =
+      document.getElementById("yearFilter")?.value ||
+      SETTINGS?.DefaultYear ||
+      "";
+
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members"),
       fetchSheet("Boli"),
       fetchSheet("Donation"),
       fetchSheet("Fund Ledger"),
-      fetchSheet("Expenses") // 🆕
+      fetchSheet("Expenses")
     ]);
+
+    // ===== Year Filter =====
+    let boliData = boli;
+    let donationData = donation;
+    let expenseData = expenses;
+
+    if(selectedYear){
+
+      boliData = boli.filter(r =>
+        String(r.Year || "").trim() === String(selectedYear)
+      );
+
+      donationData = donation.filter(r =>
+        String(r.Year || "").trim() === String(selectedYear)
+      );
+
+      expenseData = expenses.filter(r =>
+        String(r.Year || "").trim() === String(selectedYear)
+      );
+
+    }
+
     // -------- Total Members --------
-   if (canShowCard("TotalMembers")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-blue">
-      <h4>Total Members</h4>
-      <p>${members.length}</p>
-    </div>`;
-}
+    if (canShowCard("TotalMembers")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-blue">
+        <h4>Total Members</h4>
+        <p>${members.length}</p>
+      </div>`;
+    }
 
     // -------- Fund Balance --------
     const balance = fundLedger.reduce(
       (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])), 0
     );
- if (canShowCard("FundBalance")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-green">
-      <h4>Fund Balance (₹)</h4>
-      <p>${balance.toLocaleString()}</p>
-    </div>`;
-}
+
+    if (canShowCard("FundBalance")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-green">
+        <h4>Fund Balance (₹)</h4>
+        <p>${balance.toLocaleString()}</p>
+      </div>`;
+    }
 
     // -------- Boli --------
-    const pledgedBoli = boli.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
-    const paidBoli = boli.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+    const pledgedBoli = boliData.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
+    const paidBoli = boliData.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
+
     const pendingBoli = Math.max(0, pledgedBoli - paidBoli);
- if (canShowCard("Boli")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-orange">
-      <h4>Pledged / Paid / Pending Boli</h4>
-      <p>${pledgedBoli.toLocaleString()} / ${paidBoli.toLocaleString()} / ${pendingBoli.toLocaleString()}</p>
-    </div>`;
-}
+
+    if (canShowCard("Boli")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-orange">
+        <h4>Pledged / Paid / Pending Boli</h4>
+        <p>${pledgedBoli.toLocaleString()} / ${paidBoli.toLocaleString()} / ${pendingBoli.toLocaleString()}</p>
+      </div>`;
+    }
 
     // -------- Donation --------
-    const pledgedDonation = donation.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
-    const paidDonation = donation.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+    const pledgedDonation = donationData.reduce((s,r)=>s+toNumber(r["Pledged Donation"]),0);
+    const paidDonation = donationData.reduce((s,r)=>s+toNumber(r["Paid Donation"]),0);
+
     const pendingDonation = Math.max(0, pledgedDonation - paidDonation);
-if (canShowCard("Donation")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-lightblue">
-      <h4>Pledged / Paid / Pending Donation</h4>
-      <p>${pledgedDonation.toLocaleString()} / ${paidDonation.toLocaleString()} / ${pendingDonation.toLocaleString()}</p>
-    </div>`;
-}
 
-    // ===============================
-    // 🆕 TOTAL INCOME
-    // ===============================
+    if (canShowCard("Donation")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-lightblue">
+        <h4>Pledged / Paid / Pending Donation</h4>
+        <p>${pledgedDonation.toLocaleString()} / ${paidDonation.toLocaleString()} / ${pendingDonation.toLocaleString()}</p>
+      </div>`;
+    }
+
+    // -------- Total Income --------
     const totalIncome = paidBoli + paidDonation;
-  if (canShowCard("TotalIncome")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-purple">
-      <h4>Total Income (₹)</h4>
-      <p>${totalIncome.toLocaleString()}</p>
-    </div>`;
-}
 
-// ===============================
-// 🆕 TOTAL EXPENSE
-// ===============================
-const totalExpense = expenses.reduce((s, r) => {
-  return s + toNumber(r["Payment"] || r["payment"] || 0);
-}, 0);
-if (canShowCard("TotalExpense")) {
-  el("mainDashboard").innerHTML += `
-    <div class="dash-card dash-red">
-      <h4>Total Expense (₹)</h4>
-      <p>${totalExpense.toLocaleString()}</p>
-    </div>`;
-}
+    if (canShowCard("TotalIncome")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-purple">
+        <h4>Total Income (₹)</h4>
+        <p>${totalIncome.toLocaleString()}</p>
+      </div>`;
+    }
+
+    // -------- Total Expense --------
+    const totalExpense = expenseData.reduce((s,r)=>{
+      return s + toNumber(r["Payment"] || r["payment"] || 0);
+    },0);
+
+    if (canShowCard("TotalExpense")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-red">
+        <h4>Total Expense (₹)</h4>
+        <p>${totalExpense.toLocaleString()}</p>
+      </div>`;
+    }
 
   }catch(e){
     console.error("Dashboard error:", e);
   }
 }
+
 /* Load RoleAccess from sheet */
 async function loadRoleAccess() {
   const data = await fetchSheet("RoleAccess"); // G Sheet ka sheet name
@@ -2427,7 +2462,14 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 });
 
 
+document.getElementById("yearFilter").addEventListener("change", () => {
 
+  currentPage = 1;
+
+  renderTable();        // table refresh
+  renderMainDashboard(); // dashboard refresh
+
+});
 
 
 
