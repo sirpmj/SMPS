@@ -608,6 +608,16 @@ z-index:999999;align-items:center;justify-content:center">
 
 
 <script>
+
+function getSelectedYear(){
+  return (
+    document.getElementById("yearFilter")?.value ||
+    SETTINGS?.DefaultYear ||
+    ""
+  );
+}
+
+
 // ✅ Safe DOM setter (prevents app crash)
 function safeSet(id, prop, value){
   const el = document.getElementById(id);
@@ -1275,6 +1285,8 @@ function canShowCard(cardKey){
    =========================== */
 async function renderMainDashboard(){
 
+const selectedYear = getSelectedYear();
+
   el("mainDashboard").style.display="flex";
   el("mainDashboard").innerHTML="";
 
@@ -1460,6 +1472,7 @@ function setActiveTab(name){
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName) {
   try {
+
     // 🔹 Loading message
     el("contentArea").innerHTML =
       "<div class='muted'>Loading " + sheetName + "...</div>";
@@ -1474,6 +1487,25 @@ async function loadTab(sheetName) {
     // 🔹 Fetch sheet data
     tableData = await fetchSheet(sheetName);
 
+    const selectedYear = getSelectedYear();
+
+    let filteredData = tableData;
+
+    if(selectedYear){
+      filteredData = tableData.filter(r =>
+        String(r.Year || "").trim() === String(selectedYear)
+      );
+    }
+
+    // 🔹 अब filtered data use करें
+    renderTable(filteredData);
+
+  } catch (e) {
+    console.error("loadTab error:", e);
+    el("contentArea").innerHTML =
+      "<div class='muted'>Error loading data</div>";
+  }
+}
     // 🔹 Safety check
     if (!Array.isArray(tableData)) {
       console.error("fetchSheet returned:", tableData);
@@ -2471,7 +2503,17 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 
 });
 
+document.getElementById("yearFilter").addEventListener("change", () => {
 
+  // Dashboard update
+  renderMainDashboard();
+
+  // Current tab reload
+  if(currentTab){
+    loadTab(currentTab);
+  }
+
+});
 
 
 
