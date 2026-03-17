@@ -184,6 +184,15 @@ margin-bottom: 4px;
   font-weight:bold;
 }
 
+table, tr, td {
+  page-break-inside: avoid !important;
+}
+
+.pdf-area {
+  overflow: visible !important;
+  height: auto !important;
+}
+
 
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
@@ -2241,15 +2250,19 @@ function exportExcel() {
 
 
 function exportPDF() {
-  const element = document.getElementById("contentArea");
+  const element = document.querySelector(".pdf-area");
 
-  html2pdf().set({
-    margin: 8,
-    filename: 'report.pdf',
-    html2canvas: { scale: 2, scrollY: 0 },
+  const opt = {
+    margin: 10,
+    filename: 'data.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  }).from(element).save();
+
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // 🔥 IMPORTANT
+  };
+
+  html2pdf().set(opt).from(element).save();
 }
 
   // 1️⃣ Clone table
