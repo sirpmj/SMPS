@@ -676,15 +676,28 @@ function parseDDMMYYYY(dateStr){
 }
 function getHiddenColumnsForTab(tabName){
   if(!SETTINGS || !tabName) return new Set();
-  const key = `HideColumns.${tabName}`;
-  const val = SETTINGS[key];
-  if(!val) return new Set();
+
+  let cols = [];
+
+  // 🔹 1. General tab hide (all roles)
+  const key1 = `HideColumns.${tabName}`;
+  if(SETTINGS[key1]){
+    cols.push(...SETTINGS[key1].split(","));
+  }
+
+  // 🔹 2. Role-wise hide
+  if(currentUser && currentUser.role){
+    const key2 = `HideColumns.${tabName}.${currentUser.role}`;
+    if(SETTINGS[key2]){
+      cols.push(...SETTINGS[key2].split(","));
+    }
+  }
+
   return new Set(
-    val.split(",")
-       .map(c => c.trim())
-       .filter(Boolean)
+    cols.map(c => c.trim()).filter(Boolean)
   );
 }
+
 /* ---------------------------
    Template message helper
    --------------------------- */
