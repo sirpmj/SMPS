@@ -646,7 +646,6 @@ const loginView = el("loginView"), appView = el("appView"), loginMsg = el("login
 let currentUser = null,
     currentTab = "",
     tableData = [],
-let appSettings = {};
     currentPage = 1,
     rowsPerPage = 20,   // default fallback (temporary)
     sortColumn = "",
@@ -1790,30 +1789,25 @@ else {
 
   if(c === "Birthday"){
 
-    // ❌ hide for Member/User
-    if(isBirthdayHidden()){
-      html += `<td></td>`; 
-      continue;
-    }
+let cell = row[c] || "";
 
-    let cell = row[c] || "";
-
-    // birthday short format
-    if(cell.includes("/")){
-      const p = cell.split("/");
-      cell = p[0] + "/" + p[1];
-    }
-
-    // 🎂 Wish button
-    if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
+// birthday short format
+if(cell.includes("/")){
+  const p = cell.split("/");
+  cell = p[0] + "/" + p[1];
+}
+if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
 
       let mobile = (row["Mobile"] || "").replace(/\D/g,"");
 
-      const msg =
-      "🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n\n" +
-      "👋 जय श्रीयादे माता की!\n\n" +
-      "🎂 जन्मदिन की हार्दिक शुभकामनाएँ " + (row["Member"] || "") + " जी! 🎉\n\n" +
-      "💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐";
+const msg =
+"🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n\n" +
+"👋 जय श्रीयादे माता की!\n\n" +
+"🎂 जन्मदिन की हार्दिक शुभकामनाएँ " + (row["Member"] || "") + " जी! 🎉\n\n" +
+"ईश्वर से प्रार्थना है कि आपका जीवन सदैव सुख, शांति, समृद्धि और अच्छे स्वास्थ्य से परिपूर्ण रहे।\n\n" +
+"आपका यह विशेष दिन आपके जीवन में नई खुशियाँ और सफलता लेकर आए।\n\n" +
+"💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐\n\n" +
+"🙏 श्री मेवाड़ प्रजापत समाज, वापी 🙏";
 
       const wa =
       "https://api.whatsapp.com/send?phone=91"+mobile+
@@ -1831,36 +1825,7 @@ else {
 
 }
 
-function loadSettings(data){
-  appSettings = {};
-
-  data.forEach(row => {
-    appSettings[row.Key] = row.Value;
-  });
-}
-
-
-function isBirthdayHiddenForRole(){
-  let roles = (appSettings["HideBirthdayForRoles"] || "")
-                .split(",")
-                .map(r => r.trim());
-
-  return roles.includes(currentUser.role);
-}
-
-
-const columns = Array.from(
-  new Set(tableData.flatMap(row => Object.keys(row)))
-).filter(c => {
-
-  if(c === "Birthday" && isBirthdayHidden()){
-    return false;
-  }
-
-  return true;
 });
-
-
 
 
     // Actions column
