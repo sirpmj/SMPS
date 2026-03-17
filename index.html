@@ -2250,59 +2250,43 @@ function exportExcel() {
 
 
 function exportPDF() {
-  const element = document.querySelector(".pdf-area");
 
-  const opt = {
-    margin: 10,
-    filename: 'data.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } // 🔥 IMPORTANT
-  };
-
-  html2pdf().set(opt).from(element).save();
-}
+  const table = document.querySelector("#contentArea table");
+  if (!table) {
+    alert("Table nahi mila");
+    return;
+  }
 
   // 1️⃣ Clone table
   const clone = table.cloneNode(true);
 
-  // 2️⃣ 🔥 Har row ka LAST column remove (Action / Edit / Delete)
+  // 2️⃣ Last column remove
   clone.querySelectorAll("tr").forEach(row => {
     if (row.children.length > 0) {
       row.children[row.children.length - 1].remove();
     }
   });
 
-  // 3️⃣ PDF wrapper + header
+  // 3️⃣ Wrapper
   const wrapper = document.createElement("div");
   wrapper.className = "pdf-area";
   wrapper.innerHTML = `
-    <h2 style="text-align:center;">श्री मेवाड़ प्रजापत समाज – वापी</h2>
-    <div style="text-align:center;font-size:12px;">
-      Date: ${new Date().toLocaleDateString('hi-IN')}
-    </div>
+    <h2 style="text-align:center;">Report</h2>
     <hr>
   `;
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
-  // 4️⃣ Generate PDF (A4 Landscape)
+  // 4️⃣ PDF
   html2pdf().from(wrapper).set({
     margin: 8,
-    filename: "Samaj_Report.pdf",
-    html2canvas: {
-      scale: 2
-    },
-    jsPDF: {
-      unit: "mm",
-      format: "a4",
-      orientation: "landscape"   // 🔥 table ke liye best
-    }
+    filename: "report.pdf",
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
   }).save().then(() => {
     wrapper.remove();
   });
+
 }
 
 
