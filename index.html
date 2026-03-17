@@ -1787,32 +1787,37 @@ columns.forEach(c => {
 // 📝 Normal text
 else {
 
-if(c === "Birthday"){
+  if(c === "Birthday"){
 
-  let cell = row[c] || "";
+let cell = row[c] || "";
 
-  // birthday short format
-  if(cell.includes("/")){
-    const p = cell.split("/");
-    cell = p[0] + "/" + p[1];
-  }
-
-  // 🎂 Wish button (Admin only)
-  if(currentTab === "Members" && isTodayBirthday(row["Birthday"]) && !isBirthdayHidden()){
-
-    let mobile = (row["Mobile"] || "").replace(/\D/g,"");
-
-    const msg = "🎂 जन्मदिन की शुभकामनाएँ " + (row["Member"] || "") + " जी!";
-
-    const wa =
-    "https://api.whatsapp.com/send?phone=91"+mobile+
-    "&text="+encodeURIComponent(msg);
-
-    cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
-  }
-
-  html += `<td>${cell}</td>`;
+// birthday short format
+if(cell.includes("/")){
+  const p = cell.split("/");
+  cell = p[0] + "/" + p[1];
 }
+if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
+
+      let mobile = (row["Mobile"] || "").replace(/\D/g,"");
+
+const msg =
+"🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n\n" +
+"👋 जय श्रीयादे माता की!\n\n" +
+"🎂 जन्मदिन की हार्दिक शुभकामनाएँ " + (row["Member"] || "") + " जी! 🎉\n\n" +
+"ईश्वर से प्रार्थना है कि आपका जीवन सदैव सुख, शांति, समृद्धि और अच्छे स्वास्थ्य से परिपूर्ण रहे।\n\n" +
+"आपका यह विशेष दिन आपके जीवन में नई खुशियाँ और सफलता लेकर आए।\n\n" +
+"💐 समाज की ओर से हार्दिक शुभकामनाएँ 💐\n\n" +
+"🙏 श्री मेवाड़ प्रजापत समाज, वापी 🙏";
+
+      const wa =
+      "https://api.whatsapp.com/send?phone=91"+mobile+
+      "&text="+encodeURIComponent(msg);
+
+      cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
+    }
+
+    html += `<td>${cell}</td>`;
+  }
 
   else{
     html += `<td>${row[c] || ""}</td>`;
@@ -2526,20 +2531,7 @@ document.getElementById("yearFilter").addEventListener("change", () => {
 });
 
 
-function isBirthdayHidden(){
-  const roles = (settings["HideBirthdayForRoles"] || "")
-    .split(",")
-    .map(r => r.trim().toLowerCase());
 
-  return roles.includes((currentUserRole || "").toLowerCase());
-}
-
-const columns = Object.keys(data[0]).filter(c => {
-  if(c === "Birthday" && isBirthdayHidden()){
-    return false; // ❌ hide column
-  }
-  return true;
-});
 
 
 </script>
