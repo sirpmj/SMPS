@@ -2268,56 +2268,80 @@ function exportPDF() {
     return;
   }
 
-  // Clone table
-  const clone = table.cloneNode(true);
+  const headerHTML = table.querySelector("thead").outerHTML;
+  const rows = Array.from(table.querySelectorAll("tbody tr"));
 
-  // ❌ Last column remove (Action column)
-  clone.querySelectorAll("tr").forEach(row => {
-    if (row.children.length > 0) {
-      row.children[row.children.length - 1].remove();
-    }
-  });
-
-  // Wrapper
   const wrapper = document.createElement("div");
-  wrapper.style.padding = "10px";
 
-  // ✅ Title
-const title = document.createElement("div");
-title.innerHTML = `
-  <h2 style="margin:0; text-align:center;">
-    श्री मेवाड़ प्रजापत समाज-वापी
-  </h2>
-  <p style="text-align:center; margin:2px 0 10px; font-size:12px;">
-    Report
-  </p>
-  <hr>
-`;
-wrapper.appendChild(title);
+  const rowsPerPage = 20;
 
-  // ✅ Table styling (AUTO-FIT)
-  clone.style.width = "100%";
-  clone.style.borderCollapse = "collapse";
-  clone.querySelectorAll("th, td").forEach(el => {
-    el.style.border = "1px solid #000";
-    el.style.padding = "5px";
-    el.style.fontSize = "10px";
-    el.style.wordBreak = "break-word";
-  });
+  // ✅ Date
+  const today = new Date().toLocaleDateString("en-GB");
 
-  wrapper.appendChild(clone);
+  for (let i = 0; i < rows.length; i += rowsPerPage) {
+
+    const pageDiv = document.createElement("div");
+    pageDiv.style.pageBreakAfter = "always";
+    pageDiv.style.padding = "10px";
+
+    // ✅ Title + Date
+    pageDiv.innerHTML = `
+      <h2 style="text-align:center; margin:0;">
+        श्री मेवाड़ प्रजापत समाज-वापी
+      </h2>
+      <p style="text-align:center; margin:4px 0 10px; font-size:12px;">
+        Date: ${today}
+      </p>
+
+      <table style="width:100%; border-collapse:collapse; font-size:10px;">
+        ${headerHTML}
+        <tbody></tbody>
+      </table>
+    `;
+
+    const tableEl = pageDiv.querySelector("table");
+    const tbody = pageDiv.querySelector("tbody");
+
+    // ✅ Light header style
+    tableEl.querySelectorAll("th").forEach(th => {
+      th.style.border = "1px solid #bbb";
+      th.style.background = "#f2f2f2";
+      th.style.padding = "5px";
+    });
+
+    rows.slice(i, i + rowsPerPage).forEach((row, index) => {
+      const cloneRow = row.cloneNode(true);
+
+      // ❌ last column remove
+      if (cloneRow.children.length > 0) {
+        cloneRow.children[cloneRow.children.length - 1].remove();
+      }
+
+      // ✅ Light borders + alternate row color
+      cloneRow.querySelectorAll("td").forEach(td => {
+        td.style.border = "1px solid #ccc";  // 🔥 light
+        td.style.padding = "5px";
+      });
+
+      if (index % 2 === 0) {
+        cloneRow.style.background = "#fafafa"; // alternate row
+      }
+
+      tbody.appendChild(cloneRow);
+    });
+
+    wrapper.appendChild(pageDiv);
+  }
+
   document.body.appendChild(wrapper);
 
-  // PDF generate
   html2pdf().from(wrapper).set({
     margin: 8,
     filename: "report.pdf",
     html2canvas: { scale: 2 },
-    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
   }).toPdf().get('pdf').then(function (pdf) {
 
-    // ✅ PAGE NUMBER ADD
     const totalPages = pdf.internal.getNumberOfPages();
 
     for (let i = 1; i <= totalPages; i++) {
@@ -2336,8 +2360,6 @@ wrapper.appendChild(title);
   });
 
 }
-
-
 /* ===========================
    AUTO LOGOUT (IDLE TIMER)
    =========================== */
