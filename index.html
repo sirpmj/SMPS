@@ -193,6 +193,17 @@ table, tr, td {
   height: auto !important;
 }
 
+thead {
+  display: table-header-group;
+}
+
+tr {
+  page-break-inside: avoid;
+}
+
+table {
+  width: 100%;
+}
 
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
@@ -2257,38 +2268,74 @@ function exportPDF() {
     return;
   }
 
-  // 1️⃣ Clone table
+  // Clone table
   const clone = table.cloneNode(true);
 
-  // 2️⃣ Last column remove
+  // ❌ Last column remove (Action column)
   clone.querySelectorAll("tr").forEach(row => {
     if (row.children.length > 0) {
       row.children[row.children.length - 1].remove();
     }
   });
 
-  // 3️⃣ Wrapper
+  // Wrapper
   const wrapper = document.createElement("div");
-  wrapper.className = "pdf-area";
-  wrapper.innerHTML = `
-    <h2 style="text-align:center;">Report</h2>
-    <hr>
-  `;
+  wrapper.style.padding = "10px";
+
+  // ✅ Title
+const title = document.createElement("div");
+title.innerHTML = `
+  <h2 style="margin:0; text-align:center;">
+    श्री मेवाड़ प्रजापत समाज-वापी
+  </h2>
+  <p style="text-align:center; margin:2px 0 10px; font-size:12px;">
+    Report
+  </p>
+  <hr>
+`;
+wrapper.appendChild(title);
+
+  // ✅ Table styling (AUTO-FIT)
+  clone.style.width = "100%";
+  clone.style.borderCollapse = "collapse";
+  clone.querySelectorAll("th, td").forEach(el => {
+    el.style.border = "1px solid #000";
+    el.style.padding = "5px";
+    el.style.fontSize = "10px";
+    el.style.wordBreak = "break-word";
+  });
+
   wrapper.appendChild(clone);
   document.body.appendChild(wrapper);
 
-  // 4️⃣ PDF
+  // PDF generate
   html2pdf().from(wrapper).set({
     margin: 8,
     filename: "report.pdf",
     html2canvas: { scale: 2 },
-    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
+    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  }).toPdf().get('pdf').then(function (pdf) {
+
+    // ✅ PAGE NUMBER ADD
+    const totalPages = pdf.internal.getNumberOfPages();
+
+    for (let i = 1; i <= totalPages; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(10);
+
+      pdf.text(
+        `Page ${i} of ${totalPages}`,
+        pdf.internal.pageSize.getWidth() - 30,
+        pdf.internal.pageSize.getHeight() - 5
+      );
+    }
+
   }).save().then(() => {
     wrapper.remove();
   });
 
 }
-
 
 
 /* ===========================
