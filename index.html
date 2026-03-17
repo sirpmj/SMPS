@@ -499,9 +499,7 @@ style="background:#008000;color:#fff;font-size:16px">
 <div id="searchWrapper"
      style="display:none; align-items:center; gap:4px; margin-top:4px;margin-bottom:4px;">
 
-<select id="yearFilter" style="padding:6px;border-radius:6px">
-  <option value="">All Year</option>
-</select>
+
 
   <!-- PAGE SIZE FIRST -->
   <select id="pageSize"style="padding:6px;border-radius:6px">
@@ -2273,18 +2271,48 @@ function exportPDF() {
 
   const wrapper = document.createElement("div");
 
-  // 🔥 Dynamic rows (adjusted for A4 landscape)
-  const rowsPerPage = 18;
-
   const today = new Date().toLocaleDateString("en-GB");
 
-  for (let i = 0; i < rows.length; i += rowsPerPage) {
+  let pageDiv = createNewPage();
 
-    const pageDiv = document.createElement("div");
-    pageDiv.style.pageBreakAfter = "always";
-    pageDiv.style.padding = "10px";
+  let currentHeight = 0;
+  const maxHeight = 500; // 🔥 adjust for A4
 
-    pageDiv.innerHTML = `
+  rows.forEach((row) => {
+
+    const cloneRow = row.cloneNode(true);
+
+    // remove last column
+    if (cloneRow.children.length > 0) {
+      cloneRow.children[cloneRow.children.length - 1].remove();
+    }
+
+    // temp add to measure height
+    pageDiv.querySelector("tbody").appendChild(cloneRow);
+    wrapper.appendChild(pageDiv);
+
+    const rowHeight = cloneRow.offsetHeight;
+
+    if (currentHeight + rowHeight > maxHeight) {
+      // remove row from current page
+      cloneRow.remove();
+
+      // new page
+      pageDiv = createNewPage();
+      pageDiv.querySelector("tbody").appendChild(cloneRow);
+
+      currentHeight = rowHeight;
+    } else {
+      currentHeight += rowHeight;
+    }
+  });
+
+  function createNewPage() {
+    const div = document.createElement("div");
+    div.style.pageBreakAfter = "always";
+    div.style.padding = "10px";
+
+    div.innerHTML = `
       <h2 style="text-align:center; margin:0;">
         श्री मेवाड़ प्रजापत समाज-वापी
       </h2>
@@ -2298,36 +2326,14 @@ function exportPDF() {
       </table>
     `;
 
-    const tbody = pageDiv.querySelector("tbody");
-
-    rows.slice(i, i + rowsPerPage).forEach((row, index) => {
-      const cloneRow = row.cloneNode(true);
-
-      // remove last column
-      if (cloneRow.children.length > 0) {
-        cloneRow.children[cloneRow.children.length - 1].remove();
-      }
-
-      cloneRow.querySelectorAll("td").forEach(td => {
-        td.style.border = "1px solid #ccc";
-        td.style.padding = "5px";
-      });
-
-      if (index % 2 === 0) {
-        cloneRow.style.background = "#fafafa";
-      }
-
-      tbody.appendChild(cloneRow);
-    });
-
-    // header style
-    pageDiv.querySelectorAll("th").forEach(th => {
+    // style header
+    div.querySelectorAll("th").forEach(th => {
       th.style.border = "1px solid #bbb";
       th.style.background = "#f2f2f2";
       th.style.padding = "5px";
     });
 
-    wrapper.appendChild(pageDiv);
+    return div;
   }
 
   document.body.appendChild(wrapper);
@@ -2357,7 +2363,6 @@ function exportPDF() {
   });
 
 }
-
 
 
 /* ===========================
