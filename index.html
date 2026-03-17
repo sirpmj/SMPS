@@ -2241,12 +2241,16 @@ function exportExcel() {
 
 
 function exportPDF() {
+  const element = document.getElementById("contentArea");
 
-  const table = document.querySelector("#contentArea table");
-  if (!table) {
-    alert("Table nahi mila");
-    return;
-  }
+  html2pdf().set({
+    margin: 8,
+    filename: 'report.pdf',
+    html2canvas: { scale: 2, scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  }).from(element).save();
+}
 
   // 1️⃣ Clone table
   const clone = table.cloneNode(true);
