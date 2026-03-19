@@ -2339,14 +2339,21 @@ function exportPDF() {
   // ✅ Date
   const today = new Date().toLocaleDateString("en-GB");
 
-  wrapper.innerHTML = `
-    <h2 style="text-align:center; margin:0;">
-      श्री मेवाड़ प्रजापत समाज-वापी
-    </h2>
-    <p style="text-align:center; margin:4px 0 10px; font-size:12px;">
-      Date: ${today}
-    </p>
-  `;
+ wrapper.innerHTML = `
+  <h2 style="text-align:center; margin:0;">
+    श्री मेवाड़ प्रजापत समाज-वापी
+  </h2>
+
+  <div style="
+    display:flex;
+    justify-content:space-between;
+    margin:4px 0 10px;
+    font-size:12px;
+  ">
+    <div>Date: ${today}</div>
+    <div><b>${currentTab || ""}</b></div>
+  </div>
+`;
 
   wrapper.appendChild(clone);
 
