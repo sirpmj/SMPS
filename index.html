@@ -388,15 +388,14 @@ button:hover{opacity:0.9}
 
 
 
-
-<body style="display:none">
+<body>
 <div class="wrap">
   <header>
     <h1>श्री मेवाड़ प्रजापत समाज-वापी</h1>
     <div class="muted">Reg No: A/1221</div>
   </header>
   <!-- Pre-login / Login View -->
-<div id="loginView" style="display:none">
+  <div id="loginView">
     <!-- top: Advisors | Login | Officials (layout-only) -->
     <div class="prelogin-row">
       <div class="prelogin-col card home-card" aria-hidden="false">
@@ -716,13 +715,12 @@ function getMessageFromTemplate(type, row) {
    Fetch helper (OpenSheet)
    =========================== */
 const CACHE = {};
-const CACHE_TIME = 2 * 60 * 1000; // 2 minute
+const CACHE_TIME = 2 * 60 * 1000;
 
 async function fetchSheet(sheetName){
   try{
     const now = Date.now();
 
-    // ✅ Cache check
     if(CACHE[sheetName] && (now - CACHE[sheetName].time < CACHE_TIME)){
       return CACHE[sheetName].data;
     }
@@ -732,7 +730,6 @@ async function fetchSheet(sheetName){
 
     const data = Array.isArray(json) ? json : [];
 
-    // ✅ Cache store
     CACHE[sheetName] = {
       data: data,
       time: now
@@ -746,28 +743,16 @@ async function fetchSheet(sheetName){
   }
 }
 
-
-
+// 🔍 Global search listener (ALL tabs)
 let searchBox = document.getElementById("searchInput");
 
 if (searchBox && !searchBox._bound) {
-
-  let searchTimer;
-
   searchBox.addEventListener("input", () => {
-
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(() => {
-      currentPage = 1;
-      renderTable();
-    }, 300); // delay
-
+    currentPage = 1;
+    renderTable();
   });
-
   searchBox._bound = true;
 }
-
 
 
 
@@ -1021,54 +1006,17 @@ resetIdleTimer();
 /* ===========================
    INIT
    =========================== */
-
 async function init(){
-
-  // 🔐 Auto login check (FIRST)
-  const savedUser = sessionStorage.getItem("currentUser");
-
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-
-    loginView.style.display = "none";
-    appView.style.display = "block";
-
-    document.body.style.display = "block"; // ✅ जल्दी show
-
-    USERS = await loadUsers();
-    TEMPLATES = await loadTemplates();
-    SETTINGS = await loadSettings();
-
-    if (SETTINGS?.RowsPerPage) {
-      const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-      if (!isNaN(rpp) && rpp > 0) {
-        rowsPerPage = rpp;
-      }
-    }
-
-    MEMBERS = await loadMembers();
-    ROLE_ACCESS = await loadRoleAccess();
-
-    openApp();
-    return;
-  }
-
-  // 🔽 Normal load (no login)
-  loginView.style.display = "block";   // ✅ FIX
-  appView.style.display = "none";      // ✅ FIX
-
-  document.body.style.display = "block"; // ✅ जल्दी show
-
   USERS = await loadUsers();
   TEMPLATES = await loadTemplates();
   SETTINGS = await loadSettings();
-
-  if (SETTINGS?.RowsPerPage) {
-    const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-    if (!isNaN(rpp) && rpp > 0) {
-      rowsPerPage = rpp;
-    }
+// 🔢 Rows per page from Settings
+if (SETTINGS?.RowsPerPage) {
+  const rpp = parseInt(SETTINGS.RowsPerPage, 10);
+  if (!isNaN(rpp) && rpp > 0) {
+    rowsPerPage = rpp;
   }
+}
 
   MEMBERS = await loadMembers();
   ROLE_ACCESS = await loadRoleAccess();
@@ -1079,6 +1027,14 @@ async function init(){
   if(SETTINGS["RegNo"])
     document.querySelector("header .muted").textContent = "Reg No: " + SETTINGS["RegNo"];
 
+  // ✅ AUTO LOGIN (SAFE PLACE)
+  const savedUser = sessionStorage.getItem("currentUser");
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    openApp();
+    return;
+  }
+
   await renderLoginHomeStructure();
   applyLoginTexts();
   await renderMeetingUpdates();
@@ -1086,8 +1042,9 @@ async function init(){
   await loadFooter();
 }
 
-// 🚀 Start app
 init();
+
+
 
 
 function applyLoginTexts(){
@@ -1297,43 +1254,56 @@ if (currentUser && currentUser.role && ROLE_ACCESS[currentUser.role]) {
    OPEN APP
    =========================== */
 async function openApp(){
-
   loginView.style.display = "none";
   document.querySelectorAll('.home-card').forEach(c => c.style.display='none');
   appView.style.display = "block";
-
   el("userName").textContent = currentUser.name;
   el("userRole").textContent = "(" + (currentUser.role||"") + ")";
-
-  // ✅ Welcome message
+  // Welcome message (Hindi)
   const template = SETTINGS["WelcomeMessage"] || "Welcome, {{Name}}!";
-  const welcomeText = template.replace("{{Name}}", currentUser.name);
-
+const welcomeText = template.replace("{{Name}}", currentUser.name);
   el("welcomeMsg").textContent = welcomeText;
   el("welcomeMsg").style.display = "block";
-
-  // 🚀 Non-blocking load
-  fetchHomeSheet(); // ❌ await हटाया
-
+  fetchHomeSheet();
   buildTabs();
-
-  // ✅ Dashboard (lazy load)
   if (shouldShowDashboard()) {
-    el("mainDashboard").style.display = "flex";
-    setTimeout(renderMainDashboard, 100);
-  } else {
-    el("mainDashboard").style.display = "none";
-  }
-
-  // ✅ Default tab
-  const roleTabs = ROLE_ACCESS[currentUser.role];
-  currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
-
-  // 🚀 Tab load (slightly delayed for smooth UI)
-  setTimeout(() => {
-    loadTab(currentTab);
-  }, 50);
+  el("mainDashboard").style.display = "flex";
+  renderMainDashboard();
+} else {
+  el("mainDashboard").style.display = "none";
 }
+
+  // default tab
+  const roleTabs = ROLE_ACCESS[currentUser.role];
+currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
+  loadTab(currentTab);
+}
+
+function shouldShowDashboard() {
+  if (!currentUser || !currentUser.role) return false;
+
+  const key = "ShowDashboard." + currentUser.role;
+  const val = (SETTINGS?.[key] || "").toUpperCase();
+
+  return val === "YES";
+}
+
+const refreshBtn = el("refreshBtn");
+if (refreshBtn) {
+  refreshBtn.style.display = "inline-flex";
+  refreshBtn.disabled = false;
+
+  refreshBtn.onclick = async () => {
+    refreshBtn.innerText = "⟳ Refreshing...";
+    refreshBtn.disabled = true;
+
+    await loadTab(currentTab);   // current tab reload
+
+    refreshBtn.innerText = "⟳ Refresh";
+    refreshBtn.disabled = false;
+  };
+}
+
 
 
 /* ===========================
@@ -2588,8 +2558,12 @@ if (yearFilter && !yearFilter._bound) {
 
     currentPage = 1;
 
-    renderTable();          // table refresh
-    setTimeout(renderMainDashboard, 100); // smooth dashboard refresh
+    renderTable(); // fast
+
+    // 🔥 dashboard lazy load (no lag)
+    if (shouldShowDashboard()) {
+      setTimeout(renderMainDashboard, 100);
+    }
 
   });
 
