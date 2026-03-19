@@ -1030,12 +1030,13 @@ async function init(){
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
 
-    loginView.style.display = "none";
-    appView.style.display = "block";
+ // 🔽 Normal load (no login)
+loginView.style.display = "block";
+appView.style.display = "none";
 
-    USERS = await loadUsers();
-    TEMPLATES = await loadTemplates();
-    SETTINGS = await loadSettings();
+USERS = await loadUsers();
+TEMPLATES = await loadTemplates();
+SETTINGS = await loadSettings();
 
     // 🔢 Rows per page
     if (SETTINGS?.RowsPerPage) {
