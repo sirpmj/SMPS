@@ -388,7 +388,7 @@ button:hover{opacity:0.9}
 
 
 
-<body>
+
 <body style="display:none">
 <div class="wrap">
   <header>
@@ -1030,15 +1030,15 @@ async function init(){
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
 
- // 🔽 Normal load (no login)
-loginView.style.display = "block";
-appView.style.display = "none";
+    loginView.style.display = "none";
+    appView.style.display = "block";
 
-USERS = await loadUsers();
-TEMPLATES = await loadTemplates();
-SETTINGS = await loadSettings();
+    document.body.style.display = "block"; // ✅ जल्दी show
 
-    // 🔢 Rows per page
+    USERS = await loadUsers();
+    TEMPLATES = await loadTemplates();
+    SETTINGS = await loadSettings();
+
     if (SETTINGS?.RowsPerPage) {
       const rpp = parseInt(SETTINGS.RowsPerPage, 10);
       if (!isNaN(rpp) && rpp > 0) {
@@ -1050,12 +1050,15 @@ SETTINGS = await loadSettings();
     ROLE_ACCESS = await loadRoleAccess();
 
     openApp();
-
-    document.body.style.display = "block";
     return;
   }
 
   // 🔽 Normal load (no login)
+  loginView.style.display = "block";   // ✅ FIX
+  appView.style.display = "none";      // ✅ FIX
+
+  document.body.style.display = "block"; // ✅ जल्दी show
+
   USERS = await loadUsers();
   TEMPLATES = await loadTemplates();
   SETTINGS = await loadSettings();
@@ -1081,8 +1084,6 @@ SETTINGS = await loadSettings();
   await renderMeetingUpdates();
   await renderAnnouncements();
   await loadFooter();
-
-  document.body.style.display = "block";
 }
 
 // 🚀 Start app
