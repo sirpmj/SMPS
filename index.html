@@ -1007,49 +1007,16 @@ resetIdleTimer();
    INIT
    =========================== */
 async function init(){
-
-  // 🚀 FIRST: instant login check (NO FLASH)
-  const savedUser = sessionStorage.getItem("currentUser");
-
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
-
-    loginView.style.display = "none";
-    appView.style.display = "block";
-
-    // 🔽 बाकी load background में
-    USERS = await loadUsers();
-    TEMPLATES = await loadTemplates();
-    SETTINGS = await loadSettings();
-
-    if (SETTINGS?.RowsPerPage) {
-      const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-      if (!isNaN(rpp) && rpp > 0) {
-        rowsPerPage = rpp;
-      }
-    }
-
-    MEMBERS = await loadMembers();
-    ROLE_ACCESS = await loadRoleAccess();
-
-    openApp();
-    return;
-  }
-
-  // 🔽 Normal login screen
-  loginView.style.display = "block";
-  appView.style.display = "none";
-
   USERS = await loadUsers();
   TEMPLATES = await loadTemplates();
   SETTINGS = await loadSettings();
-
-  if (SETTINGS?.RowsPerPage) {
-    const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-    if (!isNaN(rpp) && rpp > 0) {
-      rowsPerPage = rpp;
-    }
+// 🔢 Rows per page from Settings
+if (SETTINGS?.RowsPerPage) {
+  const rpp = parseInt(SETTINGS.RowsPerPage, 10);
+  if (!isNaN(rpp) && rpp > 0) {
+    rowsPerPage = rpp;
   }
+}
 
   MEMBERS = await loadMembers();
   ROLE_ACCESS = await loadRoleAccess();
@@ -1060,6 +1027,14 @@ async function init(){
   if(SETTINGS["RegNo"])
     document.querySelector("header .muted").textContent = "Reg No: " + SETTINGS["RegNo"];
 
+  // ✅ AUTO LOGIN (SAFE PLACE)
+  const savedUser = sessionStorage.getItem("currentUser");
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
+    openApp();
+    return;
+  }
+
   await renderLoginHomeStructure();
   applyLoginTexts();
   await renderMeetingUpdates();
@@ -1068,6 +1043,7 @@ async function init(){
 }
 
 init();
+
 
 
 
