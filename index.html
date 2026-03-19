@@ -1313,32 +1313,21 @@ function shouldShowDashboard() {
 }
 
 const refreshBtn = el("refreshBtn");
+if (refreshBtn) {
+  refreshBtn.style.display = "inline-flex";
+  refreshBtn.disabled = false;
 
-  if (refreshBtn && !refreshBtn._bound) {
+  refreshBtn.onclick = async () => {
+    refreshBtn.innerText = "⟳ Refreshing...";
+    refreshBtn.disabled = true;
 
-    refreshBtn.onclick = async () => {
+    await loadTab(currentTab);   // current tab reload
 
-      console.log("✅ Refresh clicked");
-
-      refreshBtn.innerText = "⟳ Refreshing...";
-      refreshBtn.disabled = true;
-
-      if (currentTab) {
-        await loadTab(currentTab);
-      }
-
-      if (shouldShowDashboard()) {
-        setTimeout(renderMainDashboard, 100);
-      }
-
-      refreshBtn.innerText = "⟳ Refresh";
-      refreshBtn.disabled = false;
-    };
-
-    refreshBtn._bound = true;
-  }
-
+    refreshBtn.innerText = "⟳ Refresh";
+    refreshBtn.disabled = false;
+  };
 }
+
 
 
 /* ===========================
