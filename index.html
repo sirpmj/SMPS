@@ -679,18 +679,39 @@ function getHiddenColumnsForTab(tabName){
 
   let cols = [];
 
-  // 🔹 1. General tab hide (all roles)
+  // 🔹 1. General tab hide
   const key1 = `HideColumns.${tabName}`;
   if(SETTINGS[key1]){
     cols.push(...SETTINGS[key1].split(","));
   }
 
-  // 🔹 2. Role-wise hide
+  // 🔹 2. Tab + Role wise
   if(currentUser && currentUser.role){
     const key2 = `HideColumns.${tabName}.${currentUser.role}`;
     if(SETTINGS[key2]){
       cols.push(...SETTINGS[key2].split(","));
     }
+  }
+
+  // 🔹 3. Column-wise role hide (NEW 🔥)
+  if(currentUser && currentUser.role){
+    Object.keys(SETTINGS).forEach(k => {
+      if(k.startsWith("Hide") && k.endsWith("ForRoles")){
+        
+        const colName = k
+          .replace("Hide","")
+          .replace("ForRoles","")
+          .trim();
+
+        const roles = SETTINGS[k]
+          .split(",")
+          .map(r => r.trim());
+
+        if(roles.includes(currentUser.role)){
+          cols.push(colName);
+        }
+      }
+    });
   }
 
   return new Set(
