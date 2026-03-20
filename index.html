@@ -1056,7 +1056,7 @@ resetIdleTimer();
 async function init(){
 
   // 🚀 instant login check
-  const savedUser = sessionStorage.getItem("currentUser");
+  const savedUser = localStorage.getItem("currentUser")
 
   // 🔥 PARALLEL LOAD (सबसे बड़ा improvement)
   const [
