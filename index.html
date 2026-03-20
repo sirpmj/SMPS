@@ -737,7 +737,7 @@ function getMessageFromTemplate(type, row) {
    Fetch helper (OpenSheet)
    =========================== */
 const CACHE = {};
-const CACHE_TIME = 2 * 60 * 1000;
+const CACHE_TIME = 10 * 60 * 1000; // 🔥 10 मिनट
 
 async function fetchSheet(sheetName){
   try{
@@ -939,19 +939,26 @@ async function loadFooter(){
 }
 
 document.getElementById("sendOtpBtn").onclick = async () => {
+
   const mobile = username.value.replace(/\D/g, "");
 
-  // ✅ single validation
   if (mobile.length !== 10) {
     alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
     return;
   }
 
-  // ✅ registered member check
+  // 🔥 FIX: ensure MEMBERS loaded
+  if (!MEMBERS || Object.keys(MEMBERS).length === 0) {
+    loginMsg.innerText = "⏳ कृपया प्रतीक्षा करें...";
+    MEMBERS = await loadMembers();   // force reload
+  }
+
   if (!MEMBERS[mobile]) {
     alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
     return;
   }
+
+  
 
   sendOtpBtn.disabled = true;
 
@@ -1030,42 +1037,32 @@ resetIdleTimer();
    =========================== */
 async function init(){
 
-  // 🚀 FIRST: instant login check (NO FLASH)
+  // 🚀 instant login check
   const savedUser = sessionStorage.getItem("currentUser");
 
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
+  // 🔥 PARALLEL LOAD (सबसे बड़ा improvement)
+  const [
+    usersData,
+    templatesData,
+    settingsData,
+    membersData,
+    roleAccessData
+  ] = await Promise.all([
+    loadUsers(),
+    loadTemplates(),
+    loadSettings(),
+    loadMembers(),
+    loadRoleAccess()
+  ]);
 
-    loginView.style.display = "none";
-    appView.style.display = "block";
+  // 🔹 assign after load
+  USERS = usersData;
+  TEMPLATES = templatesData;
+  SETTINGS = settingsData;
+  MEMBERS = membersData;
+  ROLE_ACCESS = roleAccessData;
 
-    // 🔽 बाकी load background में
-    USERS = await loadUsers();
-    TEMPLATES = await loadTemplates();
-    SETTINGS = await loadSettings();
-
-    if (SETTINGS?.RowsPerPage) {
-      const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-      if (!isNaN(rpp) && rpp > 0) {
-        rowsPerPage = rpp;
-      }
-    }
-
-    MEMBERS = await loadMembers();
-    ROLE_ACCESS = await loadRoleAccess();
-
-    openApp();
-    return;
-  }
-
-  // 🔽 Normal login screen
-  loginView.style.display = "block";
-  appView.style.display = "none";
-
-  USERS = await loadUsers();
-  TEMPLATES = await loadTemplates();
-  SETTINGS = await loadSettings();
-
+  // 🔹 rows per page
   if (SETTINGS?.RowsPerPage) {
     const rpp = parseInt(SETTINGS.RowsPerPage, 10);
     if (!isNaN(rpp) && rpp > 0) {
@@ -1073,15 +1070,30 @@ async function init(){
     }
   }
 
-  MEMBERS = await loadMembers();
-  ROLE_ACCESS = await loadRoleAccess();
+  // ✅ अगर already logged in
+  if (savedUser) {
+    currentUser = JSON.parse(savedUser);
 
+    loginView.style.display = "none";
+    appView.style.display = "block";
+
+    openApp();
+    return;
+  }
+
+  // 🔽 Login screen
+  loginView.style.display = "block";
+  appView.style.display = "none";
+
+  // 🔹 Header update
   if(SETTINGS["HeaderTitle"])
     document.querySelector("header h1").textContent = SETTINGS["HeaderTitle"];
 
   if(SETTINGS["RegNo"])
-    document.querySelector("header .muted").textContent = "Reg No: " + SETTINGS["RegNo"];
+    document.querySelector("header .muted").textContent =
+      "Reg No: " + SETTINGS["RegNo"];
 
+  // 🔹 बाकी UI load
   await renderLoginHomeStructure();
   applyLoginTexts();
   await renderMeetingUpdates();
@@ -1090,7 +1102,6 @@ async function init(){
 }
 
 init();
-
 
 
 function applyLoginTexts(){
