@@ -1880,11 +1880,19 @@ if(currentTab === "Members" && isTodayBirthday(row["Birthday"])){
 
       let mobile = (row["Mobile"] || "").replace(/\D/g,"");
 
+function cleanName(name) {
+  if (!name) return "";
+
+  return name
+    .replace(/[()]/g, "") // sirf ( ) remove karega
+    .trim();
+}
+
 const msg =
 "🌸🙏 श्री मेवाड़ प्रजापत समाज वापी 🙏🌸\n\n" +
 "👋 जय श्रीयादे माता की!\n\n" +
 "🎂 *जन्मदिन की हार्दिक शुभकामनाएँ* 🎉\n" +
-"👉 *" + (row["Member"] || "") + "!*\n\n" +
+"👉 *" + cleanName(row["Member"]) + "!*\n\n" +
 "ईश्वर से प्रार्थना है कि आपका जीवन सदैव सुख, शांति, समृद्धि और अच्छे स्वास्थ्य से परिपूर्ण रहे।\n\n" +
 "💐 श्री मेवाड़ प्रजापत समाज, वापी की ओर से हार्दिक शुभकामनाएँ 💐\n\n" +
 "🙏 आपके उज्ज्वल भविष्य की कामना 🙏";
