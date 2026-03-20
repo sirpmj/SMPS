@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="hi">
 <head>
+
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a90e2">
 
@@ -8,18 +9,46 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
 
-<!-- Favicon for browser tab -->
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
-
-<!-- Apple Touch Icon (iPhone/iPad) -->
 <link rel="apple-touch-icon" sizes="180x180" href="favicon.png" />
-
-<!-- Android / PWA Icons -->
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 
+<!-- ✅ STEP 1: hide body -->
+<style>
+  body { visibility: hidden; }
+</style>
 
+<!-- ✅ STEP 2: instant login check -->
+<script>
+(function(){
+  const user = localStorage.getItem("currentUser");
+
+  if (user) {
+    document.documentElement.classList.add("logged-in");
+  } else {
+    document.documentElement.classList.add("logged-out");
+  }
+})();
+</script>
+
+<!-- ✅ STEP 3: view control -->
+<style>
+#loginView, #appView {
+  display: none;
+}
+
+.logged-in #appView {
+  display: block;
+}
+
+.logged-out #loginView {
+  display: block;
+}
+</style>
+
+</head>
 
 <style>
 /* ---------- Global ---------- */
@@ -225,22 +254,6 @@ table {
 
 
 
-/* default hidden */
-#loginView, #appView {
-  display: none;
-}
-
-/* logged in */
-.logged-in #appView {
-  display: block;
-}
-
-/* logged out */
-.logged-out #loginView {
-  display: block;
-}
-
-
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
 .site-footer {
@@ -433,8 +446,7 @@ button:hover{opacity:0.9}
     <div class="muted">Reg No: A/1221</div>
   </header>
   <!-- Pre-login / Login View -->
-<div id="loginView" style="display:none"></div>
-<div id="appView" style="display:none"></div>
+  <div id="loginView">
     <!-- top: Advisors | Login | Officials (layout-only) -->
     <div class="prelogin-row">
       <div class="prelogin-col card home-card" aria-hidden="false">
@@ -497,7 +509,7 @@ style="background:#008000;color:#fff;font-size:16px">
     </div>
   </div>
   <!-- App View -->
-<div id="appView" style="display:none;"></div>
+  <div id="appView" style="display:none">
     <div class="card">
       <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
 
@@ -672,15 +684,6 @@ function safeSet(id, prop, value){
   }
 }
 
-
-
-const savedUser = sessionStorage.getItem("currentUser");
-
-if (savedUser) {
-  document.documentElement.classList.add("logged-in");
-} else {
-  document.documentElement.classList.add("logged-out");
-}
 
 /* ===========================
    Config / Sheet ID
@@ -1084,10 +1087,8 @@ resetIdleTimer();
    =========================== */
 async function init(){
 
-  // 🚀 instant login check
-  const savedUser = sessionStorage.getItem("currentUser");
+  const savedUser = localStorage.getItem("currentUser"); // ✅ FIX
 
-  // 🔥 PARALLEL LOAD (सबसे बड़ा improvement)
   const [
     usersData,
     templatesData,
@@ -1102,22 +1103,12 @@ async function init(){
     loadRoleAccess()
   ]);
 
-  // 🔹 assign after load
   USERS = usersData;
   TEMPLATES = templatesData;
   SETTINGS = settingsData;
   MEMBERS = membersData;
   ROLE_ACCESS = roleAccessData;
 
-  // 🔹 rows per page
-  if (SETTINGS?.RowsPerPage) {
-    const rpp = parseInt(SETTINGS.RowsPerPage, 10);
-    if (!isNaN(rpp) && rpp > 0) {
-      rowsPerPage = rpp;
-    }
-  }
-
-  // ✅ अगर already logged in
   if (savedUser) {
     currentUser = JSON.parse(savedUser);
 
@@ -1125,27 +1116,21 @@ async function init(){
     appView.style.display = "block";
 
     openApp();
+
+    document.body.style.visibility = "visible"; // ✅ IMPORTANT
     return;
   }
 
-  // 🔽 Login screen
   loginView.style.display = "block";
   appView.style.display = "none";
 
-  // 🔹 Header update
-  if(SETTINGS["HeaderTitle"])
-    document.querySelector("header h1").textContent = SETTINGS["HeaderTitle"];
-
-  if(SETTINGS["RegNo"])
-    document.querySelector("header .muted").textContent =
-      "Reg No: " + SETTINGS["RegNo"];
-
-  // 🔹 बाकी UI load
   await renderLoginHomeStructure();
   applyLoginTexts();
   await renderMeetingUpdates();
   await renderAnnouncements();
   await loadFooter();
+
+  document.body.style.visibility = "visible"; // ✅ IMPORTANT
 }
 
 init();
