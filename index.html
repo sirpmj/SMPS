@@ -52,6 +52,24 @@ header .muted {color:#e0e0e0;font-size:14px;}
 
 
 
+function getCache(key) {
+  const data = localStorage.getItem(key);
+  if (!data) return null;
+
+  const parsed = JSON.parse(data);
+  if (Date.now() - parsed.time > parsed.expiry) return null;
+
+  return parsed.value;
+}
+
+function setCache(key, value, expiry) {
+  localStorage.setItem(key, JSON.stringify({
+    value,
+    time: Date.now(),
+    expiry
+  }));
+}
+
 /* ---------- Home Info Cards ---------- */
 .prelogin-cards {display:flex; gap:20px; flex-wrap:wrap; margin-top:20px;}
 .prelogin-cards .card {flex:1; min-width:280px; background:#fff; border-top:4px solid #0b63d6;}
@@ -2233,7 +2251,15 @@ function renderMembers(data) {
 
     row += "</tr>";
 
-    tbody.innerHTML += row;
+   const fragment = document.createDocumentFragment();
+
+data.forEach(row => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = "...";
+  fragment.appendChild(tr);
+});
+
+tbody.appendChild(fragment);
 
   });
 }
