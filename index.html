@@ -23,7 +23,7 @@
 <!-- ✅ STEP 2: instant login check -->
 <script>
 (function(){
-  const user = localStorage.getItem("currentUser");
+  const user = sessionStorage.getItem("currentUser");
 
   if (user) {
     document.documentElement.classList.add("logged-in");
@@ -1087,7 +1087,7 @@ resetIdleTimer();
    =========================== */
 async function init(){
 
-  const savedUser = localStorage.getItem("currentUser"); // ✅ FIX
+  const savedUser = sessionStorage.getItem("currentUser"); // ✅ FIX
 
   const [
     usersData,
