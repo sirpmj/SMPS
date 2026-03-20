@@ -420,6 +420,36 @@ button:hover{opacity:0.9}
   border-radius: 4px;
 }
 .welcome-box{background:#fff4e6;padding:10px;border-radius:8px;margin-bottom:12px;border:1px solid #ffe1c7;color:#6a4b00}
+
+
+
+#splashScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fff; /* background color */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* logo size */
+#splashScreen img {
+  width: 80px;
+  height: 80px;
+  animation: zoomIn 0.5s ease;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+
+
 </style>
 
 
@@ -440,6 +470,13 @@ button:hover{opacity:0.9}
 
 
 <body>
+
+
+<div id="splashScreen">
+  <img src="icon-192.png" alt="Logo">
+</div>
+
+
 <div class="wrap">
   <header>
     <h1>श्री मेवाड़ प्रजापत समाज-वापी</h1>
@@ -1109,17 +1146,22 @@ async function init(){
   MEMBERS = membersData;
   ROLE_ACCESS = roleAccessData;
 
-  if (savedUser) {
-    currentUser = JSON.parse(savedUser);
+if (savedUser) {
+  currentUser = JSON.parse(savedUser);
 
-    loginView.style.display = "none";
-    appView.style.display = "block";
+  loginView.style.display = "none";
+  appView.style.display = "block";
 
-    openApp();
+  openApp();
 
-    document.body.style.visibility = "visible"; // ✅ IMPORTANT
-    return;
-  }
+  document.body.style.visibility = "visible";
+
+  // splash hide
+  const splash = document.getElementById("splashScreen");
+  if (splash) splash.style.display = "none";
+
+  return;
+}
 
   loginView.style.display = "block";
   appView.style.display = "none";
@@ -1130,7 +1172,11 @@ async function init(){
   await renderAnnouncements();
   await loadFooter();
 
-  document.body.style.visibility = "visible"; // ✅ IMPORTANT
+document.body.style.visibility = "visible";
+
+// splash hide
+const splash = document.getElementById("splashScreen");
+if (splash) splash.style.display = "none";
 }
 
 init();
