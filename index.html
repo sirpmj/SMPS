@@ -222,6 +222,25 @@ table {
   width: 100%;
 }
 
+
+
+
+/* default hidden */
+#loginView, #appView {
+  display: none;
+}
+
+/* logged in */
+.logged-in #appView {
+  display: block;
+}
+
+/* logged out */
+.logged-out #loginView {
+  display: block;
+}
+
+
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
 .site-footer {
@@ -414,7 +433,7 @@ button:hover{opacity:0.9}
     <div class="muted">Reg No: A/1221</div>
   </header>
   <!-- Pre-login / Login View -->
-  <div id="loginView">
+<div id="loginView" style="display:none;"></div>
     <!-- top: Advisors | Login | Officials (layout-only) -->
     <div class="prelogin-row">
       <div class="prelogin-col card home-card" aria-hidden="false">
@@ -477,7 +496,7 @@ style="background:#008000;color:#fff;font-size:16px">
     </div>
   </div>
   <!-- App View -->
-  <div id="appView" style="display:none">
+<div id="appView" style="display:none;"></div>
     <div class="card">
       <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
 
@@ -652,6 +671,15 @@ function safeSet(id, prop, value){
   }
 }
 
+
+
+const savedUser = sessionStorage.getItem("currentUser");
+
+if (savedUser) {
+  document.documentElement.classList.add("logged-in");
+} else {
+  document.documentElement.classList.add("logged-out");
+}
 
 /* ===========================
    Config / Sheet ID
@@ -1056,7 +1084,7 @@ resetIdleTimer();
 async function init(){
 
   // 🚀 instant login check
-  const savedUser = localStorage.getItem("currentUser")
+  const savedUser = sessionStorage.getItem("currentUser");
 
   // 🔥 PARALLEL LOAD (सबसे बड़ा improvement)
   const [
