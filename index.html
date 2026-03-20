@@ -189,8 +189,7 @@ table, tr, td {
 }
 
 .pdf-area {
-  overflow: visible !important;
-  height: auto !important;
+  overflow: auto !important;
 }
 
 thead {
@@ -288,27 +287,7 @@ margin-bottom: 4px;
   .prelogin-cards{flex-direction:column}
 }
 /* ---------- Table ---------- */
-.table-wrap {
-  width: 100%;
-  max-height: 65vh;
-  overflow-y: auto;
-  overflow-x: auto;
-  display: block;
-  -webkit-overflow-scrolling: touch; /* 🔥 smooth mobile scroll */
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 2;
-}
-
+.table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:500px}
 th,td{padding:10px;border:1px solid #ddd;font-size:13px;text-align:left}
 th{background:#f0f4ff;position:sticky;top:0;z-index:1;cursor:pointer}
@@ -316,7 +295,9 @@ tr:hover{background:#f5faff}
 
 
 /* ---------- Search & Pagination ---------- */
-.search-input{width:340px;            /* 🔥 fixed width */
+.search-input {
+  width: 100%;
+  max-width: 100%;
   padding:6px 10px;
   border-radius:8px;
   border:1px solid #ccc;
