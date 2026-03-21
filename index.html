@@ -975,23 +975,28 @@ window.addEventListener('beforeinstallprompt', (e) => {
 // Install button click
 document.addEventListener("click", async (e) => {
 
-  if (e.target.id === "installBtn") {
+if (e.target.id === "installBtn") {
 
-    if (!deferredPrompt) {
-      alert("Install option not available yet");
-      return;
-    }
-
-    deferredPrompt.prompt();
-
-    const { outcome } = await deferredPrompt.userChoice;
-
-    console.log("Install result:", outcome);
-
-    deferredPrompt = null;
-
-    closeInstallPopup();
+  if (!deferredPrompt) {
+    alert("Install option not available yet");
+    return;
   }
+
+  deferredPrompt.prompt();
+
+  const { outcome } = await deferredPrompt.userChoice;
+
+  console.log("Install result:", outcome);
+
+  // ✅ IMPORTANT
+  if (outcome === "accepted") {
+    localStorage.setItem("appInstalled", "yes");
+  }
+
+  deferredPrompt = null;
+
+  closeInstallPopup();
+}
 
 });
 
@@ -1004,24 +1009,44 @@ function closeInstallPopup(){
 
 function showFirstTimePopup() {
 
+  console.log("Popup check running");
+
+  // ❌ अगर installed है → popup नहीं
+  if (isAppInstalled() || localStorage.getItem("appInstalled") === "yes") {
+    console.log("🚫 Popup blocked (installed)");
+    return;
+  }
+
   const lastShown = localStorage.getItem("popupTime");
   const now = Date.now();
 
-  // 🔥 Show only if 24 hrs passed
   if (!lastShown || (now - lastShown) > 24*60*60*1000) {
 
-    // 👇 popup show
     document.getElementById("installPopup").style.display = "flex";
 
     localStorage.setItem("popupTime", now);
   }
 }
 
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true
+    || document.referrer.includes('android-app://');
+}
+
 
 window.addEventListener("load", () => {
+
+  // detect install
   if (isAppInstalled()) {
     localStorage.setItem("appInstalled", "yes");
   }
+
+  // show popup
+  setTimeout(() => {
+    showFirstTimePopup();
+  }, 1500);
+
 });
 
 
