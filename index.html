@@ -100,10 +100,10 @@ function setCache(key, value, expiry) {
 }
 
 /* ---------- Home Info Cards ---------- */
-.prelogin-cards {display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;}
-.prelogin-cards .card {flex:1; min-width:280px; background:#fff; border-top:4px solid #0b63d6;}
+.prelogin-cards {display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;}
+.prelogin-cards .card {flex:1; min-width:280px; background:#fff; border-top:2px solid #0b63d6;}
 /* ---------- Layout ---------- */
-.prelogin-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; align-items: stretch;}
+.prelogin-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: stretch;}
 /* Left & Right wider */
 .prelogin-col { flex: 1.4; min-width: 320px;}
 /* Center normal */
@@ -139,7 +139,7 @@ function setCache(key, value, expiry) {
 }
 /* Reduce heading margins */
 h1, h2, h3, h4, h5, h6 {
-  margin: 6px 0 !important;
+  margin: 4px 0 !important;
   line-height: 1.0;
 }
 /* Reduce list spacing */
@@ -171,7 +171,7 @@ margin-bottom: 4px;
 /* Footer more compact */
 .site-footer {
   padding: 12px 14px !important;
-  gap: 6px !important;
+  gap: 2px !important;
   font-size: 14px !important;
   line-height: 1.0 !important;
 }
@@ -257,22 +257,26 @@ table {
 /* Footer styling: single line on wide screens, auto-wrap on small screens */
 /* ===== Footer (mirrored header corner curve) ===== */
 .site-footer {
-  background: linear-gradient(45deg, #0b63d6,#64b5ff); /* same as header */
+  background: linear-gradient(45deg, #0b63d6,#64b5ff);
   color: #fff;
   font-family: 'Segoe UI', sans-serif;
   text-align: center;
-   padding:40px 20px;             /* row height कम */
-  margin: 10px auto 0 auto;     
+
+  padding: 10px 12px;          /* 🔥 40px → 10px (major fix) */
+  margin: 2px auto 0 auto;     /* already good */
+
   max-width: 1175px;
-  border-radius: 34px 34px 0 0; /* top corners ज्यादा round, bottom flat */
+  border-radius: 34px 34px 0 0;
   box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1px;                      
-  font-size: 11px;               
-  line-height: 3.0;              /* row compact */
+
+  gap: 2px;                    /* 🔥 thoda spacing */
+  font-size: 11px;
+  line-height: 1.4;            /* 🔥 3.0 → normal */
 }
 /* Footer links */
 .site-footer a {
@@ -282,11 +286,11 @@ table {
 /* Responsive: mobile view */
 @media (max-width: 600px) {
   .site-footer {
-    padding: 2px 4px;
-    margin: 8px 5px 0 5px;
-    border-radius: 12px 12px 0 0;  /* mobile top corners slightly smaller */
+    padding: 6px 8px;
+    margin: 2px 5px 0 5px;   /* 🔥 8px → 2px */
+    border-radius: 12px 12px 0 0;
     font-size: 10px;
-    gap: 3px;
+    gap: 2px;
   }
 }
 /* First column width reduce */
