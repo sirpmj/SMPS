@@ -429,25 +429,33 @@ button:hover{opacity:0.9}
   left: 0;
   width: 100%;
   height: 100%;
-  background: #fff; /* background color */
+  background: #ffffff;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
 }
 
-/* logo size */
+/* Responsive logo */
 #splashScreen img {
-  width: 80px;
-  height: 80px;
+  width: 20vw;       /* mobile responsive */
+  max-width: 120px;  /* desktop limit */
+  min-width: 70px;   /* small phones */
+  height: auto;
   animation: zoomIn 0.5s ease;
 }
 
+/* animation */
 @keyframes zoomIn {
   from { transform: scale(0.8); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 
+/* fade out effect */
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
 
 
 </style>
@@ -467,14 +475,15 @@ button:hover{opacity:0.9}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 
+<div id="splashScreen">
+  <img src="icon-192.png" alt="Logo">
+</div>
+
 
 
 <body>
 
 
-<div id="splashScreen">
-  <img src="icon-192.png" alt="Logo">
-</div>
 
 
 <div class="wrap">
@@ -1123,6 +1132,27 @@ resetIdleTimer();
 
 
 
+const splashStartTime = Date.now();
+
+function hideSplash() {
+  const splash = document.getElementById("splashScreen");
+  if (!splash) return;
+
+  const elapsed = Date.now() - splashStartTime;
+
+  // minimum 1 second show
+  const delay = Math.max(1000 - elapsed, 0);
+
+  setTimeout(() => {
+    splash.classList.add("fade-out");
+
+    setTimeout(() => {
+      splash.style.display = "none";
+    }, 500);
+
+  }, delay);
+}
+
 
 /* ===========================
    INIT
@@ -1163,7 +1193,7 @@ if (savedUser) {
 
   // splash hide
   const splash = document.getElementById("splashScreen");
-  if (splash) splash.style.display = "none";
+  if (splash) hideSplash();
 
   return;
 }
@@ -1181,7 +1211,7 @@ document.body.style.visibility = "visible";
 
 // splash hide
 const splash = document.getElementById("splashScreen");
-if (splash) splash.style.display = "none";
+if (splash) hideSplash();
 }
 
 init();
