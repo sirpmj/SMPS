@@ -1054,46 +1054,73 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     return;
   }
 
-  // 🔥 FIX: ensure MEMBERS loaded
+  // 🔥 ensure MEMBERS loaded
   if (!MEMBERS || Object.keys(MEMBERS).length === 0) {
-    loginMsg.innerText = "⏳ कृपया प्रतीक्षा करें...";
-    MEMBERS = await loadMembers();   // force reload
+
+    loginInfoMsg.innerText =
+      "⏳ कृपया प्रतीक्षा करें...";
+
+    MEMBERS = await loadMembers();
   }
 
   if (!MEMBERS[mobile]) {
-    alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
+    alert(
+      "आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।"
+    );
     return;
   }
-
-  
 
   sendOtpBtn.disabled = true;
 
-  const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
-    method: "POST",
-    body: JSON.stringify({
-      action: "sendOtp",
-      mobile
-    })
-  }).then(r => r.json());
+  try {
 
-  sendOtpBtn.disabled = false;
+    const response = await fetch(
+      "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec",
+      {
+        method: "POST",
 
-  if (!res.success) {
-    alert(res.msg);
-    return;
+        headers: {
+          "Content-Type":
+          "text/plain;charset=utf-8"
+        },
+
+        body: JSON.stringify({
+          action: "sendOtp",
+          mobile
+        })
+      }
+    );
+
+    const res = await response.json();
+
+    sendOtpBtn.disabled = false;
+
+    if (!res.success) {
+      alert(res.msg || "OTP भेजने में समस्या हुई");
+      return;
+    }
+
+    window.open(res.waUrl, "_blank");
+
+    otpInput.style.display = "block";
+    verifyOtpBtn.style.display = "block";
+    sendOtpBtn.style.display = "none";
+
+    loginInfoMsg.innerText =
+      "OTP भेजा गया है मोबाइल: " + res.masked;
+
+    loginInfoMsg.style.display = "block";
+
+  } catch (err) {
+
+    console.error(err);
+
+    sendOtpBtn.disabled = false;
+
+    alert(
+      "Server connection failed. कृपया बाद में पुनः प्रयास करें।"
+    );
   }
-
-
-  window.open(res.waUrl, "_blank");
-
-  otpInput.style.display = "block";
-  verifyOtpBtn.style.display = "block";
-  sendOtpBtn.style.display = "none";
-
-  loginInfoMsg.innerText =
-    "OTP भेजा गया है मोबाइल: " + res.masked;
-  loginInfoMsg.style.display = "block";
 };
 
 document.getElementById("verifyOtpBtn").onclick = async () => {
@@ -1107,7 +1134,7 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 
   verifyOtpBtn.disabled = true;
 
-  const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
+  const res = await fetch("https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec", {
     method: "POST",
     body: JSON.stringify({
       action: "verifyOtp",
