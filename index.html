@@ -396,13 +396,20 @@ button:hover{opacity:0.9}
 }
 /* small edit modal */
 #editPopup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:1100}
-#editPopup .edit-content{background:#fff;padding:16px;border-radius:10px;max-width:700px;width:94%}
-#editPopup label{display:block;margin-top:8px;font-weight:600}
-#editPopup input, #editPopup textarea{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-top:6px}
+#editPopup .edit-content{background:#fff;padding:16px;border-radius:10px;max-width:600px;width:92%;max-height:85vh;overflow-y:auto}
+#editPopup #editFields{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+#editPopup label{display:block;margin-top:6px;font-weight:600;font-size:13px}
+#editPopup input, #editPopup textarea{width:100%;padding:7px;border:1px solid #ccc;border-radius:6px;margin-top:3px;font-size:13px}
+#editPopup textarea{grid-column:1 / -1;min-height:50px}
+@media (max-width:600px){
+  #editPopup .edit-content{max-width:96%;width:96%;padding:12px;max-height:90vh}
+  #editPopup #editFields{grid-template-columns:1fr}
+}
 /* ---------- Responsive ---------- */
 @media(max-width: 600px){
-  .dashboard{flex-direction:column}
-  .dash-card{flex:1 1 100%}
+  .dashboard{flex-direction:row}
+  .dash-card{flex:1 1 46%}
+  .dash-card-wide{flex:1 1 100% !important}
   table th, table td{padding:8px;font-size:12px}
   .search-input{font-size:13px;padding:10px}
   .page-btn{padding:6px 10px;font-size:12px}
@@ -755,6 +762,36 @@ const SHEET_ID = "1Ws2WH9ZT7-aBSlJAKqBHCWqTO57Ayxvj2ZPQxSSVUiI";
    =========================== */
 const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec";
 
+/* Generic caller for addRow/editRow/deleteRow — real error dikhata hai,
+   sirf generic "Network error" nahi. Agar Apps Script deploy purana ho,
+   ya "Anyone" access na ho, to response HTML aata hai JSON ki jagah —
+   yeh helper us case ko bhi pakad kar batata hai. */
+async function callCrudBackend_(payload) {
+  let res;
+  try {
+    res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  } catch (netErr) {
+    console.error("Fetch failed:", netErr);
+    throw new Error("Internet/network problem — request bhej hi nahi paya.");
+  }
+
+  const rawText = await res.text();
+  let json;
+  try {
+    json = JSON.parse(rawText);
+  } catch (parseErr) {
+    console.error("Backend ne JSON nahi bheja, yeh mila:", rawText.slice(0, 300));
+    throw new Error(
+      "Apps Script se sahi jawab nahi mila (shayad naya deploy nahi hua, ya access 'Anyone' nahi hai). " +
+      "Console mein poora response check karein."
+    );
+  }
+  return json;
+}
+
 // Yeh tabs "raw data" hain — inme direct add/edit/delete allowed hai.
 // Fund Ledger, Cash Book, Bank Book JAAN-BUJHKAR yahan NAHI hain kyonki
 // woh formula (SORT/FILTER) se ban rahi hain — unhe edit karna hai to
@@ -767,7 +804,7 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ
 const CRUD_ALLOWED_TABS = {
   "Receipts":      { idPrefix: "REC", allowEditDelete: true },
   "Expenses":      { idPrefix: "EXP", allowEditDelete: true },
-  "Transfer":      { idPrefix: null,  allowEditDelete: false },
+  "Transfer":      { idPrefix: "TRF", allowEditDelete: true },
   "Members":       { idPrefix: null,  allowEditDelete: true },
   "Boli":          { idPrefix: null,  allowEditDelete: true },
   "Donation":      { idPrefix: null,  allowEditDelete: true },
@@ -1624,6 +1661,35 @@ async function renderMainDashboard(){
       </div>`;
     }
 
+    // -------- Cash Balance & Bank Balance (Mode column se) --------
+    const cashBalance = fundLedger.reduce((s, r) => {
+      const mode = String(r["Mode"] || "").trim().toLowerCase();
+      if (mode === "cash") return s + toNumber(r["Credit"]) - toNumber(r["Debit"]);
+      return s;
+    }, 0);
+
+    const bankBalance = fundLedger.reduce((s, r) => {
+      const mode = String(r["Mode"] || "").trim().toLowerCase();
+      if (mode === "bank" || mode === "upi") return s + toNumber(r["Credit"]) - toNumber(r["Debit"]);
+      return s;
+    }, 0);
+
+    if (canShowCard("CashBalance")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-lightblue">
+        <h4>Cash Balance (₹)</h4>
+        <p>${cashBalance.toLocaleString()}</p>
+      </div>`;
+    }
+
+    if (canShowCard("BankBalance")) {
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-purple">
+        <h4>Bank Balance (₹)</h4>
+        <p>${bankBalance.toLocaleString()}</p>
+      </div>`;
+    }
+
     // -------- Boli --------
     const pledgedBoli = boliData.reduce((s,r)=>s+toNumber(r["Pledged Boli"]),0);
     const paidBoli = boliData.reduce((s,r)=>s+toNumber(r["Paid Boli"]),0);
@@ -1632,7 +1698,7 @@ async function renderMainDashboard(){
 
     if (canShowCard("Boli")) {
       el("mainDashboard").innerHTML += `
-      <div class="dash-card dash-orange">
+      <div class="dash-card dash-card-wide dash-orange">
         <h4>Pledged / Paid / Pending Boli</h4>
         <p>${pledgedBoli.toLocaleString()} / ${paidBoli.toLocaleString()} / ${pendingBoli.toLocaleString()}</p>
       </div>`;
@@ -1646,7 +1712,7 @@ async function renderMainDashboard(){
 
     if (canShowCard("Donation")) {
       el("mainDashboard").innerHTML += `
-      <div class="dash-card dash-lightblue">
+      <div class="dash-card dash-card-wide dash-lightblue">
         <h4>Pledged / Paid / Pending Donation</h4>
         <p>${pledgedDonation.toLocaleString()} / ${paidDonation.toLocaleString()} / ${pendingDonation.toLocaleString()}</p>
       </div>`;
@@ -1878,8 +1944,9 @@ function openAddRecordForm(sheetName) {
     if (kl === "password" || kl === "role") return;
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
+    const isTextarea = kl.includes("note") || kl.includes("for");
     const label = document.createElement("label"); label.textContent = k;
-    const input = document.createElement(kl.includes("note") || kl.includes("for") ? "textarea" : "input");
+    const input = document.createElement(isTextarea ? "textarea" : "input");
     input.id = id;
     if (kl === "id") {
       input.disabled = true;
@@ -1888,8 +1955,11 @@ function openAddRecordForm(sheetName) {
     if (kl.includes("date")) {
       input.placeholder = "DD/MM/YYYY";
     }
-    container.appendChild(label);
-    container.appendChild(input);
+    const group = document.createElement("div");
+    if (isTextarea) group.style.gridColumn = "1 / -1";
+    group.appendChild(label);
+    group.appendChild(input);
+    container.appendChild(group);
   });
 
   el("editTitle").textContent = "Add New: " + sheetName;
@@ -1905,15 +1975,12 @@ function openAddRecordForm(sheetName) {
     el("saveEditBtn").disabled = true;
     el("saveEditBtn").textContent = "Saving...";
     try {
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "addRow",
-          sheetName: sheetName,
-          idPrefix: crudCfg.idPrefix || undefined,
-          data: data
-        })
-      }).then(r => r.json());
+      const res = await callCrudBackend_({
+        action: "addRow",
+        sheetName: sheetName,
+        idPrefix: crudCfg.idPrefix || undefined,
+        data: data
+      });
 
       if (res.success) {
         delete CACHE[sheetName];
@@ -1925,7 +1992,7 @@ function openAddRecordForm(sheetName) {
       }
     } catch (err) {
       console.error(err);
-      alert("❌ Network error, dobara try karein");
+      alert("❌ " + (err.message || "Network error, dobara try karein"));
     } finally {
       el("saveEditBtn").disabled = false;
       el("saveEditBtn").textContent = "Save";
@@ -2573,14 +2640,18 @@ function openEditRecord(incomingEnc, e){
     if(kl === "password" || kl === "role") return; // hidden fields not editable here
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
+    const isTextarea = kl.includes("note") || kl.includes("for");
     const label = document.createElement("label"); label.textContent = k;
     const isId = (kl === "id");
-    const input = document.createElement(k.toLowerCase().includes("note") || k.toLowerCase().includes("for") ? "textarea" : "input");
+    const input = document.createElement(isTextarea ? "textarea" : "input");
     input.id = id;
     input.value = val;
     if (isId) input.disabled = true; // ID khud badalne nahi dena
-    container.appendChild(label);
-    container.appendChild(input);
+    const group = document.createElement("div");
+    if (isTextarea) group.style.gridColumn = "1 / -1";
+    group.appendChild(label);
+    group.appendChild(input);
+    container.appendChild(group);
   });
   el("editTitle").textContent = "Edit: " + (rec["ID"]||rec[SETTINGS?.MemberColumn]||"Record");
   el("editPopup").style.display = "flex";
@@ -2598,16 +2669,13 @@ function openEditRecord(incomingEnc, e){
     el("saveEditBtn").disabled = true;
     el("saveEditBtn").textContent = "Saving...";
     try {
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "editRow",
-          sheetName: currentTab,
-          idColumn: idColumn,
-          id: recordId,
-          data: updated
-        })
-      }).then(r => r.json());
+      const res = await callCrudBackend_({
+        action: "editRow",
+        sheetName: currentTab,
+        idColumn: idColumn,
+        id: recordId,
+        data: updated
+      });
 
       if (res.success) {
         Object.keys(updated).forEach(k => tableData[recIndex][k] = updated[k]);
@@ -2620,7 +2688,7 @@ function openEditRecord(incomingEnc, e){
       }
     } catch(err) {
       console.error(err);
-      alert("❌ Network error, dobara try karein");
+      alert("❌ " + (err.message || "Network error, dobara try karein"));
     } finally {
       el("saveEditBtn").disabled = false;
       el("saveEditBtn").textContent = "Save";
@@ -2650,15 +2718,12 @@ async function deleteRecord(incomingEnc, e){
   }
 
   try {
-    const res = await fetch(WEB_APP_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        action: "deleteRow",
-        sheetName: currentTab,
-        idColumn: idColumn,
-        id: incoming
-      })
-    }).then(r => r.json());
+    const res = await callCrudBackend_({
+      action: "deleteRow",
+      sheetName: currentTab,
+      idColumn: idColumn,
+      id: incoming
+    });
 
     if (res.success) {
       tableData.splice(idx,1);
@@ -2670,7 +2735,7 @@ async function deleteRecord(incomingEnc, e){
     }
   } catch(err) {
     console.error(err);
-    alert("❌ Network error, dobara try karein");
+    alert("❌ " + (err.message || "Network error, dobara try karein"));
   }
 }
 /* helper for print rows fallback (keeps earlier compatibility) */
