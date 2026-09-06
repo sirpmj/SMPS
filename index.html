@@ -623,6 +623,9 @@ style="background:#008000;color:#fff;font-size:16px">
          class="search-input"
          placeholder=" 🔍 Search in table...">
 
+  <!-- ADD NEW (role/tab permission ke hisaab se JS dikhata/chupata hai) -->
+  <button id="addNewBtn" type="button" style="display:none;background:#1a9c4b;color:#fff;border:none;">➕ Add New</button>
+
 </div>
 
       <!-- Content Table -->
@@ -657,7 +660,7 @@ style="background:#008000;color:#fff;font-size:16px">
       <button id="saveEditBtn">Save</button>
       <button id="cancelEditBtn">Cancel</button>
     </div>
-    <div style="margin-top:8px;font-size:13px;color:#666">Note: Changes are applied locally in this UI only and are not written back to Google Sheets from this page.</div>
+    <div style="margin-top:8px;font-size:13px;color:#666">Note: Save karne par yeh seedha Google Sheet mein update ho jayega.</div>
   </div>
 </div>
 <!-- 🔻 Footer (auto-filled from Settings sheet) -->
@@ -746,6 +749,32 @@ function safeSet(id, prop, value){
    Config / Sheet ID
    =========================== */
 const SHEET_ID = "1Ws2WH9ZT7-aBSlJAKqBHCWqTO57Ayxvj2ZPQxSSVUiI";
+
+/* ===========================
+   ADD / EDIT / DELETE CONFIG
+   =========================== */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec";
+
+// Yeh tabs "raw data" hain — inme direct add/edit/delete allowed hai.
+// Fund Ledger, Cash Book, Bank Book JAAN-BUJHKAR yahan NAHI hain kyonki
+// woh formula (SORT/FILTER) se ban rahi hain — unhe edit karna hai to
+// Receipts/Expenses/Transfer mein karo, woh khud-b-khud update ho jayengi.
+//
+// idPrefix: naya record add karte waqt ID auto-generate karne ke liye (jaise REC/0001)
+//           null rakho agar us sheet ka ID pattern pata nahi / ID column hi nahi hai
+// allowEditDelete: false rakho agar sheet mein "ID" column nahi hai (jaise Transfer) —
+//           unke liye abhi sirf ADD allowed hai, Edit/Delete nahi (record match nahi ho payega)
+const CRUD_ALLOWED_TABS = {
+  "Receipts":      { idPrefix: "REC", allowEditDelete: true },
+  "Expenses":      { idPrefix: "EXP", allowEditDelete: true },
+  "Transfer":      { idPrefix: null,  allowEditDelete: false },
+  "Members":       { idPrefix: null,  allowEditDelete: true },
+  "Boli":          { idPrefix: null,  allowEditDelete: true },
+  "Donation":      { idPrefix: null,  allowEditDelete: true },
+  "Meetings":      { idPrefix: null,  allowEditDelete: true },
+  "Announcements": { idPrefix: null,  allowEditDelete: true },
+  "Assets":        { idPrefix: null,  allowEditDelete: true }
+};
 /* ===========================
    DOM Helpers & Globals
    =========================== */
@@ -1756,6 +1785,8 @@ async function loadTab(sheetName) {
     if (tableData.length === 0) {
       el("contentArea").innerHTML =
         "<div class='muted'>No data in " + sheetName + "</div>";
+      if (document.getElementById("addNewBtn"))
+        document.getElementById("addNewBtn").style.display = "none";
       return;
     }
 
@@ -1797,11 +1828,112 @@ if(sheetName === "Members"){
     // ✅ Render table (MUST exist)
     renderTable();
 
+    // ➕ Add New button — sirf tabhi dikhao jab tab CRUD-allowed ho aur role ko ADD permission ho
+    updateAddNewButton(sheetName);
+
   } catch (e) {
     console.error("loadTab error:", e);
     el("contentArea").innerHTML =
       "<div class='muted'>Error loading data</div>";
   }
+}
+
+/* ===========================
+   ADD NEW RECORD
+   =========================== */
+function updateAddNewButton(sheetName) {
+  const btn = document.getElementById("addNewBtn");
+  if (!btn) return;
+  const crudCfg = CRUD_ALLOWED_TABS[sheetName];
+  const actions = ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || [];
+  if (crudCfg && actions.includes("ADD")) {
+    btn.style.display = "inline-block";
+    btn.onclick = () => openAddRecordForm(sheetName);
+  } else {
+    btn.style.display = "none";
+    btn.onclick = null;
+  }
+}
+
+function openAddRecordForm(sheetName) {
+  const crudCfg = CRUD_ALLOWED_TABS[sheetName];
+  if (!crudCfg) return;
+
+  // Columns: tableData se lo agar data hai, warna khaali form nahi bana sakte
+  const columns = tableData.length
+    ? Array.from(new Set(tableData.flatMap(row => Object.keys(row)))).filter(Boolean)
+    : [];
+
+  if (!columns.length) {
+    alert("Is tab ke columns pata nahi chal paaye. Pehle sheet mein kam se kam header row hona chahiye.");
+    return;
+  }
+
+  const container = el("editFields");
+  container.innerHTML = "";
+  const inputIds = [];
+
+  columns.forEach(k => {
+    const kl = k.toLowerCase();
+    if (kl === "password" || kl === "role") return;
+    const id = "af_" + k.replace(/\s+/g, "_");
+    inputIds.push({ key: k, id });
+    const label = document.createElement("label"); label.textContent = k;
+    const input = document.createElement(kl.includes("note") || kl.includes("for") ? "textarea" : "input");
+    input.id = id;
+    if (kl === "id") {
+      input.disabled = true;
+      input.placeholder = crudCfg.idPrefix ? "Auto-generate hoga (" + crudCfg.idPrefix + "/....)" : "Khaali chhodo agar zaroori nahi";
+    }
+    if (kl.includes("date")) {
+      input.placeholder = "DD/MM/YYYY";
+    }
+    container.appendChild(label);
+    container.appendChild(input);
+  });
+
+  el("editTitle").textContent = "Add New: " + sheetName;
+  el("editPopup").style.display = "flex";
+
+  el("saveEditBtn").onclick = async () => {
+    const data = {};
+    inputIds.forEach(({ key, id }) => {
+      const node = document.getElementById(id);
+      if (node && !node.disabled) data[key] = node.value;
+    });
+
+    el("saveEditBtn").disabled = true;
+    el("saveEditBtn").textContent = "Saving...";
+    try {
+      const res = await fetch(WEB_APP_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "addRow",
+          sheetName: sheetName,
+          idPrefix: crudCfg.idPrefix || undefined,
+          data: data
+        })
+      }).then(r => r.json());
+
+      if (res.success) {
+        delete CACHE[sheetName];
+        el("editPopup").style.display = "none";
+        alert("नया रिकॉर्ड जोड़ दिया गया है।" + (res.id ? " (ID: " + res.id + ")" : ""));
+        loadTab(sheetName); // fresh reload
+      } else {
+        alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Network error, dobara try karein");
+    } finally {
+      el("saveEditBtn").disabled = false;
+      el("saveEditBtn").textContent = "Save";
+    }
+  };
+  el("cancelEditBtn").onclick = () => {
+    el("editPopup").style.display = "none";
+  };
 }
 
 
@@ -2101,6 +2233,15 @@ function renderActionButtons(row, encId) {
   let html = `<div class="action-wrap">
     <a class="action-link print" href="#" onclick="viewRecord('${encId}', event)">View</a>`;
   const actions = ROLE_ACCESS[currentUser.role]?.[currentTab]?.canAction || [];
+  const crudCfg = CRUD_ALLOWED_TABS[currentTab];
+  if (crudCfg && crudCfg.allowEditDelete) {
+    if (actions.includes("EDIT")) {
+      html += `<a class="action-link edit" href="#" onclick="openEditRecord('${encId}', event)">Edit</a>`;
+    }
+    if (actions.includes("DELETE")) {
+      html += `<a class="action-link delete" href="#" onclick="deleteRecord('${encId}', event)">Delete</a>`;
+    }
+  }
   if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
     mobile = mobile.replace(/\D/g, ""); // remove any non-digit characters
@@ -2421,6 +2562,8 @@ function openEditRecord(incomingEnc, e){
     return;
   }
   const rec = {...tableData[recIndex]}; // copy
+  const idColumn = rec["ID"] ? "ID" : (SETTINGS?.MemberColumn || "Member");
+  const recordId = rec[idColumn] || "";
   // Build fields
   const container = el("editFields");
   container.innerHTML = "";
@@ -2431,27 +2574,57 @@ function openEditRecord(incomingEnc, e){
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
     const label = document.createElement("label"); label.textContent = k;
+    const isId = (kl === "id");
     const input = document.createElement(k.toLowerCase().includes("note") || k.toLowerCase().includes("for") ? "textarea" : "input");
     input.id = id;
     input.value = val;
+    if (isId) input.disabled = true; // ID khud badalne nahi dena
     container.appendChild(label);
     container.appendChild(input);
   });
   el("editTitle").textContent = "Edit: " + (rec["ID"]||rec[SETTINGS?.MemberColumn]||"Record");
   el("editPopup").style.display = "flex";
-  el("saveEditBtn").onclick = () => {
-    // apply values back to tableData (local only)
+  el("saveEditBtn").onclick = async () => {
+    const updated = {};
     Object.keys(rec).forEach(k => {
       if(!k) return;
       const kl = k.toLowerCase();
       if(kl === "password" || kl === "role") return;
       const id = "ef_"+k.replace(/\s+/g,"_");
       const node = document.getElementById(id);
-      if(node) tableData[recIndex][k] = node.value;
+      if(node) updated[k] = node.value;
     });
-    el("editPopup").style.display = "none";
-    renderTable();
-    alert("रिकॉर्ड UI में अपडेट हो गया है। (नोट: Google Sheet में परिवर्तन के लिए स्क्रिप्ट/परमिशन ज़रूरी होंगे।)");
+
+    el("saveEditBtn").disabled = true;
+    el("saveEditBtn").textContent = "Saving...";
+    try {
+      const res = await fetch(WEB_APP_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "editRow",
+          sheetName: currentTab,
+          idColumn: idColumn,
+          id: recordId,
+          data: updated
+        })
+      }).then(r => r.json());
+
+      if (res.success) {
+        Object.keys(updated).forEach(k => tableData[recIndex][k] = updated[k]);
+        delete CACHE[currentTab]; // taaki agla load fresh aaye
+        el("editPopup").style.display = "none";
+        renderTable();
+        alert("रिकॉर्ड Google Sheet में save हो गया है।");
+      } else {
+        alert("❌ Error: " + (res.msg || "Save nahi ho paya"));
+      }
+    } catch(err) {
+      console.error(err);
+      alert("❌ Network error, dobara try karein");
+    } finally {
+      el("saveEditBtn").disabled = false;
+      el("saveEditBtn").textContent = "Save";
+    }
   };
   el("cancelEditBtn").onclick = () => {
     el("editPopup").style.display = "none";
@@ -2460,20 +2633,45 @@ function openEditRecord(incomingEnc, e){
 /* ===========================
    DELETE (Admin) - local only
    =========================== */
-function deleteRecord(incomingEnc, e){
+async function deleteRecord(incomingEnc, e){
   if (e && e.preventDefault) e.preventDefault();
   const incoming = decodeURIComponent(incomingEnc || "");
-  if(!confirm("क्या आप वाकई इस रिकॉर्ड को हटाना चाहते हैं? (इससे Google Sheet से नहीं हटेगा — केवल UI से हटेगा)")) return;
+  if(!confirm("क्या आप वाकई इस रिकॉर्ड को स्थायी रूप से हटाना चाहते हैं? यह Google Sheet से भी हट जाएगा।")) return;
   // find index
   let idx = tableData.findIndex(r => (r["ID"]||"") === incoming);
-  if(idx === -1) idx = tableData.findIndex(r => (r[SETTINGS?.MemberColumn] || r["Member"] || "") === incoming);
+  let idColumn = "ID";
+  if (idx === -1) {
+    idColumn = SETTINGS?.MemberColumn || "Member";
+    idx = tableData.findIndex(r => (r[idColumn] || "") === incoming);
+  }
   if(idx === -1){
     alert("रिकॉर्ड नहीं मिला।");
     return;
   }
-  tableData.splice(idx,1);
-  renderTable();
-  alert("रिकॉर्ड UI से हटा दिया गया है (स्थायी नहीं — Google Sheet पर बदलाव के लिए API आवश्यक)।");
+
+  try {
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "deleteRow",
+        sheetName: currentTab,
+        idColumn: idColumn,
+        id: incoming
+      })
+    }).then(r => r.json());
+
+    if (res.success) {
+      tableData.splice(idx,1);
+      delete CACHE[currentTab];
+      renderTable();
+      alert("रिकॉर्ड Google Sheet से हटा दिया गया है।");
+    } else {
+      alert("❌ Error: " + (res.msg || "Delete nahi ho paya"));
+    }
+  } catch(err) {
+    console.error(err);
+    alert("❌ Network error, dobara try karein");
+  }
 }
 /* helper for print rows fallback (keeps earlier compatibility) */
 function rowItem(label,val){return `<tr><td style="font-weight:bold;width:40%">${label}</td><td>${val||""}</td></tr>`;}
