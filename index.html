@@ -1921,6 +1921,86 @@ function updateAddNewButton(sheetName) {
   }
 }
 
+/* =========================================================================
+   Smart field builder — Member/Mode/categorical columns ke liye dropdown
+   banata hai, baaki ke liye normal text/textarea input.
+   ========================================================================= */
+function buildSmartField_(key, currentValue) {
+  const kl = key.toLowerCase();
+  const memberCol = (SETTINGS?.MemberColumn || "Member");
+  const isMemberCol = (key === memberCol || kl === "member");
+  const isModeCol = (kl === "mode");
+  const isIdCol = (kl === "id");
+  const isTextarea = kl.includes("note") || (kl.includes("for") && !isMemberCol);
+
+  let select = null;
+
+  // ---- Member dropdown: Members sheet se saare naam ----
+  if (isMemberCol && !isIdCol) {
+    const names = Object.values(MEMBERS || {})
+      .map(r => r[memberCol] || r["Member"] || "")
+      .filter(Boolean);
+    const uniqueNames = [...new Set(names)].sort((a, b) => a.localeCompare(b, "hi"));
+    if (uniqueNames.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें --", ""));
+      uniqueNames.forEach(n => select.appendChild(new Option(n, n)));
+    }
+  }
+
+  // ---- Mode dropdown: fixed options ----
+  if (isModeCol) {
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    ["Cash", "Bank", "UPI"].forEach(m => select.appendChild(new Option(m, m)));
+  }
+
+  // ---- Generic categorical dropdown: agar current tab ke data mein
+  //      is column ki thodi hi (<=20) distinct values hain, to dropdown do ----
+  if (!select && !isIdCol && !isTextarea && !kl.includes("date") &&
+      !kl.includes("amount") && !kl.includes("credit") && !kl.includes("debit") &&
+      !kl.includes("payment") && !kl.includes("balance") && !kl.includes("remark") &&
+      !kl.includes("mobile") && !kl.includes("email")) {
+    const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
+    const uniqueValues = [...new Set(values)];
+    if (uniqueValues.length >= 1 && uniqueValues.length <= 20 && uniqueValues.length < tableData.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें --", ""));
+      uniqueValues.sort((a, b) => a.localeCompare(b, "hi")).forEach(v => select.appendChild(new Option(v, v)));
+    }
+  }
+
+  if (select) {
+    select.className = "smart-select";
+    if (currentValue) {
+      // agar current value list mein nahi hai to add kar do taaki edit mein na khoye
+      if (![...select.options].some(o => o.value === currentValue)) {
+        select.appendChild(new Option(currentValue, currentValue));
+      }
+      select.value = currentValue;
+    }
+    // "Naya likhein" option — manual text entry ke liye switch
+    select.appendChild(new Option("✎ Naya / Other likhein...", "__other__"));
+    return { el: select, isSmart: true };
+  }
+
+  const input = document.createElement(isTextarea ? "textarea" : "input");
+  if (currentValue) input.value = currentValue;
+  return { el: input, isSmart: false, isTextarea };
+}
+
+function attachOtherToggle_(selectEl, wrapperGroup, key) {
+  selectEl.addEventListener("change", () => {
+    if (selectEl.value === "__other__") {
+      const textInput = document.createElement("input");
+      textInput.id = selectEl.id;
+      textInput.placeholder = "Naya " + key + " likhein";
+      wrapperGroup.replaceChild(textInput, selectEl);
+      textInput.focus();
+    }
+  });
+}
+
 function openAddRecordForm(sheetName) {
   const crudCfg = CRUD_ALLOWED_TABS[sheetName];
   if (!crudCfg) return;
@@ -1944,9 +2024,9 @@ function openAddRecordForm(sheetName) {
     if (kl === "password" || kl === "role") return;
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
-    const isTextarea = kl.includes("note") || kl.includes("for");
     const label = document.createElement("label"); label.textContent = k;
-    const input = document.createElement(isTextarea ? "textarea" : "input");
+
+    const { el: input, isTextarea } = buildSmartField_(k, "");
     input.id = id;
     if (kl === "id") {
       input.disabled = true;
@@ -1960,6 +2040,7 @@ function openAddRecordForm(sheetName) {
     group.appendChild(label);
     group.appendChild(input);
     container.appendChild(group);
+    if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
   });
 
   el("editTitle").textContent = "Add New: " + sheetName;
