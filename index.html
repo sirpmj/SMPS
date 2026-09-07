@@ -1955,6 +1955,21 @@ function buildSmartField_(key, currentValue) {
     ["Cash", "Bank", "UPI"].forEach(m => select.appendChild(new Option(m, m)));
   }
 
+  // ---- Expenses ka Type/Category dropdown: common fixed list + jo already sheet mein use ho chuki hain ----
+  if (!select && kl === "type" && currentTab === "Expenses") {
+    const predefinedExpenseTypes = [
+      "Food For Meetings", "Stationery", "Printing", "Transport",
+      "Rent", "Electricity Bill", "Maintenance", "Salary",
+      "Donation Expense", "Event Expense", "Miscellaneous"
+    ];
+    const existingTypes = tableData.map(r => (r["Type"] || "").toString().trim()).filter(Boolean);
+    const combined = [...new Set([...predefinedExpenseTypes, ...existingTypes])]
+      .sort((a, b) => a.localeCompare(b, "hi"));
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
+  }
+
   // ---- Generic categorical dropdown: agar current tab ke data mein
   //      is column ki thodi hi (<=20) distinct values hain, to dropdown do ----
   if (!select && !isIdCol && !isTextarea && !kl.includes("date") &&
@@ -2020,6 +2035,22 @@ function samplePlaceholder_(key) {
   return "";
 }
 
+function setSelectValueSafe_(selectEl, value) {
+  if (!selectEl || !value) return;
+  if (selectEl.tagName === "SELECT") {
+    if (![...selectEl.options].some(o => o.value === value)) {
+      // "Naya likhein" option se pehle insert karo
+      const otherOpt = [...selectEl.options].find(o => o.value === "__other__");
+      const newOpt = new Option(value, value);
+      if (otherOpt) selectEl.insertBefore(newOpt, otherOpt);
+      else selectEl.appendChild(newOpt);
+    }
+    selectEl.value = value;
+  } else {
+    selectEl.value = value;
+  }
+}
+
 function todayDDMMYYYY_() {
   const d = new Date();
   const dd = String(d.getDate()).padStart(2, "0");
@@ -2045,7 +2076,7 @@ function openAddRecordForm(sheetName) {
   container.innerHTML = "";
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null;
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
@@ -2079,40 +2110,59 @@ function openAddRecordForm(sheetName) {
       if (kl === "for") forSelectEl = input;
       if (kl === "type") typeSelectEl = input;
       if (kl === "received" || kl.includes("amount")) amountInputEl = input;
+      if (kl.includes("mobile")) mobileInputEl = input;
     }
   });
 
-  // 🆕 Receipts mein: Member + For/Type se Boli ya Donation ka pending amount auto-fetch
-  if (sheetName === "Receipts" && memberSelectEl && amountInputEl) {
+  // 🆕 Receipts mein: Member select karte hi Boli/Donation ka Mobile, For, Balance sab auto-fill
+  if (sheetName === "Receipts" && memberSelectEl) {
     (async () => {
       const [boliRows, donationRows] = await Promise.all([
         fetchSheet("Boli"), fetchSheet("Donation")
       ]);
-      const pendingBoli = {}, pendingDonation = {};
+      const info = {}; // name -> {mobile, forText, pendingBoli, pendingDonation}
+
       boliRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        pendingBoli[name] = (pendingBoli[name] || 0) + toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+        if (!info[name]) info[name] = { mobile: "", forBoli: "", forDonation: "", pendingBoli: 0, pendingDonation: 0 };
+        info[name].pendingBoli += toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+        info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
+        info[name].forBoli = info[name].forBoli || r["For"] || "";
       });
       donationRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        pendingDonation[name] = (pendingDonation[name] || 0) + toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+        if (!info[name]) info[name] = { mobile: "", forBoli: "", forDonation: "", pendingBoli: 0, pendingDonation: 0 };
+        info[name].pendingDonation += toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+        info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
+        info[name].forDonation = info[name].forDonation || r["For"] || "";
       });
 
-      const updateAmount = () => {
+      const updateFromMember = () => {
         const name = memberSelectEl.value;
-        if (!name) return;
-        const forVal = ((forSelectEl?.value || "") + " " + (typeSelectEl?.value || "")).toLowerCase();
-        if (forVal.includes("boli") && pendingBoli[name] !== undefined) {
-          amountInputEl.value = Math.max(0, pendingBoli[name]);
-        } else if (forVal.includes("donation") && pendingDonation[name] !== undefined) {
-          amountInputEl.value = Math.max(0, pendingDonation[name]);
+        if (!name || !info[name]) return;
+        const rec = info[name];
+
+        if (mobileInputEl && !mobileInputEl.value) mobileInputEl.value = rec.mobile || "";
+
+        // Jo bhi zyada pending hai (Boli ya Donation), usi ko priority do
+        const useBoliVal = rec.pendingBoli > 0 && rec.pendingBoli >= rec.pendingDonation;
+        const useDonationVal = rec.pendingDonation > 0 && !useBoliVal;
+
+        if (useBoliVal) {
+          setSelectValueSafe_(typeSelectEl, "Boli");
+          setSelectValueSafe_(forSelectEl, rec.forBoli);
+          if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingBoli);
+        } else if (useDonationVal) {
+          setSelectValueSafe_(typeSelectEl, "Donation");
+          setSelectValueSafe_(forSelectEl, rec.forDonation);
+          if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingDonation);
         }
       };
-      memberSelectEl.addEventListener("change", updateAmount);
-      if (forSelectEl) forSelectEl.addEventListener("change", updateAmount);
-      if (typeSelectEl) typeSelectEl.addEventListener("change", updateAmount);
+      memberSelectEl.addEventListener("change", updateFromMember);
+    })();
+  }
     })();
   }
 
