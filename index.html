@@ -2001,6 +2001,32 @@ function attachOtherToggle_(selectEl, wrapperGroup, key) {
   });
 }
 
+/* Sample/hint text har field ke liye — jo likhna hai wahi udhaharan dikhta hai */
+function samplePlaceholder_(key) {
+  const kl = key.toLowerCase();
+  if (kl.includes("mobile")) return "जैसे: 9876543210";
+  if (kl === "for" || kl.includes("purpose")) return "जैसे: सहयोग राशि, मकान मरम्मत";
+  if (kl.includes("note") || kl.includes("remark")) return "अतिरिक्त जानकारी (optional)";
+  if (kl.includes("received") || kl.includes("payment") || kl.includes("amount") ||
+      kl.includes("credit") || kl.includes("debit")) return "जैसे: 500";
+  if (kl === "type") return "जैसे: Donation, Boli, Expense";
+  if (kl.includes("email")) return "जैसे: name@example.com";
+  if (kl.includes("address")) return "पूरा पता लिखें";
+  if (kl.includes("occupation")) return "जैसे: व्यापार, नौकरी";
+  if (kl.includes("city")) return "जैसे: वापी";
+  if (kl.includes("district")) return "जैसे: वलसाड";
+  if (kl.includes("gotra")) return "गोत्र लिखें";
+  if (kl.includes("origin")) return "मूल स्थान";
+  return "";
+}
+
+function todayDDMMYYYY_() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
 function openAddRecordForm(sheetName) {
   const crudCfg = CRUD_ALLOWED_TABS[sheetName];
   if (!crudCfg) return;
@@ -2018,6 +2044,8 @@ function openAddRecordForm(sheetName) {
   const container = el("editFields");
   container.innerHTML = "";
   const inputIds = [];
+  const memberCol = SETTINGS?.MemberColumn || "Member";
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
@@ -2031,9 +2059,12 @@ function openAddRecordForm(sheetName) {
     if (kl === "id") {
       input.disabled = true;
       input.placeholder = crudCfg.idPrefix ? "Auto-generate hoga (" + crudCfg.idPrefix + "/....)" : "Khaali chhodo agar zaroori nahi";
-    }
-    if (kl.includes("date")) {
+    } else if (kl.includes("date")) {
       input.placeholder = "DD/MM/YYYY";
+      if (input.tagName !== "SELECT") input.value = todayDDMMYYYY_(); // 🆕 auto current date
+    } else if (input.tagName !== "SELECT") {
+      const hint = samplePlaceholder_(k);
+      if (hint) input.placeholder = hint; // 🆕 sample text
     }
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
@@ -2041,7 +2072,49 @@ function openAddRecordForm(sheetName) {
     group.appendChild(input);
     container.appendChild(group);
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
+
+    // Receipts ke liye Boli/Donation auto-fetch hetu references save karo
+    if (sheetName === "Receipts") {
+      if (k === memberCol || kl === "member") memberSelectEl = input;
+      if (kl === "for") forSelectEl = input;
+      if (kl === "type") typeSelectEl = input;
+      if (kl === "received" || kl.includes("amount")) amountInputEl = input;
+    }
   });
+
+  // 🆕 Receipts mein: Member + For/Type se Boli ya Donation ka pending amount auto-fetch
+  if (sheetName === "Receipts" && memberSelectEl && amountInputEl) {
+    (async () => {
+      const [boliRows, donationRows] = await Promise.all([
+        fetchSheet("Boli"), fetchSheet("Donation")
+      ]);
+      const pendingBoli = {}, pendingDonation = {};
+      boliRows.forEach(r => {
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        pendingBoli[name] = (pendingBoli[name] || 0) + toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+      });
+      donationRows.forEach(r => {
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        pendingDonation[name] = (pendingDonation[name] || 0) + toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+      });
+
+      const updateAmount = () => {
+        const name = memberSelectEl.value;
+        if (!name) return;
+        const forVal = ((forSelectEl?.value || "") + " " + (typeSelectEl?.value || "")).toLowerCase();
+        if (forVal.includes("boli") && pendingBoli[name] !== undefined) {
+          amountInputEl.value = Math.max(0, pendingBoli[name]);
+        } else if (forVal.includes("donation") && pendingDonation[name] !== undefined) {
+          amountInputEl.value = Math.max(0, pendingDonation[name]);
+        }
+      };
+      memberSelectEl.addEventListener("change", updateAmount);
+      if (forSelectEl) forSelectEl.addEventListener("change", updateAmount);
+      if (typeSelectEl) typeSelectEl.addEventListener("change", updateAmount);
+    })();
+  }
 
   el("editTitle").textContent = "Add New: " + sheetName;
   el("editPopup").style.display = "flex";
@@ -2710,8 +2783,16 @@ function openEditRecord(incomingEnc, e){
     return;
   }
   const rec = {...tableData[recIndex]}; // copy
-  const idColumn = rec["ID"] ? "ID" : (SETTINGS?.MemberColumn || "Member");
-  const recordId = rec[idColumn] || "";
+  const memberCol = SETTINGS?.MemberColumn || "Member";
+  let idColumn, recordId;
+  if (rec["ID"]) {
+    idColumn = "ID"; recordId = rec["ID"];
+  } else if (rec[memberCol]) {
+    idColumn = memberCol; recordId = rec[memberCol];
+  } else {
+    alert("इस sheet (" + currentTab + ") में record पहचानने के लिए 'ID' column नहीं मिला। पहले sheet में एक 'ID' column जोड़ें, फिर Edit/Delete काम करेगा।");
+    return;
+  }
   // Build fields
   const container = el("editFields");
   container.innerHTML = "";
