@@ -1862,6 +1862,17 @@ async function loadTab(sheetName) {
       });
     }
 
+    // 🆕 Cash Book / Bank Book: running balance JS mein khud calculate karo
+    // (sheet ka O-column formula dynamic rows ke saath extend nahi hota, isliye
+    // yeh zyada reliable hai — Fund Ledger pehle se date ke hisaab se sorted hai)
+    if (sheetName === "Cash Book" || sheetName === "Bank Book") {
+      let running = 0;
+      tableData = tableData.map(r => {
+        running += toNumber(r["Credit"]) - toNumber(r["Debit"]);
+        return { ...r, "Balance": running };
+      });
+    }
+
     // 🔹 No data
     if (tableData.length === 0) {
       el("contentArea").innerHTML =
@@ -2166,7 +2177,7 @@ function openAddRecordForm(sheetName) {
   container.innerHTML = "";
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null;
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
@@ -2202,6 +2213,7 @@ function openAddRecordForm(sheetName) {
       if (kl === "type") typeSelectEl = input;
       if (kl === "received" || kl.includes("amount")) amountInputEl = input;
       if (kl.includes("mobile")) mobileInputEl = input;
+      if (kl.includes("boli")) boliRefInputEl = input; // 🆕 "Boli ID"/"Boli Ref" column
     }
     // Boli/Donation ke liye Firm Name auto-fetch hetu references
     if (sheetName === "Boli" || sheetName === "Donation") {
@@ -2234,20 +2246,20 @@ function openAddRecordForm(sheetName) {
       const [boliRows, donationRows] = await Promise.all([
         fetchSheet("Boli"), fetchSheet("Donation")
       ]);
-      const info = {}; // name -> {mobile, forText, pendingBoli, pendingDonation}
+      const info = {}; // name -> {mobile, forDonation, pendingDonation, boliPledges:[{id,pending,forText}]}
 
       boliRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        if (!info[name]) info[name] = { mobile: "", forBoli: "", forDonation: "", pendingBoli: 0, pendingDonation: 0 };
-        info[name].pendingBoli += toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+        if (!info[name]) info[name] = { mobile: "", forDonation: "", pendingDonation: 0, boliPledges: [] };
+        const pending = toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+        info[name].boliPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "" });
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
-        info[name].forBoli = info[name].forBoli || r["For"] || "";
       });
       donationRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        if (!info[name]) info[name] = { mobile: "", forBoli: "", forDonation: "", pendingBoli: 0, pendingDonation: 0 };
+        if (!info[name]) info[name] = { mobile: "", forDonation: "", pendingDonation: 0, boliPledges: [] };
         info[name].pendingDonation += toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
         info[name].forDonation = info[name].forDonation || r["For"] || "";
@@ -2260,18 +2272,25 @@ function openAddRecordForm(sheetName) {
 
         if (mobileInputEl && !mobileInputEl.value) mobileInputEl.value = rec.mobile || "";
 
-        // Jo bhi zyada pending hai (Boli ya Donation), usi ko priority do
-        const useBoliVal = rec.pendingBoli > 0 && rec.pendingBoli >= rec.pendingDonation;
+        // Sabse pehla unpaid Boli pledge dhoondo (agar ek se zyada hain)
+        const unpaidBoli = rec.boliPledges.find(p => p.pending > 0);
+        const totalPendingBoli = rec.boliPledges.reduce((s, p) => s + Math.max(0, p.pending), 0);
+
+        const useBoliVal = totalPendingBoli > 0 && totalPendingBoli >= rec.pendingDonation;
         const useDonationVal = rec.pendingDonation > 0 && !useBoliVal;
 
-        if (useBoliVal) {
+        if (useBoliVal && unpaidBoli) {
           setSelectValueSafe_(typeSelectEl, "Boli");
-          setSelectValueSafe_(forSelectEl, rec.forBoli);
-          if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingBoli);
+          setSelectValueSafe_(forSelectEl, unpaidBoli.forText);
+          if (amountInputEl) amountInputEl.value = Math.max(0, unpaidBoli.pending);
+          // 🆕 Sabse zaroori: Boli ke us specific pledge ka ID Receipts ke linking column mein bharo,
+          // warna Boli sheet ka SUMIFS formula is payment ko count hi nahi karega
+          if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, unpaidBoli.id);
         } else if (useDonationVal) {
           setSelectValueSafe_(typeSelectEl, "Donation");
           setSelectValueSafe_(forSelectEl, rec.forDonation);
           if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingDonation);
+          if (boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
         }
       };
       memberSelectEl.addEventListener("change", updateFromMember);
