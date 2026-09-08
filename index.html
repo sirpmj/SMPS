@@ -112,7 +112,7 @@ function setCache(key, value, expiry) {
 .card{background:#fff;padding:18px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.05);margin-bottom:6px;transition:0.3s}
 .card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.08)}
 .dashboard{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px}
-.dash-card{flex:1 1 45%;padding:12px;border-radius:12px;text-align:center;font-size:14px;font-weight:500;box-shadow:0 2px 6px rgba(0,0,0,0.05)}
+.dash-card{flex:1 1 30%;padding:12px;border-radius:12px;text-align:center;font-size:14px;font-weight:500;box-shadow:0 2px 6px rgba(0,0,0,0.05)}
 .dash-card h4{margin:0 0 6px;font-size:13px}
 .dash-card p{margin:0;font-size:16px;font-weight:bold}
 
@@ -394,16 +394,32 @@ button:hover{opacity:0.9}
   width: 45%;
   font-size: 14px;
 }
-/* small edit modal */
-#editPopup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:1100}
-#editPopup .edit-content{background:#fff;padding:16px;border-radius:10px;max-width:600px;width:92%;max-height:85vh;overflow-y:auto}
-#editPopup #editFields{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-#editPopup label{display:block;margin-top:6px;font-weight:600;font-size:13px}
-#editPopup input, #editPopup textarea{width:100%;padding:7px;border:1px solid #ccc;border-radius:6px;margin-top:3px;font-size:13px}
-#editPopup textarea{grid-column:1 / -1;min-height:50px}
+/* small edit modal — modern layout */
+#editPopup{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.55);align-items:center;justify-content:center;z-index:1100}
+#editPopup .edit-content{background:#fff;padding:0;border-radius:16px;max-width:640px;width:92%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.25)}
+#editPopup #editTitle{margin:0;padding:16px 20px;font-size:17px;font-weight:700;border-bottom:1px solid #eee;background:#fafbfc;color:#1a1a2e}
+#editPopup #editFields{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;padding:16px 20px;overflow-y:auto;flex:1}
+#editPopup label{display:block;margin-top:8px;font-weight:600;font-size:12.5px;color:#475569;letter-spacing:.2px}
+#editPopup input, #editPopup textarea, #editPopup select{
+  width:100%;padding:9px 10px;border:1.5px solid #e2e8f0;border-radius:8px;margin-top:4px;
+  font-size:14px;background:#fff;transition:border-color .15s, box-shadow .15s;box-sizing:border-box
+}
+#editPopup input:focus, #editPopup textarea:focus, #editPopup select:focus{
+  outline:none;border-color:#4a90e2;box-shadow:0 0 0 3px rgba(74,144,226,0.15)
+}
+#editPopup input:disabled{background:#f1f5f9;color:#64748b}
+#editPopup textarea{grid-column:1 / -1;min-height:54px;resize:vertical}
+#editPopup select{grid-column:auto}
+.popup-actions{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid #eee;background:#fafbfc}
+.popup-actions button{padding:9px 20px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:opacity .15s}
+.popup-actions button:hover{opacity:.88}
+#saveEditBtn{background:#1a9c4b;color:#fff}
+#cancelEditBtn{background:#eee;color:#333}
 @media (max-width:600px){
-  #editPopup .edit-content{max-width:96%;width:96%;padding:12px;max-height:90vh}
-  #editPopup #editFields{grid-template-columns:1fr}
+  #editPopup .edit-content{max-width:96%;width:96%;max-height:92vh;border-radius:12px}
+  #editPopup #editFields{grid-template-columns:1fr;padding:14px 16px}
+  #editPopup #editTitle{padding:14px 16px;font-size:16px}
+  .popup-actions{padding:12px 16px}
 }
 /* ---------- Responsive ---------- */
 @media(max-width: 600px){
@@ -663,11 +679,10 @@ style="background:#008000;color:#fff;font-size:16px">
   <div class="edit-content">
     <h3 id="editTitle">Edit Record</h3>
     <div id="editFields"></div>
-    <div style="margin-top:10px;text-align:center">
-      <button id="saveEditBtn">Save</button>
+    <div class="popup-actions">
       <button id="cancelEditBtn">Cancel</button>
+      <button id="saveEditBtn">Save</button>
     </div>
-    <div style="margin-top:8px;font-size:13px;color:#666">Note: Save karne par yeh seedha Google Sheet mein update ho jayega.</div>
   </div>
 </div>
 <!-- 🔻 Footer (auto-filled from Settings sheet) -->
@@ -806,8 +821,8 @@ const CRUD_ALLOWED_TABS = {
   "Expenses":      { idPrefix: "EXP", allowEditDelete: true },
   "Transfer":      { idPrefix: "TRF", allowEditDelete: true },
   "Members":       { idPrefix: null,  allowEditDelete: true },
-  "Boli":          { idPrefix: null,  allowEditDelete: true },
-  "Donation":      { idPrefix: null,  allowEditDelete: true },
+  "Boli":          { idPrefix: "BOLI", allowEditDelete: true },
+  "Donation":      { idPrefix: "DON",  allowEditDelete: true },
   "Meetings":      { idPrefix: null,  allowEditDelete: true },
   "Announcements": { idPrefix: null,  allowEditDelete: true },
   "Assets":        { idPrefix: null,  allowEditDelete: true }
@@ -1931,9 +1946,11 @@ function buildSmartField_(key, currentValue) {
   const isMemberCol = (key === memberCol || kl === "member");
   const isModeCol = (kl === "mode");
   const isIdCol = (kl === "id");
-  const isTextarea = kl.includes("note") || (kl.includes("for") && !isMemberCol);
+  const isForCol = (kl === "for" && !isMemberCol);
+  const isNoteCol = (kl.includes("note") || kl.includes("remark"));
 
   let select = null;
+  let fallbackMultiline = false; // "Other" chuna to textarea milega ya input
 
   // ---- Member dropdown: Members sheet se saare naam ----
   if (isMemberCol && !isIdCol) {
@@ -1970,11 +1987,47 @@ function buildSmartField_(key, currentValue) {
     combined.forEach(v => select.appendChild(new Option(v, v)));
   }
 
+  // ---- Occupation dropdown: common fixed list + jo sheet mein already hain ----
+  if (!select && kl === "occupation") {
+    const predefinedOccupations = [
+      "व्यापार", "नौकरी", "खेती", "ठेकेदार", "सरकारी सेवा", "प्राइवेट जॉब", "स्वरोजगार", "अन्य"
+    ];
+    const existing = tableData.map(r => (r["Occupation"] || "").toString().trim()).filter(Boolean);
+    const combined = [...new Set([...predefinedOccupations, ...existing])];
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
+  }
+
+  // ---- "For" dropdown: is tab mein jo bhi purpose pehle likhe ja chuke hain (higher cap) ----
+  if (!select && isForCol) {
+    const values = tableData.map(r => (r["For"] || "").toString().trim()).filter(Boolean);
+    const uniqueValues = [...new Set(values)].sort((a, b) => a.localeCompare(b, "hi"));
+    if (uniqueValues.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें --", ""));
+      uniqueValues.forEach(v => select.appendChild(new Option(v, v)));
+    }
+    fallbackMultiline = false;
+  }
+
+  // ---- "Notes" dropdown: sabse recently use hui values pehle ----
+  if (!select && isNoteCol) {
+    const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
+    const recentFirst = [...new Set(values.slice().reverse())].slice(0, 20);
+    if (recentFirst.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें (हाल में उपयोग हुए) --", ""));
+      recentFirst.forEach(v => select.appendChild(new Option(v, v)));
+    }
+    fallbackMultiline = true;
+  }
+
   // ---- Generic categorical dropdown: agar current tab ke data mein
   //      is column ki thodi hi (<=20) distinct values hain, to dropdown do ----
-  if (!select && !isIdCol && !isTextarea && !kl.includes("date") &&
+  if (!select && !isIdCol && !isForCol && !isNoteCol && !isDateField_(key) &&
       !kl.includes("amount") && !kl.includes("credit") && !kl.includes("debit") &&
-      !kl.includes("payment") && !kl.includes("balance") && !kl.includes("remark") &&
+      !kl.includes("payment") && !kl.includes("balance") &&
       !kl.includes("mobile") && !kl.includes("email")) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
     const uniqueValues = [...new Set(values)];
@@ -1987,6 +2040,7 @@ function buildSmartField_(key, currentValue) {
 
   if (select) {
     select.className = "smart-select";
+    select.dataset.multiline = fallbackMultiline ? "1" : "0";
     if (currentValue) {
       // agar current value list mein nahi hai to add kar do taaki edit mein na khoye
       if (![...select.options].some(o => o.value === currentValue)) {
@@ -1999,6 +2053,7 @@ function buildSmartField_(key, currentValue) {
     return { el: select, isSmart: true };
   }
 
+  const isTextarea = isNoteCol;
   const input = document.createElement(isTextarea ? "textarea" : "input");
   if (currentValue) input.value = currentValue;
   return { el: input, isSmart: false, isTextarea };
@@ -2007,10 +2062,13 @@ function buildSmartField_(key, currentValue) {
 function attachOtherToggle_(selectEl, wrapperGroup, key) {
   selectEl.addEventListener("change", () => {
     if (selectEl.value === "__other__") {
-      const textInput = document.createElement("input");
+      const multiline = selectEl.dataset.multiline === "1";
+      const textInput = document.createElement(multiline ? "textarea" : "input");
       textInput.id = selectEl.id;
-      textInput.placeholder = "Naya " + key + " likhein";
+      const hint = samplePlaceholder_(key);
+      textInput.placeholder = hint || ("Naya " + key + " likhein");
       wrapperGroup.replaceChild(textInput, selectEl);
+      if (multiline) wrapperGroup.style.gridColumn = "1 / -1";
       textInput.focus();
     }
   });
@@ -2051,6 +2109,38 @@ function setSelectValueSafe_(selectEl, value) {
   }
 }
 
+function isDateField_(key) {
+  const kl = key.toLowerCase();
+  return kl.includes("date") || kl.includes("birthday") || kl.includes("dob") ||
+         kl.includes("joining") || kl.includes("anniversary");
+}
+
+function isoToday_() {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function isoToDDMMYYYY_(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+function ddmmyyyyToISO_(val) {
+  if (!val) return "";
+  const m = String(val).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  // agar already ISO ya Date-parseable hai
+  const d = new Date(val);
+  if (!isNaN(d)) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+  return "";
+}
+
 function todayDDMMYYYY_() {
   const d = new Date();
   const dd = String(d.getDate()).padStart(2, "0");
@@ -2076,23 +2166,24 @@ function openAddRecordForm(sheetName) {
   container.innerHTML = "";
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null;
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
+    if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
     const label = document.createElement("label"); label.textContent = k;
 
     const { el: input, isTextarea } = buildSmartField_(k, "");
     input.id = id;
-    if (kl === "id") {
-      input.disabled = true;
-      input.placeholder = crudCfg.idPrefix ? "Auto-generate hoga (" + crudCfg.idPrefix + "/....)" : "Khaali chhodo agar zaroori nahi";
-    } else if (kl.includes("date")) {
-      input.placeholder = "DD/MM/YYYY";
-      if (input.tagName !== "SELECT") input.value = todayDDMMYYYY_(); // 🆕 auto current date
+    if (isDateField_(k)) {
+      // 🆕 Native date-picker (calendar se select karo), sheet format DD/MM/YYYY mein save hoga
+      if (input.tagName !== "SELECT") {
+        input.type = "date";
+        if (kl === "date") input.value = isoToday_(); // sirf main transaction Date auto-today
+      }
     } else if (input.tagName !== "SELECT") {
       const hint = samplePlaceholder_(k);
       if (hint) input.placeholder = hint; // 🆕 sample text
@@ -2112,7 +2203,30 @@ function openAddRecordForm(sheetName) {
       if (kl === "received" || kl.includes("amount")) amountInputEl = input;
       if (kl.includes("mobile")) mobileInputEl = input;
     }
+    // Boli/Donation ke liye Firm Name auto-fetch hetu references
+    if (sheetName === "Boli" || sheetName === "Donation") {
+      if (k === memberCol || kl === "member") memberSelectEl = input;
+      if (kl.includes("firm")) firmInputEl = input;
+    }
   });
+
+  // 🆕 Boli/Donation mein: Member select karte hi Firm Name auto-fill (Members sheet se)
+  if ((sheetName === "Boli" || sheetName === "Donation") && memberSelectEl && firmInputEl) {
+    (async () => {
+      const membersRows = await fetchSheet("Members");
+      const firmByName = {};
+      membersRows.forEach(r => {
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        const firmKey = Object.keys(r).find(kk => kk.toLowerCase().includes("firm"));
+        if (firmKey) firmByName[name] = r[firmKey] || "";
+      });
+      memberSelectEl.addEventListener("change", () => {
+        const name = memberSelectEl.value;
+        if (name && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
+      });
+    })();
+  }
 
   // 🆕 Receipts mein: Member select karte hi Boli/Donation ka Mobile, For, Balance sab auto-fill
   if (sheetName === "Receipts" && memberSelectEl) {
@@ -2171,7 +2285,8 @@ function openAddRecordForm(sheetName) {
     const data = {};
     inputIds.forEach(({ key, id }) => {
       const node = document.getElementById(id);
-      if (node && !node.disabled) data[key] = node.value;
+      if (!node || node.disabled) return;
+      data[key] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
     });
 
     el("saveEditBtn").disabled = true;
@@ -2187,8 +2302,13 @@ function openAddRecordForm(sheetName) {
       if (res.success) {
         delete CACHE[sheetName];
         el("editPopup").style.display = "none";
-        alert("नया रिकॉर्ड जोड़ दिया गया है।" + (res.id ? " (ID: " + res.id + ")" : ""));
-        loadTab(sheetName); // fresh reload
+        // 🆕 Live update — turant table mein naya row dikhao, bina poori tab reload ke
+        if (currentTab === sheetName) {
+          const newRow = { ...data };
+          if (res.id) newRow["ID"] = res.id;
+          tableData.push(newRow);
+          renderTable();
+        }
       } else {
         alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
       }
@@ -2850,18 +2970,39 @@ function openEditRecord(incomingEnc, e){
     if(kl === "password" || kl === "role") return; // hidden fields not editable here
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
-    const isTextarea = kl.includes("note") || kl.includes("for");
     const label = document.createElement("label"); label.textContent = k;
-    const isId = (kl === "id");
-    const input = document.createElement(isTextarea ? "textarea" : "input");
+
+    let input, isTextarea = false;
+    if (kl === "id") {
+      // 🆕 ID clearly readonly dikhao, confusing empty box nahi
+      input = document.createElement("input");
+      input.value = val;
+      input.disabled = true;
+      input.style.background = "#f0f0f0";
+      input.style.fontWeight = "600";
+    } else if (isDateField_(k)) {
+      // 🆕 Native date-picker, existing DD/MM/YYYY value ko ISO mein convert karke dikhao
+      input = document.createElement("input");
+      input.type = "date";
+      input.value = ddmmyyyyToISO_(val);
+    } else {
+      const built = buildSmartField_(k, val);
+      input = built.el;
+      isTextarea = built.isTextarea;
+      if (input.tagName === "SELECT") {
+        // group banane ke baad Other-toggle attach karenge (neeche)
+      } else {
+        const hint = samplePlaceholder_(k);
+        if (hint && !val) input.placeholder = hint;
+      }
+    }
     input.id = id;
-    input.value = val;
-    if (isId) input.disabled = true; // ID khud badalne nahi dena
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
     group.appendChild(label);
     group.appendChild(input);
     container.appendChild(group);
+    if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
   });
   el("editTitle").textContent = "Edit: " + (rec["ID"]||rec[SETTINGS?.MemberColumn]||"Record");
   el("editPopup").style.display = "flex";
@@ -2873,7 +3014,7 @@ function openEditRecord(incomingEnc, e){
       if(kl === "password" || kl === "role") return;
       const id = "ef_"+k.replace(/\s+/g,"_");
       const node = document.getElementById(id);
-      if(node) updated[k] = node.value;
+      if(node) updated[k] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
     });
 
     el("saveEditBtn").disabled = true;
