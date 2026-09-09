@@ -1873,6 +1873,28 @@ async function loadTab(sheetName) {
       });
     }
 
+    // 🆕 Transfer: Cash Book/Bank Book jaisi style mein Debit(From)/Credit(To)
+    // columns dikhao, aur Cash/Bank ka running balance bhi (jaisa Fund Ledger mein hota hai)
+    if (sheetName === "Transfer") {
+      let cashRunning = 0, bankRunning = 0;
+      tableData = tableData.map(r => {
+        const amt = toNumber(r["Amount"]);
+        const from = String(r["From"] || "").trim().toLowerCase();
+        const to = String(r["To"] || "").trim().toLowerCase();
+        if (from === "cash") cashRunning -= amt;
+        if (to === "cash") cashRunning += amt;
+        if (from === "bank") bankRunning -= amt;
+        if (to === "bank") bankRunning += amt;
+        return {
+          ...r,
+          "Debit (From)": amt,
+          "Credit (To)": amt,
+          "Cash Balance": cashRunning,
+          "Bank Balance": bankRunning
+        };
+      });
+    }
+
     // 🔹 No data
     if (tableData.length === 0) {
       el("contentArea").innerHTML =
@@ -2001,6 +2023,27 @@ function buildSmartField_(key, currentValue) {
     ["Cash", "Bank"].forEach(m => select.appendChild(new Option(m, m)));
   }
 
+  // ---- Year dropdown: current + pichhle kuch saal + jo already sheet mein use ho chuke hain ----
+  if (!select && kl === "year") {
+    const currentYear = new Date().getFullYear();
+    const recentYears = [];
+    for (let y = currentYear + 1; y >= currentYear - 5; y--) recentYears.push(String(y));
+    const existingYears = tableData.map(r => String(r["Year"] || "").trim()).filter(Boolean);
+    const combined = [...new Set([...recentYears, ...existingYears])];
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
+  }
+
+  // ---- "Show on Home" jaisa Yes/No field: hamesha fixed dropdown (chahe data kam ho) ----
+  if (!select && (kl.includes("show") || kl.includes("home")) && !isMemberCol) {
+    const existing = tableData.map(r => String(r[key] || "").trim()).filter(Boolean);
+    const combined = [...new Set(["Yes", "No", ...existing])];
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
+  }
+
   // ---- Expenses ka Type/Category dropdown: common fixed list + jo already sheet mein use ho chuki hain ----
   if (!select && kl === "type" && currentTab === "Expenses") {
     const predefinedExpenseTypes = [
@@ -2083,7 +2126,17 @@ function buildSmartField_(key, currentValue) {
 
   const isTextarea = isNoteCol || isLongTextCol;
   const input = document.createElement(isTextarea ? "textarea" : "input");
-  if (currentValue) input.value = currentValue;
+  if (currentValue) {
+    input.value = currentValue;
+  } else if (isLongTextCol && tableData.length) {
+    // 🆕 Add form mein (currentValue khaali hai) — pichhli baar jo likha gaya tha
+    // wahi starting template ke roop mein bhar do, editable rehta hai
+    const lastVal = [...tableData].reverse().map(r => r[key]).find(v => v);
+    if (lastVal) {
+      input.value = lastVal;
+      input.title = "पिछली बार का टेक्स्ट — ज़रूरत अनुसार बदल दें";
+    }
+  }
   return { el: input, isSmart: false, isTextarea };
 }
 
