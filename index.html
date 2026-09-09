@@ -3033,55 +3033,6 @@ function printPopupReceiptContent(title, bodyHtml) {
 <!-- Dynamic footer (replace existing footer element) -->
 <footer id="footer" class="site-footer" aria-label="Site footer">
   </footer>
-
-
-
-
-
-function renderMembers(data) {
-
-  const tbody = document.getElementById("memberTableBody");
-  tbody.innerHTML = "";
-
-  data.forEach(function(member) {
-
-    const isBirthday = isTodayBirthday(member.Birthday);
-
-    let row = "<tr class='" + (isBirthday ? "birthdayRow" : "") + "'>";
-
-    row += "<td>" + (member.MemberID || "") + "</td>";
-
-    row += "<td>" + (member.Name || "");
-    if(isBirthday) row += " 🎂";
-    row += "</td>";
-
-    row += "<td>" + (member.Birthday || "") + "</td>";
-
-    row += "<td>" + (member.Mobile || "") + "</td>";
-
-    if(isBirthday){
-      row += "<td><button onclick=\"sendBirthday('" + member.Mobile + "','" + member.Name + "')\">🎂 Send Wish</button></td>";
-    } else {
-      row += "<td><button onclick=\"sendWhatsApp('" + member.Mobile + "','" + member.Name + "')\">WhatsApp</button></td>";
-    }
-
-    row += "</tr>";
-
-   const fragment = document.createDocumentFragment();
-
-data.forEach(row => {
-  const tr = document.createElement("tr");
-  tr.innerHTML = "...";
-  fragment.appendChild(tr);
-});
-
-tbody.appendChild(fragment);
-
-  });
-}
-
-
-
       </body>
     </html>
   `;
