@@ -942,11 +942,7 @@ async function fetchSheet(sheetName, forceFresh){
       return CACHE[sheetName].data;
     }
 
-    // 🆕 forceFresh = true (Add/Edit/Delete ke baad) to opensheet.elk.sh ka
-    // apna server-side cache bhi bypass karo — warna woh purana data de sakta hai
-    // chahe hum apna CACHE clear kar dein
-    const bustParam = forceFresh ? `?_=${now}` : "";
-    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(sheetName)}${bustParam}`);
+    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(sheetName)}`);
     const json = await res.json();
 
     const data = Array.isArray(json) ? json : [];
