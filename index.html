@@ -1880,24 +1880,30 @@ async function loadTab(sheetName) {
       });
     }
 
-    // 🆕 Transfer: Cash Book/Bank Book jaisi style mein Debit(From)/Credit(To)
-    // columns dikhao, aur Cash/Bank ka running balance bhi (jaisa Fund Ledger mein hota hai)
+    // 🆕 Transfer: Debit(From)/Credit(To) columns + ASLI Cash/Bank Balance
+    // (Fund Ledger se, us date tak ka poora balance — sirf transfer ka effect nahi)
     if (sheetName === "Transfer") {
-      let cashRunning = 0, bankRunning = 0;
+      const fundLedgerRows = await fetchSheet("Fund Ledger");
+      let cashRun = 0, bankRun = 0;
+      const balanceByDate = {}; // date -> us date tak ka poora Cash/Bank balance
+      fundLedgerRows.forEach(r => {
+        const mode = String(r["Mode"] || "").trim().toLowerCase();
+        const amt = toNumber(r["Credit"]) - toNumber(r["Debit"]);
+        if (mode === "cash") cashRun += amt;
+        if (mode === "bank" || mode === "upi") bankRun += amt;
+        const d = r["Date"];
+        if (d) balanceByDate[d] = { cash: cashRun, bank: bankRun };
+      });
+
       tableData = tableData.map(r => {
         const amt = toNumber(r["Amount"]);
-        const from = String(r["From"] || "").trim().toLowerCase();
-        const to = String(r["To"] || "").trim().toLowerCase();
-        if (from === "cash") cashRunning -= amt;
-        if (to === "cash") cashRunning += amt;
-        if (from === "bank") bankRunning -= amt;
-        if (to === "bank") bankRunning += amt;
+        const bal = balanceByDate[r["Date"]] || { cash: cashRun, bank: bankRun };
         return {
           ...r,
           "Debit (From)": amt,
           "Credit (To)": amt,
-          "Cash Balance": cashRunning,
-          "Bank Balance": bankRunning
+          "Cash Balance": bal.cash,
+          "Bank Balance": bal.bank
         };
       });
     }
