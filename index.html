@@ -819,7 +819,7 @@ async function callCrudBackend_(payload) {
 const CRUD_ALLOWED_TABS = {
   "Receipts":      { idPrefix: "REC", allowEditDelete: true },
   "Expenses":      { idPrefix: "EXP", allowEditDelete: true },
-  "Transfer":      { idPrefix: "TRF", allowEditDelete: true },
+  "Transfer":      { idPrefix: "TRF", idDigits: 3, allowEditDelete: true },
   "Members":       { idPrefix: null,  allowEditDelete: true },
   "Boli":          { idPrefix: "BOLI", allowEditDelete: true },
   "Donation":      { idPrefix: "DON",  allowEditDelete: true },
@@ -827,6 +827,13 @@ const CRUD_ALLOWED_TABS = {
   "Announcements": { idPrefix: null,  allowEditDelete: true },
   "Assets":        { idPrefix: null,  allowEditDelete: true }
 };
+
+// 🆕 Yeh columns webapp KHUD compute karke table mein dikhata hai (Cash Book,
+// Bank Book, Transfer ke liye) — yeh Google Sheet ke real columns nahi hain,
+// isliye Add/Edit form mein kabhi dikhne ya save hone nahi chahiye.
+const SYNTHETIC_DISPLAY_COLUMNS = [
+  "Balance", "Debit (From)", "Credit (To)", "Cash Balance", "Bank Balance"
+];
 /* ===========================
    DOM Helpers & Globals
    =========================== */
@@ -2234,8 +2241,12 @@ async function openAddRecordForm(sheetName) {
   if (!crudCfg) return;
 
   // Columns: tableData se lo agar data hai, warna khaali form nahi bana sakte
+  // 🆕 SYNTHETIC_DISPLAY_COLUMNS ko yahan se hata do — yeh sirf table mein
+  // dikhane ke liye webapp khud banata hai, yeh sheet ke real columns nahi hain
   const columns = tableData.length
-    ? Array.from(new Set(tableData.flatMap(row => Object.keys(row)))).filter(Boolean)
+    ? Array.from(new Set(tableData.flatMap(row => Object.keys(row))))
+        .filter(Boolean)
+        .filter(k => !SYNTHETIC_DISPLAY_COLUMNS.includes(k))
     : [];
 
   if (!columns.length) {
@@ -2425,6 +2436,7 @@ async function openAddRecordForm(sheetName) {
         action: "addRow",
         sheetName: sheetName,
         idPrefix: crudCfg.idPrefix || undefined,
+        idDigits: crudCfg.idDigits || 4,
         data: data
       });
 
@@ -3105,6 +3117,7 @@ async function openEditRecord(incomingEnc, e){
     if(!k) return;
     const kl = k.toLowerCase();
     if(kl === "password" || kl === "role") return; // hidden fields not editable here
+    if(SYNTHETIC_DISPLAY_COLUMNS.includes(k)) return; // 🆕 webapp-computed, sheet mein hai hi nahi
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
     const label = document.createElement("label"); label.textContent = k;
