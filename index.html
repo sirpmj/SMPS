@@ -832,7 +832,7 @@ const CRUD_ALLOWED_TABS = {
 // Bank Book, Transfer ke liye) — yeh Google Sheet ke real columns nahi hain,
 // isliye Add/Edit form mein kabhi dikhne ya save hone nahi chahiye.
 const SYNTHETIC_DISPLAY_COLUMNS = [
-  "Balance", "Debit (From)", "Credit (To)", "Cash Balance", "Bank Balance"
+  "Balance", "Debit (From)", "Credit (To)"
 ];
 /* ===========================
    DOM Helpers & Globals
@@ -1880,31 +1880,17 @@ async function loadTab(sheetName) {
       });
     }
 
-    // 🆕 Transfer: Debit(From)/Credit(To) columns + ASLI Cash/Bank Balance
-    // (Fund Ledger se, us date tak ka poora balance — sirf transfer ka effect nahi)
+    // 🆕 Transfer: agar Sheet mein Debit(From)/Credit(To) columns nahi hain,
+    // to webapp fallback ke roop mein khud bana deta hai. Cash Balance/Bank
+    // Balance ab Sheet ke apne ARRAYFORMULA se aate hain (jo humne banaya) —
+    // unhe yahan overwrite NAHI karte, Sheet ki value hi trust karte hain.
     if (sheetName === "Transfer") {
-      const fundLedgerRows = await fetchSheet("Fund Ledger");
-      let cashRun = 0, bankRun = 0;
-      const balanceByDate = {}; // date -> us date tak ka poora Cash/Bank balance
-      fundLedgerRows.forEach(r => {
-        const mode = String(r["Mode"] || "").trim().toLowerCase();
-        const amt = toNumber(r["Credit"]) - toNumber(r["Debit"]);
-        if (mode === "cash") cashRun += amt;
-        if (mode === "bank" || mode === "upi") bankRun += amt;
-        const d = r["Date"];
-        if (d) balanceByDate[d] = { cash: cashRun, bank: bankRun };
-      });
-
       tableData = tableData.map(r => {
         const amt = toNumber(r["Amount"]);
-        const bal = balanceByDate[r["Date"]] || { cash: cashRun, bank: bankRun };
-        return {
-          ...r,
-          "Debit (From)": amt,
-          "Credit (To)": amt,
-          "Cash Balance": bal.cash,
-          "Bank Balance": bal.bank
-        };
+        const out = { ...r };
+        if (out["Debit (From)"] === undefined || out["Debit (From)"] === "") out["Debit (From)"] = amt;
+        if (out["Credit (To)"] === undefined || out["Credit (To)"] === "") out["Credit (To)"] = amt;
+        return out;
       });
     }
 
