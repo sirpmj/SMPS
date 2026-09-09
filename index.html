@@ -2273,7 +2273,7 @@ async function openAddRecordForm(sheetName) {
   container.innerHTML = "";
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null, yearInputEl = null;
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null, yearInputEl = null, donationRefInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
@@ -2311,6 +2311,7 @@ async function openAddRecordForm(sheetName) {
       if (kl === "received" || kl.includes("amount")) amountInputEl = input;
       if (kl.includes("mobile")) mobileInputEl = input;
       if (kl.includes("boli")) boliRefInputEl = input; // 🆕 "Boli ID"/"Boli Ref" column
+      if (kl.includes("donation")) donationRefInputEl = input; // 🆕 "Donation ID"/"Donation Ref" column
       if (kl === "year") yearInputEl = input; // 🆕
     }
     // Boli/Donation ke liye Firm Name auto-fetch hetu references
@@ -2370,12 +2371,12 @@ async function openAddRecordForm(sheetName) {
       const [boliRows, donationRows] = await Promise.all([
         fetchSheet("Boli"), fetchSheet("Donation")
       ]);
-      const info = {}; // name -> {mobile, forDonation, pendingDonation, boliPledges:[{id,pending,forText}]}
+      const info = {}; // name -> {mobile, boliPledges:[{id,pending,forText,year}], donationPledges:[{id,pending,forText,year}]}
 
       boliRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        if (!info[name]) info[name] = { mobile: "", forDonation: "", pendingDonation: 0, boliPledges: [] };
+        if (!info[name]) info[name] = { mobile: "", boliPledges: [], donationPledges: [] };
         const pending = toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
         info[name].boliPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
@@ -2383,11 +2384,12 @@ async function openAddRecordForm(sheetName) {
       donationRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        if (!info[name]) info[name] = { mobile: "", forDonation: "", pendingDonation: 0, boliPledges: [] };
-        info[name].pendingDonation += toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+        if (!info[name]) info[name] = { mobile: "", boliPledges: [], donationPledges: [] };
+        // 🆕 Donation ab Boli jaisa — har pledge apna alag ID ke saath, taaki
+        // ek hi member ke MULTIPLE donations ho to sahi se alag track ho
+        const pending = toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+        info[name].donationPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
-        info[name].forDonation = info[name].forDonation || r["For"] || "";
-        info[name].donationYear = info[name].donationYear || r["Year"] || "";
       });
 
       const updateFromMember = () => {
@@ -2397,12 +2399,14 @@ async function openAddRecordForm(sheetName) {
 
         if (mobileInputEl && !mobileInputEl.value) mobileInputEl.value = rec.mobile || "";
 
-        // Sabse pehla unpaid Boli pledge dhoondo (agar ek se zyada hain)
+        // Sabse pehla unpaid Boli/Donation pledge dhoondo (agar ek se zyada hain)
         const unpaidBoli = rec.boliPledges.find(p => p.pending > 0);
+        const unpaidDonation = rec.donationPledges.find(p => p.pending > 0);
         const totalPendingBoli = rec.boliPledges.reduce((s, p) => s + Math.max(0, p.pending), 0);
+        const totalPendingDonation = rec.donationPledges.reduce((s, p) => s + Math.max(0, p.pending), 0);
 
-        const useBoliVal = totalPendingBoli > 0 && totalPendingBoli >= rec.pendingDonation;
-        const useDonationVal = rec.pendingDonation > 0 && !useBoliVal;
+        const useBoliVal = totalPendingBoli > 0 && totalPendingBoli >= totalPendingDonation;
+        const useDonationVal = totalPendingDonation > 0 && !useBoliVal;
 
         if (useBoliVal && unpaidBoli) {
           setSelectValueSafe_(typeSelectEl, "Boli");
@@ -2411,13 +2415,17 @@ async function openAddRecordForm(sheetName) {
           // 🆕 Sabse zaroori: Boli ke us specific pledge ka ID Receipts ke linking column mein bharo,
           // warna Boli sheet ka SUMIFS formula is payment ko count hi nahi karega
           if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, unpaidBoli.id);
-          if (yearInputEl) setSelectValueSafe_(yearInputEl, unpaidBoli.year); // 🆕
-        } else if (useDonationVal) {
+          if (donationRefInputEl && donationRefInputEl.tagName !== "SELECT") donationRefInputEl.value = "";
+          if (yearInputEl) setSelectValueSafe_(yearInputEl, unpaidBoli.year);
+        } else if (useDonationVal && unpaidDonation) {
           setSelectValueSafe_(typeSelectEl, "Donation");
-          setSelectValueSafe_(forSelectEl, rec.forDonation);
-          if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingDonation);
+          setSelectValueSafe_(forSelectEl, unpaidDonation.forText);
+          if (amountInputEl) amountInputEl.value = Math.max(0, unpaidDonation.pending);
+          // 🆕 Us specific Donation pledge ka ID bhi bharo, warna agar member ke
+          // 2 alag donations hain to dono ka Paid amount galat mix ho jayega
+          if (donationRefInputEl) setSelectValueSafe_(donationRefInputEl, unpaidDonation.id);
           if (boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
-          if (yearInputEl) setSelectValueSafe_(yearInputEl, rec.donationYear); // 🆕
+          if (yearInputEl) setSelectValueSafe_(yearInputEl, unpaidDonation.year);
         }
       };
       memberSelectEl.addEventListener("change", updateFromMember);
