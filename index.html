@@ -1873,6 +1873,28 @@ async function loadTab(sheetName) {
       });
     }
 
+    // 🆕 Transfer: Cash Book/Bank Book jaisi style mein Debit(From)/Credit(To)
+    // columns dikhao, aur Cash/Bank ka running balance bhi (jaisa Fund Ledger mein hota hai)
+    if (sheetName === "Transfer") {
+      let cashRunning = 0, bankRunning = 0;
+      tableData = tableData.map(r => {
+        const amt = toNumber(r["Amount"]);
+        const from = String(r["From"] || "").trim().toLowerCase();
+        const to = String(r["To"] || "").trim().toLowerCase();
+        if (from === "cash") cashRunning -= amt;
+        if (to === "cash") cashRunning += amt;
+        if (from === "bank") bankRunning -= amt;
+        if (to === "bank") bankRunning += amt;
+        return {
+          ...r,
+          "Debit (From)": amt,
+          "Credit (To)": amt,
+          "Cash Balance": cashRunning,
+          "Bank Balance": bankRunning
+        };
+      });
+    }
+
     // 🔹 No data
     if (tableData.length === 0) {
       el("contentArea").innerHTML =
@@ -1959,6 +1981,17 @@ function buildSmartField_(key, currentValue) {
   const isIdCol = (kl === "id");
   const isForCol = (kl === "for" && !isMemberCol);
   const isNoteCol = (kl.includes("note") || kl.includes("remark"));
+  // 🆕 Yeh fields hamesha MANUALLY editable rahenge — kabhi dropdown nahi banenge
+  const isManualAmountCol = (
+    kl === "received" || kl.includes("pledged") || kl.includes("paid") ||
+    kl.includes("amount") || kl.includes("credit") || kl.includes("debit") ||
+    kl.includes("payment") || kl.includes("balance")
+  );
+  // 🆕 Meetings/Announcements ke lambe text fields hamesha textarea honge
+  const isLongTextCol = (
+    kl.includes("detail") || kl.includes("message") || kl.includes("agenda") ||
+    kl.includes("description") || kl.includes("minutes")
+  );
 
   let select = null;
   let fallbackMultiline = false; // "Other" chuna to textarea milega ya input
@@ -1981,6 +2014,34 @@ function buildSmartField_(key, currentValue) {
     select = document.createElement("select");
     select.appendChild(new Option("-- चुनें --", ""));
     ["Cash", "Bank", "UPI"].forEach(m => select.appendChild(new Option(m, m)));
+  }
+
+  // ---- Transfer ka From/To dropdown: fixed Cash/Bank options ----
+  if (!select && currentTab === "Transfer" && (kl === "from" || kl === "to")) {
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    ["Cash", "Bank"].forEach(m => select.appendChild(new Option(m, m)));
+  }
+
+  // ---- Year dropdown: current + pichhle kuch saal + jo already sheet mein use ho chuke hain ----
+  if (!select && kl === "year") {
+    const currentYear = new Date().getFullYear();
+    const recentYears = [];
+    for (let y = currentYear + 1; y >= currentYear - 5; y--) recentYears.push(String(y));
+    const existingYears = tableData.map(r => String(r["Year"] || "").trim()).filter(Boolean);
+    const combined = [...new Set([...recentYears, ...existingYears])];
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
+  }
+
+  // ---- "Show on Home" jaisa Yes/No field: hamesha fixed dropdown (chahe data kam ho) ----
+  if (!select && (kl.includes("show") || kl.includes("home")) && !isMemberCol) {
+    const existing = tableData.map(r => String(r[key] || "").trim()).filter(Boolean);
+    const combined = [...new Set(["Yes", "No", ...existing])];
+    select = document.createElement("select");
+    select.appendChild(new Option("-- चुनें --", ""));
+    combined.forEach(v => select.appendChild(new Option(v, v)));
   }
 
   // ---- Expenses ka Type/Category dropdown: common fixed list + jo already sheet mein use ho chuki hain ----
@@ -2022,8 +2083,8 @@ function buildSmartField_(key, currentValue) {
     fallbackMultiline = false;
   }
 
-  // ---- "Notes" dropdown: sabse recently use hui values pehle ----
-  if (!select && isNoteCol) {
+  // ---- "Notes" dropdown: sabse recently use hui values pehle (long-text fields yahan nahi aate) ----
+  if (!select && isNoteCol && !isLongTextCol) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
     const recentFirst = [...new Set(values.slice().reverse())].slice(0, 20);
     if (recentFirst.length) {
@@ -2037,8 +2098,7 @@ function buildSmartField_(key, currentValue) {
   // ---- Generic categorical dropdown: agar current tab ke data mein
   //      is column ki thodi hi (<=20) distinct values hain, to dropdown do ----
   if (!select && !isIdCol && !isForCol && !isNoteCol && !isDateField_(key) &&
-      !kl.includes("amount") && !kl.includes("credit") && !kl.includes("debit") &&
-      !kl.includes("payment") && !kl.includes("balance") &&
+      !isManualAmountCol && !isLongTextCol &&
       !kl.includes("mobile") && !kl.includes("email")) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
     const uniqueValues = [...new Set(values)];
@@ -2064,9 +2124,19 @@ function buildSmartField_(key, currentValue) {
     return { el: select, isSmart: true };
   }
 
-  const isTextarea = isNoteCol;
+  const isTextarea = isNoteCol || isLongTextCol;
   const input = document.createElement(isTextarea ? "textarea" : "input");
-  if (currentValue) input.value = currentValue;
+  if (currentValue) {
+    input.value = currentValue;
+  } else if (isLongTextCol && tableData.length) {
+    // 🆕 Add form mein (currentValue khaali hai) — pichhli baar jo likha gaya tha
+    // wahi starting template ke roop mein bhar do, editable rehta hai
+    const lastVal = [...tableData].reverse().map(r => r[key]).find(v => v);
+    if (lastVal) {
+      input.value = lastVal;
+      input.title = "पिछली बार का टेक्स्ट — ज़रूरत अनुसार बदल दें";
+    }
+  }
   return { el: input, isSmart: false, isTextarea };
 }
 
@@ -2159,7 +2229,7 @@ function todayDDMMYYYY_() {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-function openAddRecordForm(sheetName) {
+async function openAddRecordForm(sheetName) {
   const crudCfg = CRUD_ALLOWED_TABS[sheetName];
   if (!crudCfg) return;
 
@@ -2173,16 +2243,26 @@ function openAddRecordForm(sheetName) {
     return;
   }
 
+  // 🆕 Backend se pata karo kaunse columns formula-driven hain (jaise Paid Boli,
+  // Pending Dues) — unhe form mein dikhana hi nahi, kyonki unme kuch bhi likhoge
+  // backend use ignore kar dega (formula todhne se bachane ke liye)
+  let formulaColumns = [];
+  try {
+    const meta = await callCrudBackend_({ action: "getFormulaColumns", sheetName });
+    if (meta.success) formulaColumns = meta.formulaColumns || [];
+  } catch (e) { /* best-effort, form ke baaki kaam pe asar nahi padne dena */ }
+
   const container = el("editFields");
   container.innerHTML = "";
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null;
+  let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null, yearInputEl = null;
 
   columns.forEach(k => {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
+    if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
     const label = document.createElement("label"); label.textContent = k;
@@ -2214,28 +2294,55 @@ function openAddRecordForm(sheetName) {
       if (kl === "received" || kl.includes("amount")) amountInputEl = input;
       if (kl.includes("mobile")) mobileInputEl = input;
       if (kl.includes("boli")) boliRefInputEl = input; // 🆕 "Boli ID"/"Boli Ref" column
+      if (kl === "year") yearInputEl = input; // 🆕
     }
     // Boli/Donation ke liye Firm Name auto-fetch hetu references
     if (sheetName === "Boli" || sheetName === "Donation") {
       if (k === memberCol || kl === "member") memberSelectEl = input;
       if (kl.includes("firm")) firmInputEl = input;
+      if (kl.includes("mobile")) mobileInputEl = input; // 🆕 Boli/Donation mein bhi Mobile auto-fetch
+    }
+    // 🆕 Expenses mein bhi Member select karne par Mobile auto-fetch (agar Member field hai)
+    if (sheetName === "Expenses") {
+      if (k === memberCol || kl === "member") memberSelectEl = input;
+      if (kl.includes("mobile")) mobileInputEl = input;
     }
   });
 
-  // 🆕 Boli/Donation mein: Member select karte hi Firm Name auto-fill (Members sheet se)
-  if ((sheetName === "Boli" || sheetName === "Donation") && memberSelectEl && firmInputEl) {
+  // 🆕 Expenses (aur koi bhi tab jisme sirf Mobile chahiye): Member select karte hi Mobile auto-fill
+  if (sheetName === "Expenses" && memberSelectEl && mobileInputEl) {
     (async () => {
       const membersRows = await fetchSheet("Members");
-      const firmByName = {};
+      const mobileByName = {};
+      membersRows.forEach(r => {
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        mobileByName[name] = r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
+      });
+      memberSelectEl.addEventListener("change", () => {
+        const name = memberSelectEl.value;
+        if (name && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
+      });
+    })();
+  }
+
+  // 🆕 Boli/Donation mein: Member select karte hi Firm Name + Mobile auto-fill (Members sheet se)
+  if ((sheetName === "Boli" || sheetName === "Donation") && memberSelectEl && (firmInputEl || mobileInputEl)) {
+    (async () => {
+      const membersRows = await fetchSheet("Members");
+      const firmByName = {}, mobileByName = {};
       membersRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
         const firmKey = Object.keys(r).find(kk => kk.toLowerCase().includes("firm"));
         if (firmKey) firmByName[name] = r[firmKey] || "";
+        mobileByName[name] = r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
-        if (name && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
+        if (!name) return;
+        if (firmInputEl && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
+        if (mobileInputEl && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
       });
     })();
   }
@@ -2253,7 +2360,7 @@ function openAddRecordForm(sheetName) {
         if (!name) return;
         if (!info[name]) info[name] = { mobile: "", forDonation: "", pendingDonation: 0, boliPledges: [] };
         const pending = toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
-        info[name].boliPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "" });
+        info[name].boliPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
       donationRows.forEach(r => {
@@ -2263,6 +2370,7 @@ function openAddRecordForm(sheetName) {
         info[name].pendingDonation += toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
         info[name].forDonation = info[name].forDonation || r["For"] || "";
+        info[name].donationYear = info[name].donationYear || r["Year"] || "";
       });
 
       const updateFromMember = () => {
@@ -2286,11 +2394,13 @@ function openAddRecordForm(sheetName) {
           // 🆕 Sabse zaroori: Boli ke us specific pledge ka ID Receipts ke linking column mein bharo,
           // warna Boli sheet ka SUMIFS formula is payment ko count hi nahi karega
           if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, unpaidBoli.id);
+          if (yearInputEl) setSelectValueSafe_(yearInputEl, unpaidBoli.year); // 🆕
         } else if (useDonationVal) {
           setSelectValueSafe_(typeSelectEl, "Donation");
           setSelectValueSafe_(forSelectEl, rec.forDonation);
           if (amountInputEl) amountInputEl.value = Math.max(0, rec.pendingDonation);
           if (boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
+          if (yearInputEl) setSelectValueSafe_(yearInputEl, rec.donationYear); // 🆕
         }
       };
       memberSelectEl.addEventListener("change", updateFromMember);
@@ -2957,7 +3067,7 @@ tbody.appendChild(fragment);
 /* ===========================
    EDIT (Admin) - local edits only
    =========================== */
-function openEditRecord(incomingEnc, e){
+async function openEditRecord(incomingEnc, e){
   if (e && e.preventDefault) e.preventDefault();
   const incoming = decodeURIComponent(incomingEnc || "");
   let recIndex = tableData.findIndex(r => (r["ID"] || "") === incoming);
@@ -2980,6 +3090,14 @@ function openEditRecord(incomingEnc, e){
     alert("इस sheet (" + currentTab + ") में record पहचानने के लिए 'ID' column नहीं मिला। पहले sheet में एक 'ID' column जोड़ें, फिर Edit/Delete काम करेगा।");
     return;
   }
+
+  // 🆕 Formula-driven columns (jaise Paid Boli, Pending Dues) ko readonly dikhao
+  let formulaColumns = [];
+  try {
+    const meta = await callCrudBackend_({ action: "getFormulaColumns", sheetName: currentTab });
+    if (meta.success) formulaColumns = meta.formulaColumns || [];
+  } catch (e2) { /* best-effort */ }
+
   // Build fields
   const container = el("editFields");
   container.innerHTML = "";
@@ -2992,8 +3110,8 @@ function openEditRecord(incomingEnc, e){
     const label = document.createElement("label"); label.textContent = k;
 
     let input, isTextarea = false;
-    if (kl === "id") {
-      // 🆕 ID clearly readonly dikhao, confusing empty box nahi
+    if (kl === "id" || formulaColumns.includes(k)) {
+      // 🆕 ID ya koi bhi formula-column clearly readonly dikhao (edit nahi ho sakta)
       input = document.createElement("input");
       input.value = val;
       input.disabled = true;
