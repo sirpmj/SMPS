@@ -1574,6 +1574,16 @@ currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
   loadTab(currentTab);
 }
 
+// 🆕 Har Add/Edit/Delete ke baad dashboard cards (Total Members, Fund Balance,
+// Cash/Bank Balance, Pledged/Paid/Pending Boli/Donation, etc.) bhi live refresh
+// karo — sirf table nahi, sab jagah naya data dikhna chahiye.
+function refreshDashboardAfterCrud_() {
+  ["Members", "Boli", "Donation", "Fund Ledger", "Expenses", "Receipts"].forEach(s => delete CACHE[s]);
+  if (shouldShowDashboard()) {
+    renderMainDashboard();
+  }
+}
+
 function shouldShowDashboard() {
   if (!currentUser || !currentUser.role) return false;
 
@@ -2453,6 +2463,7 @@ async function openAddRecordForm(sheetName) {
           tableData.push(newRow);
           renderTable();
         }
+        refreshDashboardAfterCrud_(); // 🆕 dashboard cards bhi live update
       } else {
         alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
       }
@@ -3137,6 +3148,7 @@ async function openEditRecord(incomingEnc, e){
         delete CACHE[currentTab]; // taaki agla load fresh aaye
         el("editPopup").style.display = "none";
         renderTable();
+        refreshDashboardAfterCrud_(); // 🆕 dashboard cards bhi live update
         alert("रिकॉर्ड Google Sheet में save हो गया है।");
       } else {
         alert("❌ Error: " + (res.msg || "Save nahi ho paya"));
@@ -3184,6 +3196,7 @@ async function deleteRecord(incomingEnc, e){
       tableData.splice(idx,1);
       delete CACHE[currentTab];
       renderTable();
+      refreshDashboardAfterCrud_(); // 🆕 dashboard cards bhi live update
       alert("रिकॉर्ड Google Sheet से हटा दिया गया है।");
     } else {
       alert("❌ Error: " + (res.msg || "Delete nahi ho paya"));
