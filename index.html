@@ -934,15 +934,19 @@ function getMessageFromTemplate(type, row) {
 const CACHE = {};
 const CACHE_TIME = 10 * 60 * 1000; // 🔥 10 मिनट
 
-async function fetchSheet(sheetName){
+async function fetchSheet(sheetName, forceFresh){
   try{
     const now = Date.now();
 
-    if(CACHE[sheetName] && (now - CACHE[sheetName].time < CACHE_TIME)){
+    if(!forceFresh && CACHE[sheetName] && (now - CACHE[sheetName].time < CACHE_TIME)){
       return CACHE[sheetName].data;
     }
 
-    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(sheetName)}`);
+    // 🆕 forceFresh = true (Add/Edit/Delete ke baad) to opensheet.elk.sh ka
+    // apna server-side cache bhi bypass karo — warna woh purana data de sakta hai
+    // chahe hum apna CACHE clear kar dein
+    const bustParam = forceFresh ? `?_=${now}` : "";
+    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(sheetName)}${bustParam}`);
     const json = await res.json();
 
     const data = Array.isArray(json) ? json : [];
@@ -1580,7 +1584,7 @@ currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
 function refreshDashboardAfterCrud_() {
   ["Members", "Boli", "Donation", "Fund Ledger", "Expenses", "Receipts"].forEach(s => delete CACHE[s]);
   if (shouldShowDashboard()) {
-    renderMainDashboard();
+    renderMainDashboard(true); // 🆕 forceFresh — external API ka cache bhi bypass karo
   }
 }
 
@@ -1605,7 +1609,11 @@ if (refreshBtn) {
     // 🆕 Purana cache clear karo — warna 10 minute tak wahi purana data dikhta rehta
     Object.keys(CACHE).forEach(k => delete CACHE[k]);
 
-    await loadTab(currentTab);   // current tab reload
+    await loadTab(currentTab, true);   // 🆕 forceFresh=true — external API cache bhi bypass
+
+    if (shouldShowDashboard()) {
+      renderMainDashboard(true); // 🆕 dashboard bhi force-fresh
+    }
 
     refreshBtn.innerText = "⟳ Refresh";
     refreshBtn.disabled = false;
@@ -1633,7 +1641,7 @@ function canShowCard(cardKey){
 /* ===========================
    Dashboard render
    =========================== */
-async function renderMainDashboard(){
+async function renderMainDashboard(forceFresh){
 
   el("mainDashboard").style.display="flex";
   el("mainDashboard").innerHTML="";
@@ -1646,11 +1654,11 @@ async function renderMainDashboard(){
       "";
 
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
-      fetchSheet("Members"),
-      fetchSheet("Boli"),
-      fetchSheet("Donation"),
-      fetchSheet("Fund Ledger"),
-      fetchSheet("Expenses")
+      fetchSheet("Members", forceFresh),
+      fetchSheet("Boli", forceFresh),
+      fetchSheet("Donation", forceFresh),
+      fetchSheet("Fund Ledger", forceFresh),
+      fetchSheet("Expenses", forceFresh)
     ]);
 
     // ===== Year Filter =====
@@ -1847,7 +1855,7 @@ function setActiveTab(name){
   loadTab(name);
 }
 /* ---------- LOAD TAB DATA ---------- */
-async function loadTab(sheetName) {
+async function loadTab(sheetName, forceFresh) {
   try {
     // 🔹 Loading message
     el("contentArea").innerHTML =
@@ -1861,7 +1869,7 @@ async function loadTab(sheetName) {
     if (el("pagination")) el("pagination").innerHTML = "";
 
     // 🔹 Fetch sheet data
-    tableData = await fetchSheet(sheetName);
+    tableData = await fetchSheet(sheetName, forceFresh);
 
     // 🔹 Safety check
     if (!Array.isArray(tableData)) {
