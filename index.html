@@ -1592,6 +1592,9 @@ if (refreshBtn) {
     refreshBtn.innerText = "⟳ Refreshing...";
     refreshBtn.disabled = true;
 
+    // 🆕 Purana cache clear karo — warna 10 minute tak wahi purana data dikhta rehta
+    Object.keys(CACHE).forEach(k => delete CACHE[k]);
+
     await loadTab(currentTab);   // current tab reload
 
     refreshBtn.innerText = "⟳ Refresh";
@@ -1880,16 +1883,16 @@ async function loadTab(sheetName) {
       });
     }
 
-    // 🆕 Transfer: agar Sheet mein Debit(From)/Credit(To) columns nahi hain,
-    // to webapp fallback ke roop mein khud bana deta hai. Cash Balance/Bank
-    // Balance ab Sheet ke apne ARRAYFORMULA se aate hain (jo humne banaya) —
-    // unhe yahan overwrite NAHI karte, Sheet ki value hi trust karte hain.
+    // 🆕 Transfer: sirf Debit(From)/Credit(To) dikhao (Cash/Bank Balance hata diya,
+    // confusing tha). Agar Sheet mein Debit/Credit columns nahi hain to fallback bana dete hain.
     if (sheetName === "Transfer") {
       tableData = tableData.map(r => {
         const amt = toNumber(r["Amount"]);
         const out = { ...r };
         if (out["Debit (From)"] === undefined || out["Debit (From)"] === "") out["Debit (From)"] = amt;
         if (out["Credit (To)"] === undefined || out["Credit (To)"] === "") out["Credit (To)"] = amt;
+        delete out["Cash Balance"];
+        delete out["Bank Balance"];
         return out;
       });
     }
