@@ -1883,14 +1883,14 @@ async function loadTab(sheetName) {
       });
     }
 
-    // 🆕 Transfer: sirf Debit(From)/Credit(To) dikhao (Cash/Bank Balance hata diya,
-    // confusing tha). Agar Sheet mein Debit/Credit columns nahi hain to fallback bana dete hain.
+    // 🆕 Transfer: simple rakhte hain — sirf raw sheet columns (ID/Date/From/To/
+    // Amount/Remark). Debit/Credit/Balance confusing the, hata diya. Asli Cash/Bank
+    // Balance dekhne ke liye Cash Book/Bank Book tabs use karein.
     if (sheetName === "Transfer") {
       tableData = tableData.map(r => {
-        const amt = toNumber(r["Amount"]);
         const out = { ...r };
-        if (out["Debit (From)"] === undefined || out["Debit (From)"] === "") out["Debit (From)"] = amt;
-        if (out["Credit (To)"] === undefined || out["Credit (To)"] === "") out["Credit (To)"] = amt;
+        delete out["Debit (From)"];
+        delete out["Credit (To)"];
         delete out["Cash Balance"];
         delete out["Bank Balance"];
         return out;
