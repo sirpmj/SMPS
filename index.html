@@ -832,7 +832,7 @@ const CRUD_ALLOWED_TABS = {
 // Bank Book, Transfer ke liye) — yeh Google Sheet ke real columns nahi hain,
 // isliye Add/Edit form mein kabhi dikhne ya save hone nahi chahiye.
 const SYNTHETIC_DISPLAY_COLUMNS = [
-  "Balance", "Debit (From)", "Credit (To)"
+  "Balance", "Debit (From)", "Credit (To)", "Closing Balance"
 ];
 /* ===========================
    DOM Helpers & Globals
@@ -1195,7 +1195,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     sendOtpBtn.style.display = "none";
 
     loginInfoMsg.innerText =
-      "OTP भेजा गया है मोबाइल: " + res.masked;
+      "OTP भेजा गया है मोबाइल: " + (res.masked || ("******" + String(mobile).slice(-4)));
 
     loginInfoMsg.style.display = "block";
 
@@ -1886,14 +1886,14 @@ async function loadTab(sheetName, forceFresh) {
       });
     }
 
-    // 🆕 Cash Book / Bank Book: running balance JS mein khud calculate karo
-    // (sheet ka O-column formula dynamic rows ke saath extend nahi hota, isliye
-    // yeh zyada reliable hai — Fund Ledger pehle se date ke hisaab se sorted hai)
-    if (sheetName === "Cash Book" || sheetName === "Bank Book") {
+    // 🆕 Cash Book / Bank Book / Fund Ledger: running balance JS mein khud calculate
+    // karo (sheet ka formula dynamic rows ke saath extend nahi hota ya hang kar
+    // deta hai, isliye yeh zyada reliable hai — data pehle se date ke hisaab se sorted hai)
+    if (sheetName === "Cash Book" || sheetName === "Bank Book" || sheetName === "Fund Ledger") {
       let running = 0;
       tableData = tableData.map(r => {
         running += toNumber(r["Credit"]) - toNumber(r["Debit"]);
-        return { ...r, "Balance": running };
+        return { ...r, "Closing Balance": running };
       });
     }
 
@@ -2075,39 +2075,30 @@ function buildSmartField_(key, currentValue) {
     combined.forEach(v => select.appendChild(new Option(v, v)));
   }
 
-  // ---- Occupation / Business / Firm dropdown ----
-  // Existing firm/business names bhi dropdown mein aayenge; "Other" se naya naam likh sakte hain.
-  if (!select && (kl === "occupation" || kl.includes("occupation") || kl.includes("business") || kl.includes("firm"))) {
+  // ---- Occupation dropdown: common fixed list + jo sheet mein already hain ----
+  if (!select && kl === "occupation") {
     const predefinedOccupations = [
       "व्यापार", "नौकरी", "खेती", "ठेकेदार", "सरकारी सेवा", "प्राइवेट जॉब", "स्वरोजगार", "अन्य"
     ];
-    const existing = tableData
-      .map(r => {
-        const exact = r[key];
-        if (exact) return String(exact).trim();
-        const found = Object.keys(r).find(kk => {
-          const x = kk.toLowerCase();
-          return x.includes("occupation") || x.includes("business") || x.includes("firm");
-        });
-        return found ? String(r[found] || "").trim() : "";
-      })
-      .filter(Boolean);
-    const combined = [...new Set([...predefinedOccupations, ...existing])]
-      .sort((a,b) => a.localeCompare(b, "hi"));
+    const existing = tableData.map(r => (r["Occupation"] || "").toString().trim()).filter(Boolean);
+    const combined = [...new Set([...predefinedOccupations, ...existing])];
     select = document.createElement("select");
     select.appendChild(new Option("-- चुनें --", ""));
     combined.forEach(v => select.appendChild(new Option(v, v)));
   }
 
-  // ---- Receipts: For ko hamesha dropdown rakho; member select ke baad
-  // Boli + Donation ke saare pending pledges yahin populate honge.
-  if (!select && currentTab === "Receipts" && isForCol) {
-    select = document.createElement("select");
-    select.appendChild(new Option("-- Boli / Donation चुनें --", ""));
-    fallbackMultiline = false;
+  // ---- "Firm Name" dropdown: jo bhi firm names pehle se kisi member ke liye use ho chuke hain ----
+  if (!select && kl.includes("firm")) {
+    const existingFirms = [...new Set(tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "hi"));
+    if (existingFirms.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें --", ""));
+      existingFirms.forEach(v => select.appendChild(new Option(v, v)));
+    }
   }
 
-  // ---- "For" dropdown: is tab mein jo bhi purpose pehle likhe ja chuke hain ----
+  // ---- "For" dropdown: is tab mein jo bhi purpose pehle likhe ja chuke hain (higher cap) ----
   if (!select && isForCol) {
     const values = tableData.map(r => (r["For"] || "").toString().trim()).filter(Boolean);
     const uniqueValues = [...new Set(values)].sort((a, b) => a.localeCompare(b, "hi"));
@@ -2229,7 +2220,7 @@ function setSelectValueSafe_(selectEl, value) {
 function isDateField_(key) {
   const kl = key.toLowerCase();
   return kl.includes("date") || kl.includes("birthday") || kl.includes("dob") ||
-         kl.includes("joining") || kl.includes("anniversary");
+         kl.includes("joining") || kl.includes("joined") || kl.includes("anniversary");
 }
 
 function isoToday_() {
@@ -2265,14 +2256,6 @@ function todayDDMMYYYY_() {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-function memberFieldKey_(columns) {
-  const configured = SETTINGS?.MemberColumn || "Member";
-  if (columns.includes(configured)) return configured;
-  if (columns.includes("Member")) return "Member";
-  if (columns.includes("Name")) return "Name";
-  return null;
-}
-
 async function openAddRecordForm(sheetName) {
   const crudCfg = CRUD_ALLOWED_TABS[sheetName];
   if (!crudCfg) return;
@@ -2280,27 +2263,21 @@ async function openAddRecordForm(sheetName) {
   // Columns: tableData se lo agar data hai, warna khaali form nahi bana sakte
   // 🆕 SYNTHETIC_DISPLAY_COLUMNS ko yahan se hata do — yeh sirf table mein
   // dikhane ke liye webapp khud banata hai, yeh sheet ke real columns nahi hain
-  let columns = tableData.length
+  const columns = tableData.length
     ? Array.from(new Set(tableData.flatMap(row => Object.keys(row))))
         .filter(Boolean)
         .filter(k => !SYNTHETIC_DISPLAY_COLUMNS.includes(k))
     : [];
 
-  // Members Add form: Member/ID se nahi, seedha Name se start ho.
-  // Actual sheet header/key ko change nahi karte, sirf form ka order change karte hain.
+  // 🆕 Members mein Name/Member field ko sabse pehle dikhao (raw sheet column
+  // order se nahi, jo shayad ID ke baad koi aur column ho)
   if (sheetName === "Members") {
-    const preferredMemberOrder = [
-      memberFieldKey_(columns),
-      "Name", "Mobile", "Occupation / Business Name", "Occupation", "Firm Name",
-      "Gotra", "Place of origin", "Current City", "District", "Address",
-      "Joined", "Joining Date", "Join Date", "JoiningDate", "Status", "Birthday"
-    ].filter(Boolean);
-    const ordered = [];
-    preferredMemberOrder.forEach(k => {
-      if (columns.includes(k) && !ordered.includes(k)) ordered.push(k);
-    });
-    columns.forEach(k => { if (!ordered.includes(k)) ordered.push(k); });
-    columns = ordered;
+    const memberColName = SETTINGS?.MemberColumn || "Name";
+    const idx = columns.findIndex(c => c === memberColName || c.toLowerCase() === "name" || c.toLowerCase() === "member");
+    if (idx > 0) {
+      const [nameCol] = columns.splice(idx, 1);
+      columns.unshift(nameCol);
+    }
   }
 
   if (!columns.length) {
@@ -2330,7 +2307,7 @@ async function openAddRecordForm(sheetName) {
     if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
-    const label = document.createElement("label"); label.textContent = (sheetName === "Members" && k === memberCol) ? "Name" : k;
+    const label = document.createElement("label"); label.textContent = k;
 
     const { el: input, isTextarea } = buildSmartField_(k, "");
     input.id = id;
@@ -2387,7 +2364,7 @@ async function openAddRecordForm(sheetName) {
       });
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
-        if (name && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
+        if (name && mobileByName[name] !== undefined) setSelectValueSafe_(mobileInputEl, mobileByName[name]);
       });
     })();
   }
@@ -2397,161 +2374,128 @@ async function openAddRecordForm(sheetName) {
     (async () => {
       const membersRows = await fetchSheet("Members");
       const firmByName = {}, mobileByName = {};
-      const normName = v => String(v || "").trim().toLowerCase();
       membersRows.forEach(r => {
-        const name = r[memberCol] || r["Member"] || r["Name"] || "";
+        const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        const firmKey = Object.keys(r).find(kk => {
-          const x = kk.toLowerCase();
-          return x.includes("occupation") || x.includes("business") || x.includes("firm");
-        });
-        const n = normName(name);
-        if (firmKey) firmByName[n] = r[firmKey] || "";
-        mobileByName[n] = r[SETTINGS?.MobileColumn] || r["Mobile"] || r["Phone"] || "";
+        const firmKey = Object.keys(r).find(kk => kk.toLowerCase().includes("firm"));
+        if (firmKey) firmByName[name] = r[firmKey] || "";
+        mobileByName[name] = r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
-        const n = normName(name);
         if (!name) return;
-        if (firmInputEl) firmInputEl.value = firmByName[n] || "";
-        if (mobileInputEl) mobileInputEl.value = mobileByName[n] || "";
+        if (firmInputEl && firmByName[name] !== undefined) setSelectValueSafe_(firmInputEl, firmByName[name]);
+        if (mobileInputEl && mobileByName[name] !== undefined) setSelectValueSafe_(mobileInputEl, mobileByName[name]);
       });
     })();
   }
 
-  // 🆕 Receipts: Member select karte hi us member ke SAARE pending Boli + Donation
-  // ek hi For dropdown mein dikhen. Har option apne ID, type, year aur pending amount
-  // ke saath linked rahega, isliye multiple Boli/Donation mix nahi honge.
+  // 🆕 Receipts mein: "बकाया चुनें" dropdown — Member select karte hi uske SAARE
+  // pending Boli/Donation pledges dikhenge, admin khud sahi wala choose karega
+  // (ek member ke multiple pledges ho to sab yahan milenge, koi bhi silently
+  // auto-select nahi hota).
+  let pledgeSelectEl = null;
   if (sheetName === "Receipts" && memberSelectEl) {
+    const pledgeLabel = document.createElement("label");
+    pledgeLabel.textContent = "बकाया चुनें (Boli/Donation)";
+    pledgeSelectEl = document.createElement("select");
+    pledgeSelectEl.appendChild(new Option("-- पहले सदस्य चुनें --", ""));
+    const pledgeGroup = document.createElement("div");
+    pledgeGroup.style.gridColumn = "1 / -1";
+    pledgeGroup.appendChild(pledgeLabel);
+    pledgeGroup.appendChild(pledgeSelectEl);
+    container.appendChild(pledgeGroup);
+  }
+
+  // 🆕 Receipts mein: Member select karte hi Boli/Donation ke pending pledges fetch karo
+  if (sheetName === "Receipts" && memberSelectEl && pledgeSelectEl) {
     (async () => {
-      const [membersRows, boliRows, donationRows] = await Promise.all([
-        fetchSheet("Members", true), fetchSheet("Boli", true), fetchSheet("Donation", true)
+      const [boliRows, donationRows] = await Promise.all([
+        fetchSheet("Boli"), fetchSheet("Donation")
       ]);
-
-      const norm = v => String(v || "").trim().toLowerCase();
-      const memberInfo = {};
-      membersRows.forEach(r => {
-        const name = r[memberCol] || r["Member"] || r["Name"] || "";
-        if (!name) return;
-        memberInfo[norm(name)] = {
-          name: String(name).trim(),
-          mobile: r[SETTINGS?.MobileColumn] || r["Mobile"] || r["Phone"] || ""
-        };
-      });
-
-      const info = {};
-      const ensure = name => {
-        const n = norm(name);
-        if (!n) return null;
-        if (!info[n]) info[n] = { mobile: "", pledges: [] };
-        return info[n];
-      };
+      const info = {}; // name -> {mobile, boliPledges:[{id,pending,forText,year}], donationPledges:[{id,pending,forText,year}]}
 
       boliRows.forEach(r => {
-        const name = r[memberCol] || r["Member"] || r["Name"] || "";
-        const rec = ensure(name);
-        if (!rec) return;
-        rec.mobile = rec.mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
-        const pending = Math.max(0, toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]));
-        if (pending > 0) {
-          rec.pledges.push({
-            type: "Boli", id: r["ID"] || "", forText: r["For"] || "",
-            year: r["Year"] || "", pending
-          });
-        }
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        if (!info[name]) info[name] = { mobile: "", boliPledges: [], donationPledges: [] };
+        const pending = toNumber(r["Pledged Boli"]) - toNumber(r["Paid Boli"]);
+        info[name].boliPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
+        info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
-
       donationRows.forEach(r => {
-        const name = r[memberCol] || r["Member"] || r["Name"] || "";
-        const rec = ensure(name);
-        if (!rec) return;
-        rec.mobile = rec.mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
-        const pending = Math.max(0, toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]));
-        if (pending > 0) {
-          rec.pledges.push({
-            type: "Donation", id: r["ID"] || "", forText: r["For"] || "",
-            year: r["Year"] || "", pending
-          });
+        const name = r[memberCol] || r["Member"] || "";
+        if (!name) return;
+        if (!info[name]) info[name] = { mobile: "", boliPledges: [], donationPledges: [] };
+        const pending = toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
+        info[name].donationPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
+        info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
+      });
+
+      // Har pledge ko pledgeSelectEl mein ek option ke roop mein daalne ke liye
+      const pledgeStore = {}; // optionValue -> {type, forText, amount, year, boliId, donationId}
+
+      const rebuildPledgeDropdown = () => {
+        const name = memberSelectEl.value;
+        pledgeSelectEl.innerHTML = "";
+        Object.keys(pledgeStore).forEach(k => delete pledgeStore[k]);
+
+        if (!name || !info[name]) {
+          pledgeSelectEl.appendChild(new Option("-- कोई बकाया नहीं --", ""));
+          return;
         }
-      });
+        const rec = info[name];
+        const pendingBoli = rec.boliPledges.filter(p => p.pending > 0);
+        const pendingDonation = rec.donationPledges.filter(p => p.pending > 0);
 
-      Object.keys(memberInfo).forEach(n => {
-        const m = memberInfo[n];
-        const rec = ensure(m.name);
-        if (rec) rec.mobile = rec.mobile || m.mobile;
-      });
+        if (!pendingBoli.length && !pendingDonation.length) {
+          pledgeSelectEl.appendChild(new Option("-- कोई बकाया नहीं (सब चुकता) --", ""));
+          return;
+        }
 
-      const clearReceiptFields = () => {
-        if (mobileInputEl) mobileInputEl.value = "";
-        if (amountInputEl) amountInputEl.value = "";
-        if (yearInputEl) yearInputEl.value = "";
-        if (boliRefInputEl) boliRefInputEl.value = "";
-        if (donationRefInputEl) donationRefInputEl.value = "";
-        if (typeSelectEl) typeSelectEl.value = "";
-        if (forSelectEl) forSelectEl.value = "";
-      };
-
-      const rebuildPledgeDropdown = name => {
-        if (!forSelectEl || forSelectEl.tagName !== "SELECT") return;
-        const rec = info[norm(name)] || { pledges: [] };
-        forSelectEl.innerHTML = "";
-        forSelectEl.appendChild(new Option("-- Boli / Donation चुनें --", ""));
-
-        rec.pledges.forEach((p, idx) => {
-          const value = `__pledge_${idx}__`;
-          const label = `${p.type} • ${p.forText || "उद्देश्य नहीं"} • ₹${p.pending.toLocaleString()} • ${p.id || "No ID"}${p.year ? " • " + p.year : ""}`;
-          const opt = new Option(label, value);
-          opt.dataset.type = p.type;
-          opt.dataset.id = p.id;
-          opt.dataset.forText = p.forText;
-          opt.dataset.year = p.year;
-          opt.dataset.pending = p.pending;
-          forSelectEl.appendChild(opt);
+        pledgeSelectEl.appendChild(new Option("-- चुनें --", ""));
+        pendingBoli.forEach((p, i) => {
+          const val = "boli_" + i;
+          const label = "Boli — " + (p.forText || "बोली") + (p.year ? " (" + p.year + ")" : "") + " — ₹" + p.pending.toLocaleString() + " बाकी";
+          pledgeSelectEl.appendChild(new Option(label, val));
+          pledgeStore[val] = { type: "Boli", forText: p.forText, amount: p.pending, year: p.year, boliId: p.id, donationId: "" };
         });
-        forSelectEl.appendChild(new Option("✎ Naya / Other likhein...", "__other__"));
+        pendingDonation.forEach((p, i) => {
+          const val = "donation_" + i;
+          const label = "Donation — " + (p.forText || "दान") + (p.year ? " (" + p.year + ")" : "") + " — ₹" + p.pending.toLocaleString() + " बाकी";
+          pledgeSelectEl.appendChild(new Option(label, val));
+          pledgeStore[val] = { type: "Donation", forText: p.forText, amount: p.pending, year: p.year, boliId: "", donationId: p.id };
+        });
+
+        // 🆕 Agar sirf EK hi pending pledge hai, to seedha select kar do (convenience) —
+        // lekin agar MULTIPLE hain, to admin khud chunega, koi silent guess nahi
+        if (pendingBoli.length + pendingDonation.length === 1) {
+          pledgeSelectEl.selectedIndex = 1;
+          pledgeSelectEl.dispatchEvent(new Event("change"));
+        }
       };
 
-      const applySelectedPledge = () => {
-        const opt = forSelectEl?.selectedOptions?.[0];
-        if (!opt || !opt.dataset.type) return;
-        const type = opt.dataset.type;
-        const id = opt.dataset.id || "";
-        setSelectValueSafe_(typeSelectEl, type);
-        if (amountInputEl) amountInputEl.value = opt.dataset.pending || "";
-        if (yearInputEl) setSelectValueSafe_(yearInputEl, opt.dataset.year || "");
-        if (type === "Boli") {
-          if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, id);
-          if (donationRefInputEl) donationRefInputEl.value = "";
-        } else {
-          if (donationRefInputEl) setSelectValueSafe_(donationRefInputEl, id);
-          if (boliRefInputEl) boliRefInputEl.value = "";
-        }
-        // For field ab selected purpose hi save hoga; label sirf dropdown mein detail dikhata hai.
-        if (forSelectEl.dataset.actualForTarget) {
-          const target = document.getElementById(forSelectEl.dataset.actualForTarget);
-          if (target) target.value = opt.dataset.forText || "";
-        }
+      const applyPledge = () => {
+        const chosen = pledgeStore[pledgeSelectEl.value];
+        if (!chosen) return;
+        setSelectValueSafe_(typeSelectEl, chosen.type);
+        setSelectValueSafe_(forSelectEl, chosen.forText);
+        if (amountInputEl) amountInputEl.value = Math.max(0, chosen.amount);
+        if (yearInputEl) setSelectValueSafe_(yearInputEl, chosen.year);
+        if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, chosen.boliId);
+        if (chosen.type === "Boli" && donationRefInputEl && donationRefInputEl.tagName !== "SELECT") donationRefInputEl.value = "";
+        if (donationRefInputEl) setSelectValueSafe_(donationRefInputEl, chosen.donationId);
+        if (chosen.type === "Donation" && boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
       };
 
       memberSelectEl.addEventListener("change", () => {
-        clearReceiptFields();
         const name = memberSelectEl.value;
-        const rec = info[norm(name)] || { mobile: "", pledges: [] };
-        if (mobileInputEl) mobileInputEl.value = rec.mobile || "";
-        rebuildPledgeDropdown(name);
-        if (rec.pledges.length === 1) {
-          forSelectEl.value = "__pledge_0__";
-          applySelectedPledge();
+        if (mobileInputEl && !mobileInputEl.value && name && info[name]) {
+          setSelectValueSafe_(mobileInputEl, info[name].mobile);
         }
+        rebuildPledgeDropdown();
       });
-
-      // For ko pledge selector ki tarah use kar rahe hain; normal "For" value save karne ke liye
-      // temporary hidden input create karo. Existing For column ka value save karna zaroori hai.
-      if (forSelectEl && forSelectEl.tagName === "SELECT") {
-        forSelectEl.addEventListener("change", () => {
-          if (forSelectEl.value !== "__other__") applySelectedPledge();
-        });
-      }
+      pledgeSelectEl.addEventListener("change", applyPledge);
     })();
   }
 
@@ -2563,12 +2507,7 @@ async function openAddRecordForm(sheetName) {
     inputIds.forEach(({ key, id }) => {
       const node = document.getElementById(id);
       if (!node || node.disabled) return;
-      if (sheetName === "Receipts" && key.toLowerCase() === "for" && node.tagName === "SELECT") {
-        const opt = node.selectedOptions?.[0];
-        data[key] = opt?.dataset?.forText || (node.value === "__other__" ? "" : node.value);
-      } else {
-        data[key] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
-      }
+      data[key] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
     });
 
     el("saveEditBtn").disabled = true;
