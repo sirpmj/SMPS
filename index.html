@@ -832,7 +832,7 @@ const CRUD_ALLOWED_TABS = {
 // Bank Book, Transfer ke liye) — yeh Google Sheet ke real columns nahi hain,
 // isliye Add/Edit form mein kabhi dikhne ya save hone nahi chahiye.
 const SYNTHETIC_DISPLAY_COLUMNS = [
-  "Balance", "Debit (From)", "Credit (To)", "Closing Balance"
+  "Balance", "Debit (From)", "Credit (To)"
 ];
 /* ===========================
    DOM Helpers & Globals
@@ -1194,8 +1194,9 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     verifyOtpBtn.style.display = "block";
     sendOtpBtn.style.display = "none";
 
+    const maskedMobile = mobile.slice(0, 2) + "XXXXXX" + mobile.slice(-2);
     loginInfoMsg.innerText =
-      "OTP भेजा गया है मोबाइल: " + (res.masked || ("******" + String(mobile).slice(-4)));
+      "OTP भेजा गया है मोबाइल: " + (res.masked || maskedMobile);
 
     loginInfoMsg.style.display = "block";
 
@@ -1886,14 +1887,14 @@ async function loadTab(sheetName, forceFresh) {
       });
     }
 
-    // 🆕 Cash Book / Bank Book / Fund Ledger: running balance JS mein khud calculate
-    // karo (sheet ka formula dynamic rows ke saath extend nahi hota ya hang kar
-    // deta hai, isliye yeh zyada reliable hai — data pehle se date ke hisaab se sorted hai)
-    if (sheetName === "Cash Book" || sheetName === "Bank Book" || sheetName === "Fund Ledger") {
+    // 🆕 Cash Book / Bank Book: running balance JS mein khud calculate karo
+    // (sheet ka O-column formula dynamic rows ke saath extend nahi hota, isliye
+    // yeh zyada reliable hai — Fund Ledger pehle se date ke hisaab se sorted hai)
+    if (sheetName === "Cash Book" || sheetName === "Bank Book") {
       let running = 0;
       tableData = tableData.map(r => {
         running += toNumber(r["Credit"]) - toNumber(r["Debit"]);
-        return { ...r, "Closing Balance": running };
+        return { ...r, "Balance": running };
       });
     }
 
@@ -2076,26 +2077,28 @@ function buildSmartField_(key, currentValue) {
   }
 
   // ---- Occupation dropdown: common fixed list + jo sheet mein already hain ----
+  // 🆕 Occupation field firm/business ka naam bhi hold karta hai, aur firm naam
+  // usually EK hi member ka hota hai — isliye kisi doosre member ke already-liye
+  // hue firm/occupation naam ko suggestion mein mat dikhao (sirf current record
+  // ki apni current value ho to woh dikhegi, wo upar currentValue wale block mein
+  // handle ho jaata hai). Fixed/generic categories (व्यापार, नौकरी आदि) hamesha rahenge.
   if (!select && kl === "occupation") {
     const predefinedOccupations = [
       "व्यापार", "नौकरी", "खेती", "ठेकेदार", "सरकारी सेवा", "प्राइवेट जॉब", "स्वरोजगार", "अन्य"
     ];
-    const existing = tableData.map(r => (r["Occupation"] || "").toString().trim()).filter(Boolean);
+    const usedByOthers = new Set(
+      tableData
+        .filter(r => (r[memberCol] || r["Member"] || r["Name"] || "") !== currentValue) // apni hi row ko allow karo (edit case)
+        .map(r => (r["Occupation"] || "").toString().trim())
+        .filter(v => v && !predefinedOccupations.includes(v))
+    );
+    const existing = tableData
+      .map(r => (r["Occupation"] || "").toString().trim())
+      .filter(v => v && !usedByOthers.has(v));
     const combined = [...new Set([...predefinedOccupations, ...existing])];
     select = document.createElement("select");
     select.appendChild(new Option("-- चुनें --", ""));
     combined.forEach(v => select.appendChild(new Option(v, v)));
-  }
-
-  // ---- "Firm Name" dropdown: jo bhi firm names pehle se kisi member ke liye use ho chuke hain ----
-  if (!select && kl.includes("firm")) {
-    const existingFirms = [...new Set(tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean))]
-      .sort((a, b) => a.localeCompare(b, "hi"));
-    if (existingFirms.length) {
-      select = document.createElement("select");
-      select.appendChild(new Option("-- चुनें --", ""));
-      existingFirms.forEach(v => select.appendChild(new Option(v, v)));
-    }
   }
 
   // ---- "For" dropdown: is tab mein jo bhi purpose pehle likhe ja chuke hain (higher cap) ----
@@ -2263,20 +2266,19 @@ async function openAddRecordForm(sheetName) {
   // Columns: tableData se lo agar data hai, warna khaali form nahi bana sakte
   // 🆕 SYNTHETIC_DISPLAY_COLUMNS ko yahan se hata do — yeh sirf table mein
   // dikhane ke liye webapp khud banata hai, yeh sheet ke real columns nahi hain
-  const columns = tableData.length
+  let columns = tableData.length
     ? Array.from(new Set(tableData.flatMap(row => Object.keys(row))))
         .filter(Boolean)
         .filter(k => !SYNTHETIC_DISPLAY_COLUMNS.includes(k))
     : [];
 
-  // 🆕 Members mein Name/Member field ko sabse pehle dikhao (raw sheet column
-  // order se nahi, jo shayad ID ke baad koi aur column ho)
+  // 🆕 Members sheet ka Add form hamesha "Name" field se shuru hona chahiye
+  // (kisi "Member"/MemberID jaisi column se nahi) — form fill karne mein sabse
+  // pehle naam poocha jana natural hai.
   if (sheetName === "Members") {
-    const memberColName = SETTINGS?.MemberColumn || "Name";
-    const idx = columns.findIndex(c => c === memberColName || c.toLowerCase() === "name" || c.toLowerCase() === "member");
-    if (idx > 0) {
-      const [nameCol] = columns.splice(idx, 1);
-      columns.unshift(nameCol);
+    const nameKey = columns.find(k => k.toLowerCase() === "name");
+    if (nameKey) {
+      columns = [nameKey, ...columns.filter(k => k !== nameKey)];
     }
   }
 
@@ -2364,7 +2366,7 @@ async function openAddRecordForm(sheetName) {
       });
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
-        if (name && mobileByName[name] !== undefined) setSelectValueSafe_(mobileInputEl, mobileByName[name]);
+        if (name && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
       });
     })();
   }
@@ -2377,38 +2379,27 @@ async function openAddRecordForm(sheetName) {
       membersRows.forEach(r => {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
-        const firmKey = Object.keys(r).find(kk => kk.toLowerCase().includes("firm"));
+        // 🆕 Members sheet mein alag se "Firm" column nahi hota — Firm/Business ka naam
+        // "Occupation" column mein hi likha jaata hai, isliye wahi fallback ke roop mein lo
+        const firmKey = Object.keys(r).find(kk => kk.toLowerCase().includes("firm")) ||
+                        Object.keys(r).find(kk => kk.toLowerCase() === "occupation");
         if (firmKey) firmByName[name] = r[firmKey] || "";
         mobileByName[name] = r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
         if (!name) return;
-        if (firmInputEl && firmByName[name] !== undefined) setSelectValueSafe_(firmInputEl, firmByName[name]);
-        if (mobileInputEl && mobileByName[name] !== undefined) setSelectValueSafe_(mobileInputEl, mobileByName[name]);
+        if (firmInputEl && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
+        if (mobileInputEl && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
       });
     })();
   }
 
-  // 🆕 Receipts mein: "बकाया चुनें" dropdown — Member select karte hi uske SAARE
-  // pending Boli/Donation pledges dikhenge, admin khud sahi wala choose karega
-  // (ek member ke multiple pledges ho to sab yahan milenge, koi bhi silently
-  // auto-select nahi hota).
-  let pledgeSelectEl = null;
+  // 🆕 Receipts mein: Member select karte hi Boli/Donation ka Mobile, For, Balance sab auto-fill.
+  // Agar member ke EK SE ZYADA bakaya Boli/Donation pledge hain (chahe alag-alag Boli, ya
+  // Boli + Donation dono), to ek chooser dropdown dikhao jisse sahi wali chuni ja sake —
+  // pehle sirf sabse bada wala auto-select ho jaata tha, baaki sab ignore ho jaate the.
   if (sheetName === "Receipts" && memberSelectEl) {
-    const pledgeLabel = document.createElement("label");
-    pledgeLabel.textContent = "बकाया चुनें (Boli/Donation)";
-    pledgeSelectEl = document.createElement("select");
-    pledgeSelectEl.appendChild(new Option("-- पहले सदस्य चुनें --", ""));
-    const pledgeGroup = document.createElement("div");
-    pledgeGroup.style.gridColumn = "1 / -1";
-    pledgeGroup.appendChild(pledgeLabel);
-    pledgeGroup.appendChild(pledgeSelectEl);
-    container.appendChild(pledgeGroup);
-  }
-
-  // 🆕 Receipts mein: Member select karte hi Boli/Donation ke pending pledges fetch karo
-  if (sheetName === "Receipts" && memberSelectEl && pledgeSelectEl) {
     (async () => {
       const [boliRows, donationRows] = await Promise.all([
         fetchSheet("Boli"), fetchSheet("Donation")
@@ -2427,75 +2418,89 @@ async function openAddRecordForm(sheetName) {
         const name = r[memberCol] || r["Member"] || "";
         if (!name) return;
         if (!info[name]) info[name] = { mobile: "", boliPledges: [], donationPledges: [] };
+        // 🆕 Donation ab Boli jaisa — har pledge apna alag ID ke saath, taaki
+        // ek hi member ke MULTIPLE donations ho to sahi se alag track ho
         const pending = toNumber(r["Pledged Donation"]) - toNumber(r["Paid Donation"]);
         info[name].donationPledges.push({ id: r["ID"] || "", pending, forText: r["For"] || "", year: r["Year"] || "" });
         info[name].mobile = info[name].mobile || r[SETTINGS?.MobileColumn] || r["Mobile"] || "";
       });
 
-      // Har pledge ko pledgeSelectEl mein ek option ke roop mein daalne ke liye
-      const pledgeStore = {}; // optionValue -> {type, forText, amount, year, boliId, donationId}
+      // 🆕 Chooser dropdown banao aur Member field ke turant baad form mein daalo
+      const pledgeGroup = document.createElement("div");
+      pledgeGroup.style.display = "none";
+      const pledgeLabel = document.createElement("label");
+      pledgeLabel.textContent = "किस बोली/दान के लिए (Which pledge)";
+      const pledgeSelectEl = document.createElement("select");
+      pledgeSelectEl.className = "smart-select";
+      pledgeGroup.appendChild(pledgeLabel);
+      pledgeGroup.appendChild(pledgeSelectEl);
+      if (memberSelectEl.parentNode && memberSelectEl.parentNode.parentNode === container) {
+        memberSelectEl.parentNode.insertAdjacentElement("afterend", pledgeGroup);
+      } else {
+        container.insertBefore(pledgeGroup, container.firstChild);
+      }
 
-      const rebuildPledgeDropdown = () => {
+      const applyPledge_ = (kind, pledge) => {
+        if (!pledge) return;
+        setSelectValueSafe_(typeSelectEl, kind === "boli" ? "Boli" : "Donation");
+        setSelectValueSafe_(forSelectEl, pledge.forText);
+        if (amountInputEl) amountInputEl.value = Math.max(0, pledge.pending);
+        if (kind === "boli") {
+          // 🆕 Sabse zaroori: us specific pledge ka ID Receipts ke linking column mein bharo,
+          // warna Boli/Donation sheet ka SUMIFS formula is payment ko count hi nahi karega
+          if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, pledge.id);
+          if (donationRefInputEl && donationRefInputEl.tagName !== "SELECT") donationRefInputEl.value = "";
+          else if (donationRefInputEl) donationRefInputEl.value = "";
+        } else {
+          if (donationRefInputEl) setSelectValueSafe_(donationRefInputEl, pledge.id);
+          if (boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
+          else if (boliRefInputEl) boliRefInputEl.value = "";
+        }
+        if (yearInputEl) setSelectValueSafe_(yearInputEl, pledge.year);
+      };
+
+      const updateFromMember = () => {
         const name = memberSelectEl.value;
         pledgeSelectEl.innerHTML = "";
-        Object.keys(pledgeStore).forEach(k => delete pledgeStore[k]);
-
-        if (!name || !info[name]) {
-          pledgeSelectEl.appendChild(new Option("-- कोई बकाया नहीं --", ""));
-          return;
-        }
+        pledgeGroup.style.display = "none";
+        if (!name || !info[name]) return;
         const rec = info[name];
-        const pendingBoli = rec.boliPledges.filter(p => p.pending > 0);
-        const pendingDonation = rec.donationPledges.filter(p => p.pending > 0);
 
-        if (!pendingBoli.length && !pendingDonation.length) {
-          pledgeSelectEl.appendChild(new Option("-- कोई बकाया नहीं (सब चुकता) --", ""));
-          return;
-        }
+        if (mobileInputEl) mobileInputEl.value = rec.mobile || "";
 
-        pledgeSelectEl.appendChild(new Option("-- चुनें --", ""));
-        pendingBoli.forEach((p, i) => {
-          const val = "boli_" + i;
-          const label = "Boli — " + (p.forText || "बोली") + (p.year ? " (" + p.year + ")" : "") + " — ₹" + p.pending.toLocaleString() + " बाकी";
-          pledgeSelectEl.appendChild(new Option(label, val));
-          pledgeStore[val] = { type: "Boli", forText: p.forText, amount: p.pending, year: p.year, boliId: p.id, donationId: "" };
+        // 🆕 Is member ke SAARE bakaya (pending > 0) Boli + Donation pledges ikattha karo
+        const pending = [
+          ...rec.boliPledges.filter(p => p.pending > 0).map(p => ({ kind: "boli", pledge: p })),
+          ...rec.donationPledges.filter(p => p.pending > 0).map(p => ({ kind: "donation", pledge: p }))
+        ];
+
+        if (!pending.length) return; // koi bakaya nahi — user manually Type/For/Amount bharega
+
+        pending.forEach((item, idx) => {
+          const { kind, pledge } = item;
+          const label =
+            (kind === "boli" ? "बोली" : "दान") +
+            " — ₹" + pledge.pending +
+            (pledge.forText ? " (" + pledge.forText + ")" : "") +
+            (pledge.year ? " [" + pledge.year + "]" : "") +
+            (pledge.id ? " #" + pledge.id : "");
+          pledgeSelectEl.appendChild(new Option(label, String(idx)));
         });
-        pendingDonation.forEach((p, i) => {
-          const val = "donation_" + i;
-          const label = "Donation — " + (p.forText || "दान") + (p.year ? " (" + p.year + ")" : "") + " — ₹" + p.pending.toLocaleString() + " बाकी";
-          pledgeSelectEl.appendChild(new Option(label, val));
-          pledgeStore[val] = { type: "Donation", forText: p.forText, amount: p.pending, year: p.year, boliId: "", donationId: p.id };
-        });
 
-        // 🆕 Agar sirf EK hi pending pledge hai, to seedha select kar do (convenience) —
-        // lekin agar MULTIPLE hain, to admin khud chunega, koi silent guess nahi
-        if (pendingBoli.length + pendingDonation.length === 1) {
-          pledgeSelectEl.selectedIndex = 1;
-          pledgeSelectEl.dispatchEvent(new Event("change"));
+        // Sirf EK bakaya ho to dropdown hide rakho (seedha auto-fill ho jaye),
+        // ek se zyada ho to dropdown dikhao taaki user sahi wala chun sake
+        if (pending.length > 1) {
+          pledgeGroup.style.display = "";
         }
-      };
+        pledgeSelectEl.value = "0";
+        applyPledge_(pending[0].kind, pending[0].pledge);
 
-      const applyPledge = () => {
-        const chosen = pledgeStore[pledgeSelectEl.value];
-        if (!chosen) return;
-        setSelectValueSafe_(typeSelectEl, chosen.type);
-        setSelectValueSafe_(forSelectEl, chosen.forText);
-        if (amountInputEl) amountInputEl.value = Math.max(0, chosen.amount);
-        if (yearInputEl) setSelectValueSafe_(yearInputEl, chosen.year);
-        if (boliRefInputEl) setSelectValueSafe_(boliRefInputEl, chosen.boliId);
-        if (chosen.type === "Boli" && donationRefInputEl && donationRefInputEl.tagName !== "SELECT") donationRefInputEl.value = "";
-        if (donationRefInputEl) setSelectValueSafe_(donationRefInputEl, chosen.donationId);
-        if (chosen.type === "Donation" && boliRefInputEl && boliRefInputEl.tagName !== "SELECT") boliRefInputEl.value = "";
+        pledgeSelectEl.onchange = () => {
+          const item = pending[Number(pledgeSelectEl.value)];
+          if (item) applyPledge_(item.kind, item.pledge);
+        };
       };
-
-      memberSelectEl.addEventListener("change", () => {
-        const name = memberSelectEl.value;
-        if (mobileInputEl && !mobileInputEl.value && name && info[name]) {
-          setSelectValueSafe_(mobileInputEl, info[name].mobile);
-        }
-        rebuildPledgeDropdown();
-      });
-      pledgeSelectEl.addEventListener("change", applyPledge);
+      memberSelectEl.addEventListener("change", updateFromMember);
     })();
   }
 
