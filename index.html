@@ -304,21 +304,42 @@ table {
 /* ---------- Tabs ---------- */
 .tab {
   display: inline-block;
-  padding: 8px 14px;
-  border-radius: 12px;
+  padding: 9px 16px;
+  border-radius: 999px;
   background: #eef3ff;
   color: #0b63d6;
   cursor: pointer;
-  transition: 0.3s;
-  font-size: 16px;
-margin-bottom: 4px;
-  font-weight: 500;
+  transition: background .18s, color .18s, box-shadow .18s, transform .1s;
+  font-size: 14.5px;
+  margin-bottom: 4px;
+  font-weight: 600;
   white-space: nowrap;
+  border: 1px solid transparent;
+}
+.tab:hover {
+  background: #e0ebff;
+  transform: translateY(-1px);
 }
 .tab.active {
-  background: #0b63d6;
+  background: linear-gradient(135deg, #0b63d6, #1a7fe0);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 3px 10px rgba(11,99,214,0.35);
+  border-color: transparent;
+}
+/* 🆕 Desktop: tabs EK line mein (horizontal scroll, wrap nahi) — modern jaisa
+   dikhne ke liye rounded-pill style + subtle scroll shadow */
+@media (min-width: 601px) {
+  .tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 4px 2px 8px;
+    scrollbar-width: thin;
+  }
+  .tabs::-webkit-scrollbar { height: 6px; }
+  .tabs::-webkit-scrollbar-thumb { background: #c7d6f5; border-radius: 999px; }
+  .tab { flex: 0 0 auto; }
 }
 /* 📱 Mobile → 3 equal tabs per row with equal auto height */
 @media (max-width: 600px) {
@@ -1412,11 +1433,15 @@ if (savedUser) {
   loginView.style.display = "block";
   appView.style.display = "none";
 
-  await renderLoginHomeStructure();
+  // 🆕 Yeh saare independent fetches hain — parallel mein chalao, sequential nahi
+  // (pehle ek-ek karke await ho rahe the, jisse login page slow khulta tha)
+  await Promise.all([
+    renderLoginHomeStructure(),
+    renderMeetingUpdates(),
+    renderAnnouncements(),
+    loadFooter()
+  ]);
   applyLoginTexts();
-  await renderMeetingUpdates();
-  await renderAnnouncements();
-  await loadFooter();
 
 document.body.style.visibility = "visible";
 
@@ -1656,10 +1681,12 @@ const welcomeText = template.replace("{{Name}}", currentUser.name);
   el("mainDashboard").style.display = "none";
 }
 
-  // default tab
-  const roleTabs = ROLE_ACCESS[currentUser.role];
-currentTab = roleTabs ? Object.keys(roleTabs)[0] : "Members";
-  loadTab(currentTab);
+  // 🆕 Ab koi bhi tab default mein auto-open nahi hoti — jab tak user khud
+  // kisi tab par click na kare, content area khaali/band rehta hai (sirf
+  // dashboard cards aur tab bar dikhte hain)
+  el("contentArea").innerHTML =
+    "<div class='muted' style='text-align:center;padding:30px'>ऊपर से कोई भी टैब चुनें 👆</div>";
+  currentTab = "";
 }
 
 // 🆕 Har Add/Edit/Delete ke baad dashboard cards (Total Members, Fund Balance,
