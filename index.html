@@ -2159,7 +2159,7 @@ function buildSmartField_(key, currentValue) {
   if (!select && kl === "year") {
     const currentYear = new Date().getFullYear();
     const recentYears = [];
-    for (let y = currentYear + 1; y >= currentYear - 5; y--) recentYears.push(String(y));
+    for (let y = currentYear + 1; y >= currentYear - 2; y--) recentYears.push(String(y));
     const existingYears = tableData.map(r => String(r["Year"] || "").trim()).filter(Boolean);
     const combined = [...new Set([...recentYears, ...existingYears])];
     select = document.createElement("select");
@@ -2476,7 +2476,7 @@ async function openAddRecordForm(sheetName) {
   // Script, slow) poora ho jaata — is beech screen par kuch nahi hota tha,
   // isliye "Add New" khulne mein bahut time lagta mehsoos hota tha.
   el("editTitle").textContent = "Add New: " + sheetName;
-  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Form load ho raha hai...</p>";
+  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Loading data...</p>";
   el("saveEditBtn").disabled = true;
   el("editPopup").style.display = "flex";
 
