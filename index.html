@@ -2084,6 +2084,7 @@ function buildSmartField_(key, currentValue) {
   const isModeCol = (kl === "mode");
   const isIdCol = (kl === "id");
   const isForCol = (kl === "for" && !isMemberCol);
+  const isOriginCol = kl.includes("origin"); // 🆕 "Place of Origin"/"Origin" (gaon/village)
   const isNoteCol = (kl.includes("note") || kl.includes("remark"));
   // 🆕 Yeh fields hamesha MANUALLY editable rahenge — kabhi dropdown nahi banenge
   const isManualAmountCol = (
@@ -2200,10 +2201,22 @@ function buildSmartField_(key, currentValue) {
     fallbackMultiline = false;
   }
 
-  // ---- "Notes"/"Details"/"Message" dropdown: sabse recently use hui values
-  // pehle dikhao — Meetings ka "Details" aur Announcements ka "Message" bhi
-  // ab yahi dropdown lenge (pehle yeh sirf plain textarea the).
-  if (!select && (isNoteCol || isLongTextCol)) {
+  // ---- "Place of Origin"/"Origin" dropdown: Gotra jaisa — jitni bhi villages
+  // pehle se sheet mein hain sab dikhao (20-item wali cap yahan nahi lagegi,
+  // kyonki villages ki list Gotra se zyada lambi ho sakti hai) ----
+  if (!select && isOriginCol) {
+    const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
+    const uniqueValues = [...new Set(values)].sort((a, b) => a.localeCompare(b, "hi"));
+    if (uniqueValues.length) {
+      select = document.createElement("select");
+      select.appendChild(new Option("-- चुनें --", ""));
+      uniqueValues.forEach(v => select.appendChild(new Option(v, v)));
+    }
+    fallbackMultiline = false;
+  }
+
+  // ---- "Notes" dropdown: sabse recently use hui values pehle (pure select + Other) ----
+  if (!select && isNoteCol) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
     const recentFirst = [...new Set(values.slice().reverse())].slice(0, 20);
     if (recentFirst.length) {
@@ -2214,9 +2227,21 @@ function buildSmartField_(key, currentValue) {
     fallbackMultiline = true;
   }
 
+  // ---- Meetings ka "Details" / Announcements ka "Message" (aur waise hi lambe
+  // text fields): yeh HAMESHA ek editable textarea rahenge (select mein lock
+  // nahi honge), par saath mein ek "pichhle wale" recall-dropdown bhi milega —
+  // usme se koi purana entry chunte hi textarea mein bhar jayega, phir usse
+  // chaho jitna edit kar sakte ho. recentValues neeche return karke caller ko
+  // di jaati hai, jo yeh dropdown textarea ke upar jodta hai.
+  let recentTextValues = [];
+  if (isLongTextCol) {
+    const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
+    recentTextValues = [...new Set(values.slice().reverse())].slice(0, 20);
+  }
+
   // ---- Generic categorical dropdown: agar current tab ke data mein
   //      is column ki thodi hi (<=20) distinct values hain, to dropdown do ----
-  if (!select && !isIdCol && !isForCol && !isNoteCol && !isDateField_(key) &&
+  if (!select && !isIdCol && !isForCol && !isOriginCol && !isNoteCol && !isDateField_(key) &&
       !isManualAmountCol && !isLongTextCol &&
       !kl.includes("mobile") && !kl.includes("email")) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
@@ -2256,7 +2281,32 @@ function buildSmartField_(key, currentValue) {
       input.title = "पिछली बार का टेक्स्ट — ज़रूरत अनुसार बदल दें";
     }
   }
-  return { el: input, isSmart: false, isTextarea };
+  return { el: input, isSmart: false, isTextarea, recentValues: recentTextValues };
+}
+
+// 🆕 Meetings "Details" / Announcements "Message" jaise lambe text fields ke
+// liye: textarea ke UPAR ek chhota recall-dropdown daal do jisme pichhle
+// entries dikhein. Koi purana entry chunte hi textarea mein bhar jaata hai,
+// aur wahan se aage jitna chaho utna edit kar sakte ho — textarea hamesha
+// khud editable rehta hai, dropdown sirf ek quick starting point hai.
+function attachRecallDropdown_(textareaEl, wrapperGroup, recentValues) {
+  if (!recentValues || !recentValues.length) return;
+  const recall = document.createElement("select");
+  recall.className = "smart-select";
+  recall.style.marginBottom = "6px";
+  recall.appendChild(new Option("-- पिछले में से चुनें (फिर edit करें) --", ""));
+  recentValues.forEach(v => {
+    // Dropdown mein poora text dikhana lamba ho sakta hai, isliye chhota preview dikhao
+    const preview = v.length > 60 ? v.slice(0, 60) + "…" : v;
+    recall.appendChild(new Option(preview, v));
+  });
+  recall.addEventListener("change", () => {
+    if (recall.value) {
+      textareaEl.value = recall.value;
+      textareaEl.focus();
+    }
+  });
+  wrapperGroup.insertBefore(recall, textareaEl);
 }
 
 function attachOtherToggle_(selectEl, wrapperGroup, key) {
@@ -2313,6 +2363,21 @@ function isDateField_(key) {
   const kl = key.toLowerCase();
   return kl.includes("date") || kl.includes("birthday") || kl.includes("dob") ||
          kl.includes("joining") || kl.includes("joined") || kl.includes("anniversary");
+}
+
+// 🆕 Har row ka "ID" pehchanne ka common tarika. Members sheet mein ID column
+// ka header "ID" nahi, "MemberID" hai — pehle sirf "ID" aur khaali/bekaar
+// "Member" column check hota tha, isliye Members ke Edit/Delete/View mein
+// "'ID' column nahi mila" wali error aati thi (aur galat row bhi select ho
+// sakti thi, kyunki sab rows ka fallback ID khaali string "" ban jaata tha).
+function resolveRecordId_(rec) {
+  const memberCol = SETTINGS?.MemberColumn || "Member";
+  if (rec["ID"]) return { idColumn: "ID", recordId: rec["ID"] };
+  if (rec["MemberID"]) return { idColumn: "MemberID", recordId: rec["MemberID"] };
+  if (rec[memberCol]) return { idColumn: memberCol, recordId: rec[memberCol] };
+  if (rec["Member"]) return { idColumn: "Member", recordId: rec["Member"] };
+  if (rec["Name"]) return { idColumn: "Name", recordId: rec["Name"] }; // 🆕 Members ke liye aakhri sahara
+  return { idColumn: null, recordId: null };
 }
 
 function isoToday_() {
@@ -2416,13 +2481,18 @@ async function openAddRecordForm(sheetName) {
     inputIds.push({ key: k, id });
     const label = document.createElement("label"); label.textContent = k;
 
-    const { el: input, isTextarea } = buildSmartField_(k, "");
+    const { el: input, isTextarea, recentValues } = buildSmartField_(k, "");
     input.id = id;
     if (isDateField_(k)) {
       // 🆕 Native date-picker (calendar se select karo), sheet format DD/MM/YYYY mein save hoga
       if (input.tagName !== "SELECT") {
         input.type = "date";
-        if (kl === "date") input.value = isoToday_(); // sirf main transaction Date auto-today
+        // 🆕 Main transaction "Date" aur Members ka "Joined"/"Joining Date" — dono
+        // Add karte waqt current date se auto-fill honge (Birthday/DOB/Anniversary
+        // jaanbujhkar chhode hain, kyunki wo kabhi "aaj" nahi ho sakti).
+        if (kl === "date" || kl.includes("joined") || kl.includes("joining")) {
+          input.value = isoToday_();
+        }
       }
     } else if (input.tagName !== "SELECT") {
       const hint = samplePlaceholder_(k);
@@ -2445,6 +2515,7 @@ async function openAddRecordForm(sheetName) {
     group.appendChild(input);
     container.appendChild(group);
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
+    if (input.tagName === "TEXTAREA" && recentValues) attachRecallDropdown_(input, group, recentValues);
 
     // Receipts ke liye Boli/Donation auto-fetch hetu references save karo
     if (sheetName === "Receipts") {
@@ -2968,7 +3039,7 @@ const msg =
 
 
     // Actions column
-    const encId = encodeURIComponent(row['ID'] || row[SETTINGS?.MemberColumn] || row["Member"] || "");
+    const encId = encodeURIComponent(resolveRecordId_(row).recordId || "");
     html += "<td>" + renderActionButtons(row, encId) + "</td>";
     html += "</tr>";
   });
@@ -3253,7 +3324,7 @@ function printPopupReceiptContent(title, bodyHtml) {
 async function openEditRecord(incomingEnc, e){
   if (e && e.preventDefault) e.preventDefault();
   const incoming = decodeURIComponent(incomingEnc || "");
-  let recIndex = tableData.findIndex(r => (r["ID"] || "") === incoming);
+  let recIndex = tableData.findIndex(r => (resolveRecordId_(r).recordId || "") === incoming);
   if(recIndex === -1){
     // try match by member column / name
     recIndex = tableData.findIndex(r => (r[SETTINGS?.MemberColumn] || r["Member"] || "") === incoming);
@@ -3264,12 +3335,9 @@ async function openEditRecord(incomingEnc, e){
   }
   const rec = {...tableData[recIndex]}; // copy
   const memberCol = SETTINGS?.MemberColumn || "Member";
-  let idColumn, recordId;
-  if (rec["ID"]) {
-    idColumn = "ID"; recordId = rec["ID"];
-  } else if (rec[memberCol]) {
-    idColumn = memberCol; recordId = rec[memberCol];
-  } else {
+  const { idColumn: resolvedIdColumn, recordId: resolvedRecordId } = resolveRecordId_(rec);
+  let idColumn = resolvedIdColumn, recordId = resolvedRecordId;
+  if (!idColumn) {
     alert("इस sheet (" + currentTab + ") में record पहचानने के लिए 'ID' column नहीं मिला। पहले sheet में एक 'ID' column जोड़ें, फिर Edit/Delete काम करेगा।");
     return;
   }
@@ -3309,6 +3377,7 @@ async function openEditRecord(incomingEnc, e){
       const built = buildSmartField_(k, val);
       input = built.el;
       isTextarea = built.isTextarea;
+      var editRecentValues = built.recentValues; // 🆕
       if (input.tagName === "SELECT") {
         // group banane ke baad Other-toggle attach karenge (neeche)
       } else {
@@ -3323,6 +3392,7 @@ async function openEditRecord(incomingEnc, e){
     group.appendChild(input);
     container.appendChild(group);
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
+    if (input.tagName === "TEXTAREA" && editRecentValues) attachRecallDropdown_(input, group, editRecentValues); // 🆕
   });
   el("editTitle").textContent = "Edit: " + (rec["ID"]||rec[SETTINGS?.MemberColumn]||"Record");
   el("editPopup").style.display = "flex";
@@ -3378,12 +3448,8 @@ async function deleteRecord(incomingEnc, e){
   const incoming = decodeURIComponent(incomingEnc || "");
   if(!confirm("क्या आप वाकई इस रिकॉर्ड को स्थायी रूप से हटाना चाहते हैं? यह Google Sheet से भी हट जाएगा।")) return;
   // find index
-  let idx = tableData.findIndex(r => (r["ID"]||"") === incoming);
-  let idColumn = "ID";
-  if (idx === -1) {
-    idColumn = SETTINGS?.MemberColumn || "Member";
-    idx = tableData.findIndex(r => (r[idColumn] || "") === incoming);
-  }
+  let idx = tableData.findIndex(r => (resolveRecordId_(r).recordId || "") === incoming);
+  let idColumn = idx !== -1 ? resolveRecordId_(tableData[idx]).idColumn : "ID";
   if(idx === -1){
     alert("रिकॉर्ड नहीं मिला।");
     return;
