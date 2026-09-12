@@ -934,6 +934,28 @@ function getMessageFromTemplate(type, row) {
 const CACHE = {};
 const CACHE_TIME = 10 * 60 * 1000; // 🔥 10 मिनट
 
+// 🆕 "getFormulaColumns" backend call — yeh Apps Script tak jaata hai (slow,
+// kabhi 2-6 second tak lag sakta hai), aur pehle YEH HAR "Add New" / "Edit"
+// click par DOBARA call hota tha — isi wajah se Add New/Edit popup har
+// baar dheere se khulta tha. Sheet ke formula-columns kabhi-kabhi hi
+// badalte hain, isliye ise ek baar fetch karke session mein cache kar
+// lete hain — dusri, teesri baar wahi tab kholne par turant khulega.
+const FORMULA_COLS_CACHE = {};
+async function getFormulaColumnsCached_(sheetName, forceFresh) {
+  const now = Date.now();
+  if (!forceFresh && FORMULA_COLS_CACHE[sheetName] &&
+      (now - FORMULA_COLS_CACHE[sheetName].time < CACHE_TIME)) {
+    return FORMULA_COLS_CACHE[sheetName].cols;
+  }
+  let cols = [];
+  try {
+    const meta = await callCrudBackend_({ action: "getFormulaColumns", sheetName });
+    if (meta.success) cols = meta.formulaColumns || [];
+  } catch (e) { /* best-effort, calling code ke liye khaali list theek hai */ }
+  FORMULA_COLS_CACHE[sheetName] = { cols, time: now };
+  return cols;
+}
+
 async function fetchSheet(sheetName, forceFresh){
   try{
     const now = Date.now();
@@ -1176,7 +1198,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
   try {
 
     const response = await fetch(
-      "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec",
+      WEB_APP_URL,
       {
         method: "POST",
 
@@ -1254,7 +1276,7 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 
   try {
 
-    const response = await fetch("https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec", {
+    const response = await fetch(WEB_APP_URL, {
       method: "POST",
       headers: {
         "Content-Type": "text/plain;charset=utf-8"
@@ -2178,8 +2200,10 @@ function buildSmartField_(key, currentValue) {
     fallbackMultiline = false;
   }
 
-  // ---- "Notes" dropdown: sabse recently use hui values pehle (long-text fields yahan nahi aate) ----
-  if (!select && isNoteCol && !isLongTextCol) {
+  // ---- "Notes"/"Details"/"Message" dropdown: sabse recently use hui values
+  // pehle dikhao — Meetings ka "Details" aur Announcements ka "Message" bhi
+  // ab yahi dropdown lenge (pehle yeh sirf plain textarea the).
+  if (!select && (isNoteCol || isLongTextCol)) {
     const values = tableData.map(r => (r[key] || "").toString().trim()).filter(Boolean);
     const recentFirst = [...new Set(values.slice().reverse())].slice(0, 20);
     if (recentFirst.length) {
@@ -2339,11 +2363,14 @@ async function openAddRecordForm(sheetName) {
 
   // 🆕 Members sheet ka Add form hamesha "Name" field se shuru hona chahiye
   // (kisi "Member"/MemberID jaisi column se nahi) — form fill karne mein sabse
-  // pehle naam poocha jana natural hai.
+  // pehle naam poocha jana natural hai. "Place of Origin"/"Origin" (gaon) field
+  // bhi turant uske baad, upar hi dikhega — neeche scroll karke dhoondhna na pade.
   if (sheetName === "Members") {
     const nameKey = columns.find(k => k.toLowerCase() === "name");
-    if (nameKey) {
-      columns = [nameKey, ...columns.filter(k => k !== nameKey)];
+    const originKey = columns.find(k => k !== nameKey && k.toLowerCase().includes("origin"));
+    const priorityKeys = [nameKey, originKey].filter(Boolean);
+    if (priorityKeys.length) {
+      columns = [...priorityKeys, ...columns.filter(k => !priorityKeys.includes(k))];
     }
   }
 
@@ -2352,17 +2379,26 @@ async function openAddRecordForm(sheetName) {
     return;
   }
 
+  // 🆕 Popup click karte hi TURANT dikhao (loading state ke saath) — pehle
+  // popup sirf tab dikhta tha jab formula-columns wala backend call (Apps
+  // Script, slow) poora ho jaata — is beech screen par kuch nahi hota tha,
+  // isliye "Add New" khulne mein bahut time lagta mehsoos hota tha.
+  el("editTitle").textContent = "Add New: " + sheetName;
+  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Form load ho raha hai...</p>";
+  el("saveEditBtn").disabled = true;
+  el("editPopup").style.display = "flex";
+
   // 🆕 Backend se pata karo kaunse columns formula-driven hain (jaise Paid Boli,
   // Pending Dues) — unhe form mein dikhana hi nahi, kyonki unme kuch bhi likhoge
   // backend use ignore kar dega (formula todhne se bachane ke liye)
   let formulaColumns = [];
   try {
-    const meta = await callCrudBackend_({ action: "getFormulaColumns", sheetName });
-    if (meta.success) formulaColumns = meta.formulaColumns || [];
+    formulaColumns = await getFormulaColumnsCached_(sheetName);
   } catch (e) { /* best-effort, form ke baaki kaam pe asar nahi padne dena */ }
 
   const container = el("editFields");
   container.innerHTML = "";
+  el("saveEditBtn").disabled = false; // 🆕 loading-state ke time disable kiya tha, ab wapas enable karo
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
   let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null, yearInputEl = null, donationRefInputEl = null;
@@ -2371,6 +2407,10 @@ async function openAddRecordForm(sheetName) {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
+    // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
+    // bekaar/duplicate hai (Name column already hai) — Add Member form mein isse
+    // bilkul mat dikhao.
+    if (sheetName === "Members" && kl === "member") return;
     if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
@@ -2387,6 +2427,17 @@ async function openAddRecordForm(sheetName) {
     } else if (input.tagName !== "SELECT") {
       const hint = samplePlaceholder_(k);
       if (hint) input.placeholder = hint; // 🆕 sample text
+    }
+    // 🆕 Members Add form mein "Status" hamesha "Approved" se pre-select rahe —
+    // admin khud se member add kare to usko approval ke liye alag se click na
+    // karna pade (naya self-registration abhi bhi "Pending" hi rahega, woh
+    // newRegistration() function se aata hai, is form se nahi).
+    if (sheetName === "Members" && kl === "status" && input.tagName === "SELECT") {
+      setSelectValueSafe_(input, "Approved");
+    } else if (sheetName === "Members" && kl === "status" && !input.value) {
+      // 🆕 Bilkul khaali sheet (abhi tak koi bhi status value hi nahi hai) mein
+      // dropdown ke bajaye plain input ban jaata hai — wahan bhi default bhar do
+      input.value = "Approved";
     }
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
@@ -2418,6 +2469,23 @@ async function openAddRecordForm(sheetName) {
       if (kl.includes("mobile")) mobileInputEl = input;
     }
   });
+
+  // 🆕 Members Add form mein "Role" field ko user ko dikhana nahi hai (hamesha
+  // "Member" hi hoga — Admin/other roles ke liye sheet mein khud change karo),
+  // par pehle poora field hi skip ho jaata tha, isliye Role column HAMESHA
+  // KHAALI save hota tha. Ab ek chhupa hua (hidden) input daal rahe hain jisse
+  // yeh hamesha "Member" save ho, bina form mein dikhe.
+  if (sheetName === "Members") {
+    const roleKey = columns.find(c => c.toLowerCase() === "role");
+    if (roleKey) {
+      const hiddenRole = document.createElement("input");
+      hiddenRole.type = "hidden";
+      hiddenRole.id = "af_" + roleKey.replace(/\s+/g, "_");
+      hiddenRole.value = "Member";
+      container.appendChild(hiddenRole);
+      inputIds.push({ key: roleKey, id: hiddenRole.id });
+    }
+  }
 
   // 🆕 Expenses (aur koi bhi tab jisme sirf Mobile chahiye): Member select karte hi Mobile auto-fill
   if (sheetName === "Expenses" && memberSelectEl && mobileInputEl) {
@@ -3209,8 +3277,7 @@ async function openEditRecord(incomingEnc, e){
   // 🆕 Formula-driven columns (jaise Paid Boli, Pending Dues) ko readonly dikhao
   let formulaColumns = [];
   try {
-    const meta = await callCrudBackend_({ action: "getFormulaColumns", sheetName: currentTab });
-    if (meta.success) formulaColumns = meta.formulaColumns || [];
+    formulaColumns = await getFormulaColumnsCached_(currentTab);
   } catch (e2) { /* best-effort */ }
 
   // Build fields
@@ -3521,7 +3588,12 @@ function autoLogout() {
 
 (function () {
 
-  const WEB_APP = "https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec";
+  // 🆕 Yeh pehle ek PURANI/ALAG Apps Script deployment URL (AKfycbzO6vJz...) use kar
+  // raha tha jo baaki app se match nahi karti thi — agar wo deployment expire/delete
+  // ho chuki thi ya access settings alag thi, to Google HTML error page bhejta tha
+  // (JSON nahi), jisse "Apps Script se sahi jawab nahi mila" wali error aati thi.
+  // Ab yeh bhi wahi WEB_APP_URL use karega jo baaki poora app use karta hai.
+  const WEB_APP = WEB_APP_URL;
 
   const openBtn = document.getElementById("openRegister");
   const box = document.getElementById("regBox");
@@ -3582,7 +3654,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("regMsg").innerText = "Submitting...";
 
     try {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbzO6vJzpWWXhJRTWIDJ4dO2ObXdOUBUDl4G6QGFJ55QL40gb9ApnwYvifcNE9mahwnPAQ/exec", {
+      const res = await fetch(WEB_APP_URL, {
         method: "POST",
         body: JSON.stringify({
           action: "newRegistration",
