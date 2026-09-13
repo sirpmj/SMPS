@@ -79,26 +79,6 @@ header {
 header h1 {font-size:28px;font-weight:700;letter-spacing:1px;margin:0 0 8px;}
 header .muted {color:#e0e0e0;font-size:14px;}
 
-
-
-function getCache(key) {
-  const data = localStorage.getItem(key);
-  if (!data) return null;
-
-  const parsed = JSON.parse(data);
-  if (Date.now() - parsed.time > parsed.expiry) return null;
-
-  return parsed.value;
-}
-
-function setCache(key, value, expiry) {
-  localStorage.setItem(key, JSON.stringify({
-    value,
-    time: Date.now(),
-    expiry
-  }));
-}
-
 /* ---------- Home Info Cards ---------- */
 .prelogin-cards {display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;}
 .prelogin-cards .card {flex:1; min-width:280px; background:#fff; border-top:2px solid #0b63d6;}
@@ -1244,24 +1224,12 @@ document.getElementById("sendOtpBtn").onclick = async () => {
 
   try {
 
-    const response = await fetch(
-      WEB_APP_URL,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-          "text/plain;charset=utf-8"
-        },
-
-        body: JSON.stringify({
-          action: "sendOtp",
-          mobile
-        })
-      }
-    );
-
-    const res = await response.json();
+    // 🆕 Pehle yahan alag se fetch() + response.json() likha hua tha, jisme
+    // Apps Script agar HTML error page bhej de (purani deployment / access
+    // "Anyone" nahi hai) to sirf generic "Server connection failed" dikhta
+    // tha — asli wajah pata hi nahi chalti thi. Ab wahi callCrudBackend_
+    // helper use kar rahe hain jo real reason batata hai (console + message).
+    const res = await callCrudBackend_({ action: "sendOtp", mobile });
 
     sendOtpBtn.disabled = false;
     sendOtpBtn.innerHTML = sendOtpBtnOriginalHTML;
@@ -1300,9 +1268,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     sendOtpBtn.innerHTML = sendOtpBtnOriginalHTML;
     loginInfoMsg.style.display = "none";
 
-    alert(
-      "Server connection failed. कृपया बाद में पुनः प्रयास करें।"
-    );
+    alert(err.message || "Server connection failed. कृपया बाद में पुनः प्रयास करें।");
   }
 };
 
@@ -1323,19 +1289,9 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
 
   try {
 
-    const response = await fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8"
-      },
-      body: JSON.stringify({
-        action: "verifyOtp",
-        mobile,
-        otp
-      })
-    });
-
-    const res = await response.json();
+    // 🆕 yahan bhi wahi callCrudBackend_ helper — HTML/parse error par
+    // asli wajah dikhayega, generic "Server connection failed" nahi
+    const res = await callCrudBackend_({ action: "verifyOtp", mobile, otp });
 
     if (!res.success) {
       verifyOtpBtn.disabled = false;
@@ -1382,7 +1338,7 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
     verifyOtpBtn.disabled = false;
     verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
     loginInfoMsg.style.display = "none";
-    alert("Server connection failed. कृपया बाद में पुनः प्रयास करें।");
+    alert(err.message || "Server connection failed. कृपया बाद में पुनः प्रयास करें।");
   }
 };
 
@@ -2153,22 +2109,24 @@ function buildSmartField_(key, currentValue) {
     ["Cash", "Bank"].forEach(m => select.appendChild(new Option(m, m)));
   }
 
-  // ---- Year dropdown: current + pichhle kuch saal + jo already sheet mein use ho chuke hain ----
+  // ---- Year dropdown: pichhle 2 saal + current + agla 1 saal ----
   if (!select && kl === "year") {
     const currentYear = new Date().getFullYear();
     const recentYears = [];
-    for (let y = currentYear + 1; y >= currentYear - 5; y--) recentYears.push(String(y));
-    const existingYears = tableData.map(r => String(r["Year"] || "").trim()).filter(Boolean);
-    const combined = [...new Set([...recentYears, ...existingYears])];
+    for (let y = currentYear + 1; y >= currentYear - 2; y--) recentYears.push(String(y));
     select = document.createElement("select");
     select.appendChild(new Option("-- चुनें --", ""));
-    combined.forEach(v => select.appendChild(new Option(v, v)));
+    recentYears.forEach(v => select.appendChild(new Option(v, v)));
   }
 
-  // ---- "Show on Home" jaisa Yes/No field: hamesha fixed dropdown (chahe data kam ho) ----
+  // ---- "Show on Home" jaisa TRUE/FALSE field: hamesha fixed dropdown, sirf TRUE/FALSE ----
+  // 🆕 pehle "Yes"/"No" tha — ab sirf TRUE/FALSE rakhna hai, purani sheet mein
+  // agar kahin "Yes"/"No" bhi ho to unhe list mein dobara mat dikhao.
   if (!select && (kl.includes("show") || kl.includes("home")) && !isMemberCol) {
-    const existing = tableData.map(r => String(r[key] || "").trim()).filter(Boolean);
-    const combined = [...new Set(["Yes", "No", ...existing])];
+    const existing = tableData
+      .map(r => String(r[key] || "").trim())
+      .filter(v => v && !["yes", "no"].includes(v.toLowerCase()));
+    const combined = [...new Set(["TRUE", "FALSE", ...existing])];
     select = document.createElement("select");
     select.appendChild(new Option("-- चुनें --", ""));
     combined.forEach(v => select.appendChild(new Option(v, v)));
@@ -2474,7 +2432,7 @@ async function openAddRecordForm(sheetName) {
   // Script, slow) poora ho jaata — is beech screen par kuch nahi hota tha,
   // isliye "Add New" khulne mein bahut time lagta mehsoos hota tha.
   el("editTitle").textContent = "Add New: " + sheetName;
-  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Form load ho raha hai...</p>";
+  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Loading Data...</p>";
   el("saveEditBtn").disabled = true;
   el("editPopup").style.display = "flex";
 
@@ -3461,6 +3419,14 @@ async function openEditRecord(incomingEnc, e){
     return;
   }
 
+  // 🆕 Add form ki tarah, Edit popup bhi TURANT dikha do (loading state ke
+  // saath) — formula-columns wale backend call (cached hone par bhi thoda
+  // wait ho sakta hai) ke poora hone tak khaali screen na dikhe.
+  el("editTitle").textContent = "Edit: " + (rec["ID"] || rec["MemberID"] || rec[SETTINGS?.MemberColumn] || "Record");
+  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Loading Data...</p>";
+  el("saveEditBtn").disabled = true;
+  el("editPopup").style.display = "flex";
+
   // 🆕 Formula-driven columns (jaise Paid Boli, Pending Dues) ko readonly dikhao
   let formulaColumns = [];
   try {
@@ -3470,6 +3436,7 @@ async function openEditRecord(incomingEnc, e){
   // Build fields
   const container = el("editFields");
   container.innerHTML = "";
+  el("saveEditBtn").disabled = false; // 🆕 loading-state ke time disable kiya tha, ab wapas enable karo
   Object.keys(rec).forEach(k => {
     if(!k) return;
     const kl = k.toLowerCase();
@@ -3513,8 +3480,6 @@ async function openEditRecord(incomingEnc, e){
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
     if (input.tagName === "TEXTAREA" && editRecentValues) attachRecallDropdown_(input, group, editRecentValues); // 🆕
   });
-  el("editTitle").textContent = "Edit: " + (rec["ID"]||rec[SETTINGS?.MemberColumn]||"Record");
-  el("editPopup").style.display = "flex";
   el("saveEditBtn").onclick = async () => {
     const updated = {};
     Object.keys(rec).forEach(k => {
