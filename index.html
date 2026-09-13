@@ -315,15 +315,20 @@ table {
   box-shadow: 0 3px 10px rgba(11,99,214,0.35);
   border-color: transparent;
 }
-/* 🆕 Desktop: tabs khud-ba-khud chote/bade ho jaayein (viewport ke hisaab se
-   smoothly scale) — chhoti screen par chote, badi/wide screen par bade,
-   bina hard jump ke; agar phir bhi na ho paye to scroll fallback hai */
+/* 🆕 Desktop: tabs khud-ba-khud chote/bade ho jaayein — par ISKE ACTUAL
+   CONTAINER (.tabs, jo .wrap ke max-width se bounded hai) ke hisaab se, na ki
+   pure browser viewport (vw) ke hisaab se. Pehle vw units use ho rahe the —
+   isse wide monitor (jaise 1920px) par tabs itne bade calculate ho jaate
+   the jitni jagah .wrap (max-width:1400px) ke andar asal mein thi hi nahi,
+   isliye scroll aa jaata tha. "container query" (cqw) se yeh galti nahi hoti,
+   kyunki yeh .tabs ke ASLI (bounded) width se calculate hota hai. */
+.tabs { container-type: inline-size; } /* 🆕 taaki neeche cqw units iske asli (bounded) width se calculate ho, poore browser viewport se nahi */
 @media (min-width: 601px) {
   .tabs {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: clamp(4px, 0.5vw, 8px);
+    gap: clamp(4px, 0.5cqw, 8px);
     padding: 4px 2px 8px;
     scrollbar-width: thin;
   }
@@ -331,8 +336,8 @@ table {
   .tabs::-webkit-scrollbar-thumb { background: #c7d6f5; border-radius: 999px; }
   .tab {
     flex: 0 0 auto;
-    font-size: clamp(12.5px, 0.9vw + 6px, 15px);
-    padding: clamp(6px, 0.3vw + 5px, 9px) clamp(10px, 0.6vw + 8px, 16px);
+    font-size: clamp(11.5px, 1.6cqw, 15px);
+    padding: clamp(5px, 0.7cqw, 9px) clamp(8px, 1.4cqw, 16px);
   }
 }
 /* 📱 Mobile → 3 equal tabs per row with equal auto height */
