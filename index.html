@@ -60,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1300px;margin:0 auto;padding:20px;}
+.wrap {max-width:1200px;margin:0 auto;padding:20px;}
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -620,6 +620,24 @@ style="background:#008000;color:#fff;font-size:16px">
   </button>
 
   <button id="logoutBtn">🔙 Logout</button>
+
+  <!-- 🆕 Date/Year Filter — All / Year-wise / Financial-Year-wise / Custom range -->
+  <div id="dateFilterBar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+    <select id="filterMode" style="padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+      <option value="all">सभी (All)</option>
+      <option value="year">वर्ष (Year)</option>
+      <option value="fy">वित्तीय वर्ष (FY)</option>
+      <option value="custom">कस्टम तारीख</option>
+    </select>
+    <select id="yearFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+      <option value="">All Year</option>
+    </select>
+    <select id="fyFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+    </select>
+    <input type="date" id="customDateFrom" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+    <span id="customDateSep" style="display:none;font-size:13px;color:#666">से</span>
+    <input type="date" id="customDateTo" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+  </div>
 
 </div>
 
@@ -1759,10 +1777,8 @@ async function renderMainDashboard(forceFresh){
 
   try{
 
-    const selectedYear =
-      document.getElementById("yearFilter")?.value ||
-      SETTINGS?.DefaultYear ||
-      "";
+    // 🆕 Ab Year, FY, aur Custom Date teeno mode support karta hai (pehle sirf Year tha)
+    const activeRange = getActiveDateFilterRange_();
 
     const [members, boli, donation, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members", forceFresh),
@@ -1772,25 +1788,15 @@ async function renderMainDashboard(forceFresh){
       fetchSheet("Expenses", forceFresh)
     ]);
 
-    // ===== Year Filter =====
+    // ===== Date/Year/FY Filter =====
     let boliData = boli;
     let donationData = donation;
     let expenseData = expenses;
 
-    if(selectedYear){
-
-      boliData = boli.filter(r =>
-        String(r.Year || "").trim() === String(selectedYear)
-      );
-
-      donationData = donation.filter(r =>
-        String(r.Year || "").trim() === String(selectedYear)
-      );
-
-      expenseData = expenses.filter(r =>
-        String(r.Year || "").trim() === String(selectedYear)
-      );
-
+    if (activeRange) {
+      boliData = boli.filter(r => rowInDateRange_(r, activeRange));
+      donationData = donation.filter(r => rowInDateRange_(r, activeRange));
+      expenseData = expenses.filter(r => rowInDateRange_(r, activeRange));
     }
 
     // -------- Total Members --------
@@ -2047,28 +2053,11 @@ async function loadTab(sheetName, forceFresh) {
     if (document.getElementById("exportPDFBtn"))
       document.getElementById("exportPDFBtn").style.display = "inline-block";
 
- // ✅ Year filter (Members tab पर नहीं)
-if(sheetName === "Members"){
-
-
-  if (typeof fillYearFilter === "function") {
-    fillYearFilter(tableData);
+ // ✅ Date/Year/FY filter — saare tabs mein available (jahan Date ya Year column ho)
+  fillYearFilter(tableData);
+  if (document.getElementById("dateFilterBar")) {
+    document.getElementById("dateFilterBar").style.display = "flex";
   }
-
-  if (typeof applyYearSettings === "function") {
-    applyYearSettings();
-  }
-
-  if (document.getElementById("yearFilter"))
-    document.getElementById("yearFilter").style.display = "inline-block";
-
-} else {
-
-  // Members tab → Year filter hide
-  if (document.getElementById("yearFilter"))
-    document.getElementById("yearFilter").style.display = "none";
-
-}
 
     // ✅ Render table (MUST exist)
     renderTable();
@@ -2159,7 +2148,7 @@ function buildSmartField_(key, currentValue) {
   if (!select && kl === "year") {
     const currentYear = new Date().getFullYear();
     const recentYears = [];
-    for (let y = currentYear + 1; y >= currentYear - 2; y--) recentYears.push(String(y));
+    for (let y = currentYear + 1; y >= currentYear - 5; y--) recentYears.push(String(y));
     const existingYears = tableData.map(r => String(r["Year"] || "").trim()).filter(Boolean);
     const combined = [...new Set([...recentYears, ...existingYears])];
     select = document.createElement("select");
@@ -2476,7 +2465,7 @@ async function openAddRecordForm(sheetName) {
   // Script, slow) poora ho jaata — is beech screen par kuch nahi hota tha,
   // isliye "Add New" khulne mein bahut time lagta mehsoos hota tha.
   el("editTitle").textContent = "Add New: " + sheetName;
-  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Loading data...</p>";
+  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Form load ho raha hai...</p>";
   el("saveEditBtn").disabled = true;
   el("editPopup").style.display = "flex";
 
@@ -2785,34 +2774,159 @@ async function openAddRecordForm(sheetName) {
 }
 
 
-function fillYearFilter(data){
+/* =========================================================================
+   📅 DATE FILTER SYSTEM — Year-wise / Financial-Year-wise / Custom range
+   ========================================================================= */
 
-  const yearSelect = document.getElementById("yearFilter");
-  if(!yearSelect) return;
-
-  yearSelect.innerHTML = `<option value="">All Year</option>`;
-
-  const years = new Set();
-
-  data.forEach(r => {
-
-    if(!r) return;
-
-    const y = r["Year"] || r["year"];
-
-    if(y) years.add(String(y));
-
-  });
-
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    yearSelect.appendChild(opt);
-  });
-
+// DD/MM/YYYY (ya Date object/ISO) ko JS Date mein convert karo — filter ke liye
+function parseRowDate_(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val) ? null : val;
+  const s = String(val).trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
 }
 
+// Year ya FY dropdown ke liye, tableData se available years nikalo
+// (Date column se, ya Year column se fallback)
+function getAvailableYears_(data) {
+  const years = new Set();
+  data.forEach(r => {
+    if (!r) return;
+    const d = parseRowDate_(r["Date"]);
+    if (d) { years.add(d.getFullYear()); return; }
+    const y = r["Year"] || r["year"];
+    if (y) years.add(parseInt(y, 10));
+  });
+  return [...years].filter(y => !isNaN(y)).sort((a, b) => b - a);
+}
+
+function fillYearFilter(data) {
+  const years = getAvailableYears_(data);
+
+  const yearSelect = document.getElementById("yearFilter");
+  if (yearSelect) {
+    const prev = yearSelect.value;
+    yearSelect.innerHTML = `<option value="">सभी वर्ष</option>`;
+    years.forEach(y => {
+      const opt = document.createElement("option");
+      opt.value = y; opt.textContent = y;
+      yearSelect.appendChild(opt);
+    });
+    if (years.includes(+prev)) yearSelect.value = prev;
+  }
+
+  // 🆕 Financial Year dropdown (अप्रैल–मार्च) — jaise "2024-25"
+  const fySelect = document.getElementById("fyFilter");
+  if (fySelect) {
+    const prev = fySelect.value;
+    fySelect.innerHTML = "";
+    // Har saal ke liye do FY ban sakte hain (Jan-Mar wale saal ki FY pichle saal se shuru hoti hai)
+    const fyStarts = new Set();
+    years.forEach(y => { fyStarts.add(y); fyStarts.add(y - 1); });
+    [...fyStarts].sort((a, b) => b - a).forEach(startYear => {
+      const label = `FY ${startYear}-${String(startYear + 1).slice(-2)}`;
+      const opt = document.createElement("option");
+      opt.value = startYear; opt.textContent = label;
+      fySelect.appendChild(opt);
+    });
+    if ([...fySelect.options].some(o => o.value === prev)) fySelect.value = prev;
+  }
+}
+
+// Abhi konsa filter mode active hai, uske hisaab se {start, end} Date range do
+// (null = koi filter nahi, sab data dikhao)
+function getActiveDateFilterRange_() {
+  const mode = document.getElementById("filterMode")?.value || "all";
+
+  if (mode === "year") {
+    const y = document.getElementById("yearFilter")?.value;
+    if (!y) return null;
+    return { start: new Date(+y, 0, 1), end: new Date(+y, 11, 31, 23, 59, 59), year: +y };
+  }
+
+  if (mode === "fy") {
+    const startYear = document.getElementById("fyFilter")?.value;
+    if (!startYear) return null;
+    // भारतीय Financial Year: 1 अप्रैल se 31 मार्च तक
+    return {
+      start: new Date(+startYear, 3, 1),
+      end: new Date(+startYear + 1, 2, 31, 23, 59, 59)
+    };
+  }
+
+  if (mode === "custom") {
+    const fromVal = document.getElementById("customDateFrom")?.value;
+    const toVal = document.getElementById("customDateTo")?.value;
+    if (!fromVal && !toVal) return null;
+    return {
+      start: fromVal ? new Date(fromVal + "T00:00:00") : null,
+      end: toVal ? new Date(toVal + "T23:59:59") : null
+    };
+  }
+
+  return null; // "all"
+}
+
+// Row is range ke andar aata hai ya nahi — Date column se check karo, warna
+// Year column se fallback (jin tabs mein poori Date nahi hai unke liye, jaise
+// Boli/Donation pledge saal)
+function rowInDateRange_(row, range) {
+  const d = parseRowDate_(row["Date"]);
+  if (d) {
+    if (range.start && d < range.start) return false;
+    if (range.end && d > range.end) return false;
+    return true;
+  }
+  // Date column nahi hai (jaise Members) — Year column se match karo
+  if (range.year !== undefined) {
+    const y = row["Year"] || row["year"];
+    if (!y) return true; // Year bhi nahi hai to filter mat karo, dikhao
+    return String(parseInt(y, 10)) === String(range.year);
+  }
+  return true; // Date parse nahi ho payi aur FY/custom hai — safe default: dikhao
+}
+
+// 🆕 Filter mode badalne par sahi control dikhao/chupao
+function updateFilterModeUI_() {
+  const mode = document.getElementById("filterMode")?.value || "all";
+  const yearEl = document.getElementById("yearFilter");
+  const fyEl = document.getElementById("fyFilter");
+  const fromEl = document.getElementById("customDateFrom");
+  const toEl = document.getElementById("customDateTo");
+  const sepEl = document.getElementById("customDateSep");
+
+  if (yearEl) yearEl.style.display = (mode === "year") ? "inline-block" : "none";
+  if (fyEl) fyEl.style.display = (mode === "fy") ? "inline-block" : "none";
+  if (fromEl) fromEl.style.display = (mode === "custom") ? "inline-block" : "none";
+  if (toEl) toEl.style.display = (mode === "custom") ? "inline-block" : "none";
+  if (sepEl) sepEl.style.display = (mode === "custom") ? "inline" : "none";
+}
+
+(function wireDateFilterEvents_() {
+  const filterModeEl = document.getElementById("filterMode");
+  if (filterModeEl && !filterModeEl._bound) {
+    filterModeEl.addEventListener("change", () => {
+      updateFilterModeUI_();
+      renderTable();
+      if (shouldShowDashboard()) renderMainDashboard();
+    });
+    filterModeEl._bound = true;
+  }
+  ["yearFilter", "fyFilter", "customDateFrom", "customDateTo"].forEach(id => {
+    const elx = document.getElementById(id);
+    if (elx && !elx._bound) {
+      elx.addEventListener("change", () => {
+        renderTable();
+        if (shouldShowDashboard()) renderMainDashboard();
+      });
+      elx._bound = true;
+    }
+  });
+  updateFilterModeUI_();
+})();
 
 /* ---------- RENDER TABLE ---------- */
 function renderTable(){
@@ -2860,55 +2974,11 @@ filteredData.sort((a,b)=>{
     );
   }
 
-// 📅 YEAR FILTER
-const selectedYear =
-  document.getElementById("yearFilter")?.value ||
-  SETTINGS?.DefaultYear ||
-  "";
-
-if (selectedYear && currentTab !== "Members") {
-  filteredData = filteredData.filter(r =>
-    String(r.Year || "").trim() === String(selectedYear)
-  );
-}
-
-
-function fillYearFilter(data){
-  const sel = document.getElementById("yearFilter");
-  if(!sel) return;
-
-  sel.innerHTML = `<option value="">All Year</option>`;
-  const years = new Set();
-
-  data.forEach(r=>{
-    if(r.Year) years.add(String(r.Year));
-  });
-
-  [...years].sort((a,b)=>b-a).forEach(y=>{
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    sel.appendChild(opt);
-  });
-}
-
-
-function applyYearSettings() {
-  const yf = document.getElementById("yearFilter");
-  if (!yf || !window.SETTINGS) return;
-
-  // Enable / Disable Year Filter
-  if ((SETTINGS.EnableYearFilter || "").toUpperCase() !== "YES") {
-    yf.style.display = "none";
-    yf.value = ""; // All Year
-    return;
-  }
-
-  yf.style.display = "inline-block";
-
-  // 🔒 FORCE Default Year
-  if (SETTINGS.DefaultYear) {
-    yf.value = String(SETTINGS.DefaultYear);
+// 📅 DATE FILTER (Year / Financial Year / Custom range)
+{
+  const range = getActiveDateFilterRange_();
+  if (range) {
+    filteredData = filteredData.filter(r => rowInDateRange_(r, range));
   }
 }
 
