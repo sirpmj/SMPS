@@ -105,10 +105,15 @@ header .muted {color:#e0e0e0;font-size:14px;}
    apne items mein baant deti hai (chahe wo last/incomplete row ho), isliye
    ab Grid ki jagah flex-wrap use kar rahe hain — koi bhi row ho, khaali
    jagah nahi bachegi. */
+/* 🆕 Desktop: SAARE cards EK hi line mein, poori width edge-to-edge fill
+   karte hue — flex-wrap:nowrap + shrink allow karta hai taaki jitne bhi
+   cards hon (role ke hisaab se kam/zyada), sab ek row mein adjust ho jaayein,
+   koi bhi row khaali/adhoori na bache (aur flexbox last-row-gap wali grid
+   limitation yahan bhi nahi hoti). */
 @media (min-width:901px){
-  .dashboard{display:flex; flex-wrap:wrap; gap:10px;}
-  .dash-card{flex:1 1 190px; padding:10px 12px}
-  .dash-card-wide{flex:2 1 390px !important}
+  .dashboard{display:flex; flex-wrap:nowrap; gap:8px;}
+  .dash-card{flex:1 1 0; padding:10px 8px; min-width:0}
+  .dash-card-wide{flex:2 1 0 !important}
 }
 
 /* dash colors */
