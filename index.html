@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="hi">
 <head>
+
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a90e2">
 
@@ -59,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1300px;margin:0 auto;padding:20px;} /* 🆕 page width 1400px — cards/tabs is hisaab se fit hote hain */
+.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 page width 1400px — cards/tabs is hisaab se fit hote hain */
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -327,6 +328,7 @@ table {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
+    justify-content: space-between; /* 🆕 poori 1400px width edge-to-edge use ho, side mein khaali jagah na bache */
     gap: clamp(4px, 0.5cqw, 8px);
     padding: 4px 2px 8px;
     scrollbar-width: thin;
