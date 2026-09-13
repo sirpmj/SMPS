@@ -407,6 +407,8 @@ button:hover{opacity:0.9}
    desktop par)], Row2 = filters (hamesha apni alag line par, buttons ke
    saath ulझ na jaaye). */
 #dateFilterBar { flex-basis: 100%; } /* hamesha naya row */
+.welcome-filter-row #welcomeMsg { flex: 1 1 260px; margin-bottom: 0; min-width: 0; }
+.welcome-filter-row #dateFilterBar { flex-basis: auto; margin-left: auto; } /* 🆕 desktop par welcome-message wali line ke right side */
 .toolbar-user {
   margin-left: auto;      /* 🆕 desktop par buttons wali line mein hi right side push ho jaata hai */
   display: flex;
@@ -438,6 +440,9 @@ button:hover{opacity:0.9}
     font-size: 12px !important;
     padding: 5px 6px !important;
   }
+  /* 🆕 Mobile par welcome-message ke right side jagah nahi hoti — filter
+     apni alag line mein neeche hi rahe */
+  .welcome-filter-row #dateFilterBar { flex-basis: 100%; margin-left: 0; }
 }
 .alert-row{background:#fff0f0;color:#b30000;font-weight:bold}
 .action-link{margin-right:8px;text-decoration:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;display:inline-block}
@@ -660,13 +665,22 @@ style="background:#008000;color:#fff;font-size:16px">
   <div class="toolbar-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <button id="refreshBtn" type="button">⟳ Refresh</button>
 
-    <button id="exportExcelBtn" style="display:none" onclick="exportExcel()">
-      📊 Excel
-    </button>
-
-    <button id="exportAllExcelBtn" type="button" onclick="exportAllTabsExcel()">
-      📦 All Excel
-    </button>
+    <!-- 🆕 "Excel" aur "All Tabs Excel" ab EK hi button mein — click karte hi
+         chhota sa selection menu khulta hai (kaunsa export chahiye), isse
+         buttons ek kam ho gaye aur poori row bina scroll ke fit hoti hai -->
+    <div id="excelMenuWrapper" style="position:relative;display:inline-block">
+      <button id="exportExcelBtn" type="button" onclick="toggleExcelMenu_(event)">
+        📊 Excel ▾
+      </button>
+      <div id="excelMenu" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.15);z-index:80;min-width:190px;overflow:hidden">
+        <div onclick="closeExcelMenu_(); exportExcel();" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee;white-space:nowrap">
+          📄 इस Tab का Excel
+        </div>
+        <div onclick="closeExcelMenu_(); exportAllTabsExcel();" style="padding:10px 14px;cursor:pointer;font-size:13px;white-space:nowrap">
+          📦 सभी Tabs का Excel
+        </div>
+      </div>
+    </div>
 
     <button id="exportPDFBtn" style="display:none" onclick="exportPDF()">
       📄 PDF
@@ -680,27 +694,28 @@ style="background:#008000;color:#fff;font-size:16px">
     <b id="userName"></b> <span id="userRole" class="muted"></span>
   </div>
 
-  <!-- 🆕 Date/Year Filter — All / Year-wise / Financial-Year-wise / Custom range -->
-  <div id="dateFilterBar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
-    <select id="filterMode" style="padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
-      <option value="all">सभी (All)</option>
-      <option value="year" selected>वर्ष (Year)</option>
-      <option value="fy">वित्तीय वर्ष (FY)</option>
-      <option value="custom">कस्टम तारीख</option>
-    </select>
-    <select id="yearFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
-      <option value="">All Year</option>
-    </select>
-    <select id="fyFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
-    </select>
-    <input type="date" id="customDateFrom" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
-    <span id="customDateSep" style="display:none;font-size:13px;color:#666">से</span>
-    <input type="date" id="customDateTo" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
-  </div>
-
 </div>
 
-          <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
+          <div class="welcome-filter-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
+              <!-- 🆕 Date/Year Filter — All / Year-wise / Financial-Year-wise / Custom range -->
+              <div id="dateFilterBar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+                <select id="filterMode" style="padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+                  <option value="all">सभी (All)</option>
+                  <option value="year" selected>वर्ष (Year)</option>
+                  <option value="fy">वित्तीय वर्ष (FY)</option>
+                  <option value="custom">कस्टम तारीख</option>
+                </select>
+                <select id="yearFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+                  <option value="">All Year</option>
+                </select>
+                <select id="fyFilter" style="display:none;padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+                </select>
+                <input type="date" id="customDateFrom" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+                <span id="customDateSep" style="display:none;font-size:13px;color:#666">से</span>
+                <input type="date" id="customDateTo" style="display:none;padding:6px 8px;border-radius:8px;border:1px solid #ccc;font-size:13px">
+              </div>
+          </div>
         </div>
         <div class="header-buttons">
        
@@ -1699,8 +1714,12 @@ async function openApp(){
   el("userName").textContent = currentUser.name;
   el("userRole").textContent = "(" + (currentUser.role||"") + ")";
   // Welcome message (Hindi)
+  // 🆕 Naam ke END mein Role bhi jod diya (jaise "Suresh (Admin)") — mobile par
+  // toolbar wala naam/role chupa hota hai, isliye yahan (welcome message mein,
+  // jo mobile par bhi dikhta hai) role hamesha saath dikhega.
+  const nameWithRole = currentUser.name + (currentUser.role ? " (" + currentUser.role + ")" : "");
   const template = SETTINGS["WelcomeMessage"] || "Welcome, {{Name}}!";
-const welcomeText = template.replace("{{Name}}", currentUser.name);
+  const welcomeText = template.replace("{{Name}}", nameWithRole);
   el("welcomeMsg").textContent = welcomeText;
   el("welcomeMsg").style.display = "block";
   fetchHomeSheet();
@@ -3710,6 +3729,23 @@ function getVisibleTableData() {
 }
 
 
+// 🆕 "Excel ▾" button ka chhota selection menu (current tab vs all tabs)
+function toggleExcelMenu_(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById("excelMenu");
+  if (!menu) return;
+  menu.style.display = (menu.style.display === "none" || !menu.style.display) ? "block" : "none";
+}
+function closeExcelMenu_() {
+  const menu = document.getElementById("excelMenu");
+  if (menu) menu.style.display = "none";
+}
+// bahar kahin bhi click ho to menu apne aap band ho jaaye
+document.addEventListener("click", (e) => {
+  const wrapper = document.getElementById("excelMenuWrapper");
+  if (wrapper && !wrapper.contains(e.target)) closeExcelMenu_();
+});
+
 function exportExcel() {
   const { headers, rows } = getVisibleTableData();
 
@@ -3754,7 +3790,8 @@ async function exportAllTabsExcel() {
     return;
   }
 
-  const btn = document.getElementById("exportAllExcelBtn");
+  // 🆕 Excel+All-Excel ab ek hi button ("exportExcelBtn") ke dropdown mein hain
+  const btn = document.getElementById("exportExcelBtn");
   const originalHTML = btn ? btn.innerHTML : "";
   if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Export ho raha hai..."; }
 
