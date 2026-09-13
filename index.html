@@ -1195,93 +1195,56 @@ async function loadFooter(){
 
 document.getElementById("sendOtpBtn").onclick = async () => {
 
-  // 🆕 SABSE PEHLE — kisi bhi async operation (MEMBERS load, fetch) se pehle
-  // hi khaali tab khol do. Pehle yeh MEMBERS-load check ke BAAD khulta tha —
-  // agar MEMBERS load hone mein time lagta (cache expire, slow network), to
-  // us async gap ki wajah se browser is window.open() ko bhi "user gesture
-  // nahi hai" samajh kar block kar deta tha. Ab yeh click hote hi turant
-  // (sabse pehli line) khulta hai, isliye kabhi block nahi hoga.
-  const waTab = window.open("", "_blank");
-
   const mobile = username.value.replace(/\D/g, "");
 
   if (mobile.length !== 10) {
-    if (waTab && !waTab.closed) waTab.close();
     alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
     return;
   }
 
-  // 🔥 ensure MEMBERS loaded
+  // 🔥 MEMBERS pehle se load hona chahiye (init() ke waqt normally ho jaata hai).
+  // Agar kisi wajah se abhi tak nahi hua, to yahi ek jagah hai jahan wait karna
+  // padega — lekin yeh rare case hai (normally MEMBERS load hone ka time
+  // number type karne mein hi nikal jaata hai).
   if (!MEMBERS || Object.keys(MEMBERS).length === 0) {
-
-    loginInfoMsg.innerText =
-      "⏳ कृपया प्रतीक्षा करें...";
-
+    loginInfoMsg.innerText = "⏳ कृपया प्रतीक्षा करें...";
+    loginInfoMsg.style.display = "block";
     MEMBERS = await loadMembers();
   }
 
   if (!MEMBERS[mobile]) {
-    if (waTab && !waTab.closed) waTab.close();
-    alert(
-      "आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।"
-    );
+    alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
     return;
   }
 
-  const sendOtpBtnOriginalHTML = sendOtpBtn.innerHTML;
-  sendOtpBtn.disabled = true;
-  sendOtpBtn.innerHTML = "⏳ भेजा जा रहा है...";
-  loginInfoMsg.innerText = "⏳ OTP भेजा जा रहा है, कृपया प्रतीक्षा करें (कुछ सेकंड लग सकते हैं)...";
+  // 🆕 OTP ab CLIENT-SIDE generate hota hai (crypto-random, 6 digit) — isliye
+  // WhatsApp turant (bilkul instant, koi blank tab nahi) khul sakta hai, kisi
+  // bhi server response ka wait kiye bina. Server ko yeh OTP background mein
+  // (fire-and-forget) bata dete hain taaki verify step mein match kar sake.
+  const otpArr = new Uint32Array(1);
+  crypto.getRandomValues(otpArr);
+  const otp = String(100000 + (otpArr[0] % 900000));
+
+  const waMessage =
+    "🔐 श्री मेवाड़ प्रजापत समाज – वापी\n" +
+    "आपका OTP है: *" + otp + "*\n(5 मिनट वैध)";
+  const waUrl = "https://wa.me/91" + mobile + "?text=" + encodeURIComponent(waMessage);
+
+  // 🆕 Bilkul turant (sync) WhatsApp khol do — koi blank intermediate tab nahi
+  window.open(waUrl, "_blank");
+
+  // Background mein server ko OTP store karne ke liye bata do (verify ke liye chahiye)
+  callCrudBackend_({ action: "storeOtp", mobile, otp }).catch(err => {
+    console.error("OTP store failed:", err);
+  });
+
+  otpInput.style.display = "block";
+  verifyOtpBtn.style.display = "block";
+  sendOtpBtn.style.display = "none";
+
+  const maskedMobile = mobile.slice(0, 2) + "XXXXXX" + mobile.slice(-2);
+  loginInfoMsg.innerText = "OTP भेजा गया है मोबाइल: " + maskedMobile;
   loginInfoMsg.style.display = "block";
-
-  try {
-
-    // 🆕 Pehle yahan alag se fetch() + response.json() likha hua tha, jisme
-    // Apps Script agar HTML error page bhej de (purani deployment / access
-    // "Anyone" nahi hai) to sirf generic "Server connection failed" dikhta
-    // tha — asli wajah pata hi nahi chalti thi. Ab wahi callCrudBackend_
-    // helper use kar rahe hain jo real reason batata hai (console + message).
-    const res = await callCrudBackend_({ action: "sendOtp", mobile });
-
-    sendOtpBtn.disabled = false;
-    sendOtpBtn.innerHTML = sendOtpBtnOriginalHTML;
-
-    if (!res.success) {
-      if (waTab && !waTab.closed) waTab.close();
-      loginInfoMsg.style.display = "none";
-      alert(res.msg || "OTP भेजने में समस्या हुई");
-      return;
-    }
-
-    // 🆕 pehle se khuli tab ko WhatsApp link par bhej do
-    if (waTab && !waTab.closed) {
-      waTab.location.href = res.waUrl;
-    } else {
-      // agar browser ne khaali tab bhi block kar diya tha, to yahan try karo
-      window.open(res.waUrl, "_blank");
-    }
-
-    otpInput.style.display = "block";
-    verifyOtpBtn.style.display = "block";
-    sendOtpBtn.style.display = "none";
-
-    const maskedMobile = mobile.slice(0, 2) + "XXXXXX" + mobile.slice(-2);
-    loginInfoMsg.innerText =
-      "OTP भेजा गया है मोबाइल: " + (res.masked || maskedMobile);
-
-    loginInfoMsg.style.display = "block";
-
-  } catch (err) {
-
-    console.error(err);
-    if (waTab && !waTab.closed) waTab.close();
-
-    sendOtpBtn.disabled = false;
-    sendOtpBtn.innerHTML = sendOtpBtnOriginalHTML;
-    loginInfoMsg.style.display = "none";
-
-    alert(err.message || "Server connection failed. कृपया बाद में पुनः प्रयास करें।");
-  }
 };
 
 document.getElementById("verifyOtpBtn").onclick = async () => {
