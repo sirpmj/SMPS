@@ -60,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 1200 aur 1600 ke beech ka balance */
+.wrap {max-width:1200px;margin:0 auto;padding:20px;} /* 🆕 1200 aur 1600 ke beech ka balance */
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -1763,20 +1763,18 @@ async function renderMainDashboard(forceFresh){
     let boliData = boli;
     let donationData = donation;
     let expenseData = expenses;
-    // ⚠️ Fund/Cash/Bank "Balance" hamesha CUMULATIVE (shuru se ab tak) hona
-    // chahiye — yeh ek "balance" hai, kisi ek saal ka movement nahi. Pichhli
-    // baar ise bhi year-filter kar diya tha, jisse agar kisi saal mein sirf
-    // expense zyada aur income kam ho, to Cash Balance jaisa "-44,000" (galat/
-    // ulta) dikhne lagta tha — asli cash-in-hand kabhi negative nahi ho sakta
-    // agar shuru se sahi track ho raha ho. Isliye fundLedger yahan HAMESHA
-    // poora (unfiltered) use karo — sirf Boli/Donation/Expense "is period ki
-    // activity" hain, unhe filter karna sahi hai.
-    const fundLedgerData = fundLedger;
+    // 🆕 Fund/Cash/Bank "Balance" bhi ab yearwise hai — par "sirf us saal ki
+    // entries" nahi (woh sirf ek saal ka NET MOVEMENT deta, jo negative/ajeeb
+    // dikh sakta hai), balki "us saal ke AAKHIR TAK ka CUMULATIVE balance"
+    // (jaise passbook mein "31 Dec tak balance") — isliye alag helper
+    // (rowUpToPeriodEnd_) use kar rahe hain jo sirf upper-bound check karta hai.
+    let fundLedgerData = fundLedger;
 
     if (activeRange) {
       boliData = boli.filter(r => rowInDateRange_(r, activeRange));
       donationData = donation.filter(r => rowInDateRange_(r, activeRange));
       expenseData = expenses.filter(r => rowInDateRange_(r, activeRange));
+      fundLedgerData = fundLedger.filter(r => rowUpToPeriodEnd_(r, activeRange));
     }
 
     // -------- Total Members --------
@@ -2894,6 +2892,23 @@ function rowInDateRange_(row, range) {
     return String(parseInt(y, 10)) === String(range.year);
   }
   return true; // Date parse nahi ho payi aur FY/custom hai — safe default: dikhao
+}
+
+// 🆕 "Balance" (Fund/Cash/Bank) ke liye ALAG check — yeh "us saal ka movement"
+// nahi, balki "us saal ke AAKHIR TAK ka CUMULATIVE balance" hona chahiye
+// (jaise bank passbook mein "31 Dec 2024 tak balance"). Isliye sirf UPPER
+// bound (range.end) check karte hain — range.start ko IGNORE karte hain,
+// taaki us saal se PEHLE ki saari entries bhi ginti mein aayein.
+function rowUpToPeriodEnd_(row, range) {
+  if (!range || !range.end) return true; // "All"/koi end na ho — poora cumulative (ab tak)
+  const d = parseRowDate_(row["Date"]);
+  if (d) return d <= range.end;
+  if (range.year !== undefined) {
+    const y = row["Year"] || row["year"];
+    if (!y) return true;
+    return parseInt(y, 10) <= range.year;
+  }
+  return true;
 }
 
 // 🆕 Filter mode badalne par sahi control dikhao/chupao
