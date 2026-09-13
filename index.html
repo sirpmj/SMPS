@@ -402,6 +402,43 @@ button{padding:10px 16px;border-radius:8px;cursor:pointer;transition:0.3s;font-w
 button:hover{opacity:0.9}
 #logoutBtn{background:#d9534f;color:#fff}
 #refreshBtn{background:#0b63d6;color:#fff}
+
+/* 🆕 App header ka structure: Row1 = [buttons ..... user-info (right side,
+   desktop par)], Row2 = filters (hamesha apni alag line par, buttons ke
+   saath ulझ na jaaye). */
+#dateFilterBar { flex-basis: 100%; } /* hamesha naya row */
+.toolbar-user {
+  margin-left: auto;      /* 🆕 desktop par buttons wali line mein hi right side push ho jaata hai */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 14px;
+}
+/* 🆕 Mobile: 5 buttons + filters ko poori tarah 2 line mein fit karne ke
+   liye compact size — warna 3-4 line ban jaati thi */
+@media (max-width: 600px) {
+  .app-header button {
+    font-size: 10.5px;
+    padding: 5px 6px;
+    flex: 0 0 auto;
+  }
+  .toolbar-btns {
+    gap: 4px;
+    flex-wrap: nowrap;   /* 🆕 hamesha 1 line — agar bahut hi chhoti screen ho to scroll fallback */
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  /* 🆕 Mobile par username yahan chupa dete hain (isse buttons+filters
+     "2 line" mein hi rehte hain) — naam pehle se hi "Welcome, {{Name}}!"
+     wale welcome message mein dikh jaata hai, isliye jaankari kahin
+     chhutti nahi hai. */
+  .toolbar-user { display: none; }
+  #dateFilterBar select, #dateFilterBar input {
+    font-size: 12px !important;
+    padding: 5px 6px !important;
+  }
+}
 .alert-row{background:#fff0f0;color:#b30000;font-weight:bold}
 .action-link{margin-right:8px;text-decoration:none;padding:6px 10px;border-radius:6px;border:1px solid #ccc;display:inline-block}
 .action-link.print{background:#eef6ff;border-color:#c9e0ff;color:#03427a}
@@ -620,21 +657,28 @@ style="background:#008000;color:#fff;font-size:16px">
     <div class="card">
       <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
 
-  <button id="refreshBtn" type="button">⟳ Refresh</button>
+  <div class="toolbar-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <button id="refreshBtn" type="button">⟳ Refresh</button>
 
-  <button id="exportExcelBtn" style="display:none" onclick="exportExcel()">
-    📊 Excel
-  </button>
+    <button id="exportExcelBtn" style="display:none" onclick="exportExcel()">
+      📊 Excel
+    </button>
 
-  <button id="exportAllExcelBtn" type="button" onclick="exportAllTabsExcel()">
-    📦 All Tabs Excel
-  </button>
+    <button id="exportAllExcelBtn" type="button" onclick="exportAllTabsExcel()">
+      📦 All Excel
+    </button>
 
-  <button id="exportPDFBtn" style="display:none" onclick="exportPDF()">
-    📄 PDF
-  </button>
+    <button id="exportPDFBtn" style="display:none" onclick="exportPDF()">
+      📄 PDF
+    </button>
 
-  <button id="logoutBtn">🔙 Logout</button>
+    <button id="logoutBtn">🔙 Logout</button>
+  </div>
+
+  <!-- 🆕 User info ab desktop par button-row ke SAATH, right side par dikhega -->
+  <div class="toolbar-user">
+    <b id="userName"></b> <span id="userRole" class="muted"></span>
+  </div>
 
   <!-- 🆕 Date/Year Filter — All / Year-wise / Financial-Year-wise / Custom range -->
   <div id="dateFilterBar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
@@ -656,11 +700,6 @@ style="background:#008000;color:#fff;font-size:16px">
 
 </div>
 
-
-
-
-
-          <b id="userName"></b> <span id="userRole" class="muted"></span>
           <div id="welcomeMsg" class="welcome-box" style="display:none"></div>
         </div>
         <div class="header-buttons">
