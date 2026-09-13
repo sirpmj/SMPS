@@ -60,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 1200 aur 1600 ke beech ka balance */
+.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 page width 1400px — cards/tabs is hisaab se fit hote hain */
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -254,7 +254,7 @@ table {
   padding: 10px 12px;          /* 🔥 40px → 10px (major fix) */
   margin: 2px auto 0 auto;     /* already good */
 
-  max-width: 1175px;
+  max-width: 1400px;
   border-radius: 34px 34px 0 0;
   box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
 
@@ -1195,9 +1195,18 @@ async function loadFooter(){
 
 document.getElementById("sendOtpBtn").onclick = async () => {
 
+  // 🆕 SABSE PEHLE — kisi bhi async operation (MEMBERS load, fetch) se pehle
+  // hi khaali tab khol do. Pehle yeh MEMBERS-load check ke BAAD khulta tha —
+  // agar MEMBERS load hone mein time lagta (cache expire, slow network), to
+  // us async gap ki wajah se browser is window.open() ko bhi "user gesture
+  // nahi hai" samajh kar block kar deta tha. Ab yeh click hote hi turant
+  // (sabse pehli line) khulta hai, isliye kabhi block nahi hoga.
+  const waTab = window.open("", "_blank");
+
   const mobile = username.value.replace(/\D/g, "");
 
   if (mobile.length !== 10) {
+    if (waTab && !waTab.closed) waTab.close();
     alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
     return;
   }
@@ -1212,20 +1221,12 @@ document.getElementById("sendOtpBtn").onclick = async () => {
   }
 
   if (!MEMBERS[mobile]) {
+    if (waTab && !waTab.closed) waTab.close();
     alert(
       "आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।"
     );
     return;
   }
-
-  // 🆕 WhatsApp tab ko USER-CLICK ke turant baad hi (khaali) khol do.
-  // Pehle yeh await fetch() ke BAAD (line ~40 neeche) khulta tha — browser
-  // (khaaskar mobile Chrome/WebView) async gap ke baad window.open() ko
-  // "user gesture nahi hai" samajh kar silently BLOCK kar deta tha, isi
-  // wajah se click karne par WhatsApp open nahi ho raha tha. Ab khaali tab
-  // turant khulega, aur OTP aane ke baad usi tab ko WhatsApp URL par bhej
-  // dete hain — is se popup-block nahi hota.
-  const waTab = window.open("", "_blank");
 
   const sendOtpBtnOriginalHTML = sendOtpBtn.innerHTML;
   sendOtpBtn.disabled = true;
@@ -3219,6 +3220,9 @@ function getUserMobileFromMembers(name){
 
 function sendBirthday(mobile,name){
 
+  // 🆕 Yahan bhi wahi fix — tab turant khol do, fetch ke baad sirf redirect karo
+  const waTab = window.open("", "_blank");
+
   fetch(WEB_APP_URL,{
     method:"POST",
     body: JSON.stringify({
@@ -3230,8 +3234,10 @@ function sendBirthday(mobile,name){
   .then(r=>r.json())
   .then(res=>{
     if(res.success){
-      window.open(res.waUrl,"_blank");
+      if (waTab && !waTab.closed) waTab.location.href = res.waUrl;
+      else window.open(res.waUrl,"_blank");
     } else {
+      if (waTab && !waTab.closed) waTab.close();
       alert(res.msg);
     }
   });
