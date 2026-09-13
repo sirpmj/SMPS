@@ -626,6 +626,10 @@ style="background:#008000;color:#fff;font-size:16px">
     📊 Excel
   </button>
 
+  <button id="exportAllExcelBtn" type="button" onclick="exportAllTabsExcel()">
+    📦 All Tabs Excel
+  </button>
+
   <button id="exportPDFBtn" style="display:none" onclick="exportPDF()">
     📄 PDF
   </button>
@@ -2844,8 +2848,7 @@ function fillYearFilter(data) {
 
 // Abhi konsa filter mode active hai, uske hisaab se {start, end} Date range do
 // (null = koi filter nahi, sab data dikhao)
-function getActiveDateFilterRange_() {
-  const mode = document.getElementById("filterMode")?.value || "all";
+function getActiveDateFilterRange_() {  const mode = document.getElementById("filterMode")?.value || "all";
 
   if (mode === "year") {
     const y = document.getElementById("yearFilter")?.value;
@@ -2874,6 +2877,34 @@ function getActiveDateFilterRange_() {
   }
 
   return null; // "all"
+}
+
+// 🆕 Abhi jo filter (All/Year/FY/Custom) active hai, uska INSAAN-PADHNE-LAYAK
+// label do — Print header aur "All Tabs Excel" file-naam dono ke liye
+// (dono jagah sync rahe, isliye ek hi helper).
+function getActiveFilterLabel_() {
+  const mode = document.getElementById("filterMode")?.value || "all";
+
+  if (mode === "year") {
+    const y = document.getElementById("yearFilter")?.value;
+    return y ? ("वर्ष: " + y) : "सभी वर्ष";
+  }
+  if (mode === "fy") {
+    const startYear = document.getElementById("fyFilter")?.value;
+    if (!startYear) return "सभी वर्ष";
+    const endYear = String(+startYear + 1).slice(-2);
+    return "वित्तीय वर्ष: " + startYear + "-" + endYear;
+  }
+  if (mode === "custom") {
+    const fromVal = document.getElementById("customDateFrom")?.value;
+    const toVal = document.getElementById("customDateTo")?.value;
+    const fmt = v => v ? new Date(v + "T00:00:00").toLocaleDateString("en-GB") : "";
+    if (fromVal && toVal) return "दिनांक: " + fmt(fromVal) + " से " + fmt(toVal) + " तक";
+    if (fromVal) return "दिनांक: " + fmt(fromVal) + " से";
+    if (toVal) return "दिनांक: " + fmt(toVal) + " तक";
+    return "सभी वर्ष";
+  }
+  return "सभी वर्ष (All)";
 }
 
 // Row is range ke andar aata hai ya nahi — Date column se check karo, warna
@@ -3657,6 +3688,98 @@ function exportExcel() {
   XLSX.writeFile(wb, `${currentTab || "Tab"}_Export.xlsx`);
 }
 
+// 🆕 Excel sheet-naam mein yeh characters allowed nahi: \ / ? * [ ] aur 31
+// character se lamba bhi nahi ho sakta — tab-name ko safe bana dete hain.
+function sanitizeSheetName_(name) {
+  return String(name || "Data").replace(/[\\/?*\[\]:]/g, "-").slice(0, 31) || "Data";
+}
+
+// 🆕 EK CLICK mein SAARE tabs (jinki role ko permission hai) ka data, ek hi
+// Excel file mein, har tab apni alag sheet mein — aur jo bhi Year/FY/Custom
+// date filter abhi upar select kiya hua hai, wahi filter HAR tab ke data par
+// lagega (bilkul waisa hi jaisa currently table mein dikh raha hota agar us
+// tab ko khola jaata).
+async function exportAllTabsExcel() {
+  if (!currentUser || !currentUser.role) {
+    alert("Pehle login karein");
+    return;
+  }
+  const accessList = ROLE_ACCESS?.[currentUser.role];
+  if (!accessList) {
+    alert("Is role ke liye tabs pata nahi chal paaye");
+    return;
+  }
+  const tabNames = Object.keys(accessList).filter(t => accessList[t]?.canView);
+  if (!tabNames.length) {
+    alert("Export karne ke liye koi tab available nahi hai");
+    return;
+  }
+
+  const btn = document.getElementById("exportAllExcelBtn");
+  const originalHTML = btn ? btn.innerHTML : "";
+  if (btn) { btn.disabled = true; btn.innerHTML = "⏳ Export ho raha hai..."; }
+
+  try {
+    const range = getActiveDateFilterRange_(); // 🆕 abhi jo filter select hai, wahi sabpar lagega
+    const wb = XLSX.utils.book_new();
+    let anySheetAdded = false;
+
+    for (const sheetName of tabNames) {
+      let data = await fetchSheet(sheetName);
+      if (!Array.isArray(data) || !data.length) continue;
+
+      // 🆕 loadTab() jaisi hi special-case processing, taaki export bhi
+      // exactly wahi dikhaye jo app mein us tab ko khol kar dikhta hai
+      if (sheetName === "Members" && window.SETTINGS) {
+        const activeValue = String(SETTINGS.ActiveStatusValue || "Active").trim().toLowerCase();
+        data = data.filter(row => row && row.Status !== undefined &&
+          String(row.Status).trim().toLowerCase() === activeValue);
+      }
+      if (sheetName === "Cash Book" || sheetName === "Bank Book") {
+        let running = 0;
+        data = data.map(r => {
+          running += toNumber(r["Credit"]) - toNumber(r["Debit"]);
+          return { ...r, "Balance": running };
+        });
+      }
+      if (sheetName === "Transfer") {
+        data = data.map(r => {
+          const out = { ...r };
+          delete out["Debit (From)"];
+          delete out["Credit (To)"];
+          delete out["Cash Balance"];
+          delete out["Bank Balance"];
+          return out;
+        });
+      }
+
+      // 🆕 Active Year/FY/Custom-date filter yahan lagao
+      if (range) data = data.filter(r => rowInDateRange_(r, range));
+      if (!data.length) continue; // is tab mein filter ke baad kuch nahi bacha — sheet mat banao
+
+      const headers = Array.from(new Set(data.flatMap(row => Object.keys(row)))).filter(Boolean);
+      const aoa = [headers, ...data.map(row => headers.map(h => row[h] ?? ""))];
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName_(sheetName));
+      anySheetAdded = true;
+    }
+
+    if (!anySheetAdded) {
+      alert("Chune hue filter ke liye kisi bhi tab mein data nahi mila");
+      return;
+    }
+
+    const filterTag = getActiveFilterLabel_().replace(/[^\w\u0900-\u097F-]+/g, "_");
+    XLSX.writeFile(wb, `All_Tabs_Export_${filterTag}.xlsx`);
+
+  } catch (err) {
+    console.error(err);
+    alert("❌ Export mein samasya hui: " + (err.message || "dobara try karein"));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+  }
+}
+
 
 function exportPDF() {
 
@@ -3693,7 +3816,7 @@ function exportPDF() {
     font-size:12px;
   ">
     <div>Date: ${today}</div>
-    <div><b>${currentTab || ""}</b></div>
+    <div><b>${currentTab || ""} — ${getActiveFilterLabel_()}</b></div>
   </div>
 `;
 
