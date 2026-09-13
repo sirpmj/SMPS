@@ -60,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1200px;margin:0 auto;padding:20px;}
+.wrap {max-width:1600px;margin:0 auto;padding:20px;} /* 🆕 pehle 1200px tha — wide desktop par jyada jagah use ho */
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -95,10 +95,12 @@ header .muted {color:#e0e0e0;font-size:14px;}
 .dash-card{flex:1 1 30%;padding:8px 10px;border-radius:10px;text-align:center;font-size:12.5px;font-weight:500;box-shadow:0 2px 6px rgba(0,0,0,0.05)}
 .dash-card h4{margin:0 0 3px;font-size:11px;opacity:.85}
 .dash-card p{margin:0;font-size:14px;font-weight:bold}
-/* 🆕 Desktop: cards aur compact — 4-5 per row */
+/* 🆕 Desktop: cards ko GRID se exactly 2 line mein fit karo — 6 normal card
+   (1-1 column) + 2 chauda card (3-3 column) — dono row poori bharti hain */
 @media (min-width:901px){
-  .dash-card{flex:1 1 18%;padding:8px 10px}
-  .dash-card-wide{flex:1 1 36% !important}
+  .dashboard{display:grid; grid-template-columns:repeat(6,1fr);}
+  .dash-card{flex:none; padding:10px 12px}
+  .dash-card-wide{grid-column:span 3 !important}
 }
 
 /* dash colors */
@@ -318,16 +320,16 @@ table {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: 5px;
+    gap: 6px;
     padding: 4px 2px 8px;
     scrollbar-width: thin;
   }
   .tabs::-webkit-scrollbar { height: 6px; }
   .tabs::-webkit-scrollbar-thumb { background: #c7d6f5; border-radius: 999px; }
-  .tab { flex: 0 0 auto; }
+  .tab { flex: 0 0 auto; font-size: 13.5px; padding: 7px 13px; } /* 🆕 thoda bada */
 }
 @media (min-width: 1300px) {
-  .tab { font-size: 13.5px; padding: 7px 13px; }
+  .tab { font-size: 14.5px; padding: 8px 15px; } /* 🆕 aur bada, wide screen par jagah hai */
 }
 /* 📱 Mobile → 3 equal tabs per row with equal auto height */
 @media (max-width: 600px) {
@@ -613,7 +615,7 @@ style="background:#008000;color:#fff;font-size:16px">
   <div id="dateFilterBar" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
     <select id="filterMode" style="padding:7px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px">
       <option value="all">सभी (All)</option>
-      <option value="year">वर्ष (Year)</option>
+      <option value="year" selected>वर्ष (Year)</option>
       <option value="fy">वित्तीय वर्ष (FY)</option>
       <option value="custom">कस्टम तारीख</option>
     </select>
@@ -1757,11 +1759,13 @@ async function renderMainDashboard(forceFresh){
     let boliData = boli;
     let donationData = donation;
     let expenseData = expenses;
+    let fundLedgerData = fundLedger; // 🆕 Fund/Cash/Bank Balance bhi ab yearwise filter maanenge
 
     if (activeRange) {
       boliData = boli.filter(r => rowInDateRange_(r, activeRange));
       donationData = donation.filter(r => rowInDateRange_(r, activeRange));
       expenseData = expenses.filter(r => rowInDateRange_(r, activeRange));
+      fundLedgerData = fundLedger.filter(r => rowInDateRange_(r, activeRange));
     }
 
     // -------- Total Members --------
@@ -1774,7 +1778,7 @@ async function renderMainDashboard(forceFresh){
     }
 
     // -------- Fund Balance --------
-    const balance = fundLedger.reduce(
+    const balance = fundLedgerData.reduce(
       (s,r)=> s + (toNumber(r["credit"] || r["Credit"]) - toNumber(r["debit"] || r["Debit"])), 0
     );
 
@@ -1787,13 +1791,13 @@ async function renderMainDashboard(forceFresh){
     }
 
     // -------- Cash Balance & Bank Balance (Mode column se) --------
-    const cashBalance = fundLedger.reduce((s, r) => {
+    const cashBalance = fundLedgerData.reduce((s, r) => {
       const mode = String(r["Mode"] || "").trim().toLowerCase();
       if (mode === "cash") return s + toNumber(r["Credit"]) - toNumber(r["Debit"]);
       return s;
     }, 0);
 
-    const bankBalance = fundLedger.reduce((s, r) => {
+    const bankBalance = fundLedgerData.reduce((s, r) => {
       const mode = String(r["Mode"] || "").trim().toLowerCase();
       if (mode === "bank" || mode === "upi") return s + toNumber(r["Credit"]) - toNumber(r["Debit"]);
       return s;
@@ -2785,6 +2789,12 @@ function getAvailableYears_(data) {
 
 function fillYearFilter(data) {
   const years = getAvailableYears_(data);
+  const currentYear = new Date().getFullYear();
+  // 🆕 Current year hamesha list mein rahe, chahe abhi tak uska koi transaction
+  // sheet mein na ho — warna dropdown mein sirf purane saal (jaise 2022) dikhte,
+  // aur current year select hi nahi ho paata.
+  if (!years.includes(currentYear)) years.unshift(currentYear);
+  years.sort((a, b) => b - a);
 
   const yearSelect = document.getElementById("yearFilter");
   if (yearSelect) {
@@ -2795,7 +2805,13 @@ function fillYearFilter(data) {
       opt.value = y; opt.textContent = y;
       yearSelect.appendChild(opt);
     });
-    if (years.includes(+prev)) yearSelect.value = prev;
+    if (prev && years.includes(+prev)) {
+      yearSelect.value = prev;
+    } else if (!yearSelect.dataset.userTouched) {
+      // 🆕 Sirf pehli baar (jab tak user ne khud kabhi kuch select nahi kiya) —
+      // default current year rahega, "सभी वर्ष"/koi purana saal nahi.
+      yearSelect.value = String(currentYear);
+    }
   }
 
   // 🆕 Financial Year dropdown (अप्रैल–मार्च) — jaise "2024-25"
@@ -2889,6 +2905,7 @@ function updateFilterModeUI_() {
   const filterModeEl = document.getElementById("filterMode");
   if (filterModeEl && !filterModeEl._bound) {
     filterModeEl.addEventListener("change", () => {
+      filterModeEl.dataset.userTouched = "1"; // 🆕 ab user ne khud mode chuna hai
       updateFilterModeUI_();
       renderTable();
       if (shouldShowDashboard()) renderMainDashboard();
@@ -2899,6 +2916,7 @@ function updateFilterModeUI_() {
     const elx = document.getElementById(id);
     if (elx && !elx._bound) {
       elx.addEventListener("change", () => {
+        elx.dataset.userTouched = "1"; // 🆕 ab yeh dobara auto-default nahi hoga
         renderTable();
         if (shouldShowDashboard()) renderMainDashboard();
       });
