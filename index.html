@@ -426,20 +426,45 @@ button:hover{opacity:0.9}
     flex: 0 0 auto;
   }
   .toolbar-btns {
+    display: flex;
     gap: 4px;
-    flex-wrap: nowrap;   /* 🆕 hamesha 1 line — agar bahut hi chhoti screen ho to scroll fallback */
-    overflow-x: auto;
-    max-width: 100%;
+    flex-wrap: nowrap;
+    width: 100%;
   }
+  /* 🆕 overflow-x:auto pehle yahan tha — usi ki wajah se "Excel ▾" ka
+     dropdown-menu (jo position:absolute se bahar niklta hai) is container
+     ke bounds mein CLIP/chhup ho jaata tha, isliye click "kaam nahi karta"
+     mehsoos hota tha (menu dikhta hi nahi tha). Ab overflow hata diya, aur
+     saare 4 buttons ko flex-grow se POORI WIDTH fill karne ke liye barabar
+     jagah de di — na scroll chahiye, na overflow-clip. */
+  .toolbar-btns > button,
+  .toolbar-btns > #excelMenuWrapper {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  #excelMenuWrapper { display: flex; }
+  #excelMenuWrapper button { width: 100%; }
   /* 🆕 Mobile par username yahan chupa dete hain (isse buttons+filters
      "2 line" mein hi rehte hain) — naam pehle se hi "Welcome, {{Name}}!"
      wale welcome message mein dikh jaata hai, isliye jaankari kahin
      chhutti nahi hai. */
   .toolbar-user { display: none; }
   #dateFilterBar select, #dateFilterBar input {
-    font-size: 12px !important;
-    padding: 5px 6px !important;
+    font-size: 11px !important;
+    padding: 5px 3px !important;
   }
+  /* 🆕 Custom Date wala row (filterMode + from-date + से + to-date) — pehle
+     yeh 2 line mein toot jaata tha, ab hamesha 1 line mein force karte hain
+     aur har field ko utni hi jagah dete hain jitni chahiye, poora bhar ke */
+  #dateFilterBar {
+    flex-wrap: nowrap !important;
+    gap: 4px;
+    width: 100%;
+  }
+  #filterMode { flex: 1.3 1 0; min-width: 0; }
+  #yearFilter, #fyFilter { flex: 1 1 0; min-width: 0; }
+  #customDateFrom, #customDateTo { flex: 1 1 0; min-width: 0; width: 0; }
+  #customDateSep { flex: 0 0 auto; padding: 0 1px; font-size: 11px !important; }
   /* 🆕 Mobile par welcome-message ke right side jagah nahi hoti — filter
      apni alag line mein neeche hi rahe */
   .welcome-filter-row #dateFilterBar { flex-basis: 100%; margin-left: 0; }
