@@ -60,7 +60,7 @@ body {
   color:#0b3d66;
 }
 * {box-sizing:border-box;}
-.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 pehle 1200px tha — wide desktop par jyada jagah use ho */
+.wrap {max-width:1400px;margin:0 auto;padding:20px;} /* 🆕 1200 aur 1600 ke beech ka balance */
 
 /* ---------- Header / Hero ---------- */
 header {
@@ -95,12 +95,14 @@ header .muted {color:#e0e0e0;font-size:14px;}
 .dash-card{flex:1 1 30%;padding:8px 10px;border-radius:10px;text-align:center;font-size:12.5px;font-weight:500;box-shadow:0 2px 6px rgba(0,0,0,0.05)}
 .dash-card h4{margin:0 0 3px;font-size:11px;opacity:.85}
 .dash-card p{margin:0;font-size:14px;font-weight:bold}
-/* 🆕 Desktop: cards ko GRID se exactly 2 line mein fit karo — 6 normal card
-   (1-1 column) + 2 chauda card (3-3 column) — dono row poori bharti hain */
+/* 🆕 Desktop: cards khud-ba-khud fit ho jaayein — jitni jagah utne cards ek
+   row mein, aur bachi hui jagah automatically har card ko thoda bada kar
+   deti hai (fixed 6-column jaisa rigid nahi, kam/zyada cards ho to bhi
+   sahi dikhega — jaise agar kisi role ko kam cards dikhte hain). */
 @media (min-width:901px){
-  .dashboard{display:grid; grid-template-columns:repeat(6,1fr);}
+  .dashboard{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px;}
   .dash-card{flex:none; padding:10px 12px}
-  .dash-card-wide{grid-column:span 3 !important}
+  .dash-card-wide{grid-column:span 2 !important}
 }
 
 /* dash colors */
@@ -313,23 +315,25 @@ table {
   box-shadow: 0 3px 10px rgba(11,99,214,0.35);
   border-color: transparent;
 }
-/* 🆕 Desktop: tabs compact rakhe taaki saare ek line mein bina scroll ke fit
-   ho jayein — agar screen bahut chhoti ho tabhi scroll ka fallback milega */
+/* 🆕 Desktop: tabs khud-ba-khud chote/bade ho jaayein (viewport ke hisaab se
+   smoothly scale) — chhoti screen par chote, badi/wide screen par bade,
+   bina hard jump ke; agar phir bhi na ho paye to scroll fallback hai */
 @media (min-width: 601px) {
   .tabs {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: 6px;
+    gap: clamp(4px, 0.5vw, 8px);
     padding: 4px 2px 8px;
     scrollbar-width: thin;
   }
   .tabs::-webkit-scrollbar { height: 6px; }
   .tabs::-webkit-scrollbar-thumb { background: #c7d6f5; border-radius: 999px; }
-  .tab { flex: 0 0 auto; font-size: 13.5px; padding: 7px 13px; } /* 🆕 thoda bada */
-}
-@media (min-width: 1300px) {
-  .tab { font-size: 14.5px; padding: 8px 15px; } /* 🆕 aur bada, wide screen par jagah hai */
+  .tab {
+    flex: 0 0 auto;
+    font-size: clamp(12.5px, 0.9vw + 6px, 15px);
+    padding: clamp(6px, 0.3vw + 5px, 9px) clamp(10px, 0.6vw + 8px, 16px);
+  }
 }
 /* 📱 Mobile → 3 equal tabs per row with equal auto height */
 @media (max-width: 600px) {
@@ -1759,13 +1763,20 @@ async function renderMainDashboard(forceFresh){
     let boliData = boli;
     let donationData = donation;
     let expenseData = expenses;
-    let fundLedgerData = fundLedger; // 🆕 Fund/Cash/Bank Balance bhi ab yearwise filter maanenge
+    // ⚠️ Fund/Cash/Bank "Balance" hamesha CUMULATIVE (shuru se ab tak) hona
+    // chahiye — yeh ek "balance" hai, kisi ek saal ka movement nahi. Pichhli
+    // baar ise bhi year-filter kar diya tha, jisse agar kisi saal mein sirf
+    // expense zyada aur income kam ho, to Cash Balance jaisa "-44,000" (galat/
+    // ulta) dikhne lagta tha — asli cash-in-hand kabhi negative nahi ho sakta
+    // agar shuru se sahi track ho raha ho. Isliye fundLedger yahan HAMESHA
+    // poora (unfiltered) use karo — sirf Boli/Donation/Expense "is period ki
+    // activity" hain, unhe filter karna sahi hai.
+    const fundLedgerData = fundLedger;
 
     if (activeRange) {
       boliData = boli.filter(r => rowInDateRange_(r, activeRange));
       donationData = donation.filter(r => rowInDateRange_(r, activeRange));
       expenseData = expenses.filter(r => rowInDateRange_(r, activeRange));
-      fundLedgerData = fundLedger.filter(r => rowInDateRange_(r, activeRange));
     }
 
     // -------- Total Members --------
