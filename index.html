@@ -95,14 +95,20 @@ header .muted {color:#e0e0e0;font-size:14px;}
 .dash-card{flex:1 1 30%;padding:8px 10px;border-radius:10px;text-align:center;font-size:12.5px;font-weight:500;box-shadow:0 2px 6px rgba(0,0,0,0.05)}
 .dash-card h4{margin:0 0 3px;font-size:11px;opacity:.85}
 .dash-card p{margin:0;font-size:14px;font-weight:bold}
-/* 🆕 Desktop: cards khud-ba-khud fit ho jaayein — jitni jagah utne cards ek
-   row mein, aur bachi hui jagah automatically har card ko thoda bada kar
-   deti hai (fixed 6-column jaisa rigid nahi, kam/zyada cards ho to bhi
-   sahi dikhega — jaise agar kisi role ko kam cards dikhte hain). */
+/* 🆕 Desktop: cards khud-ba-khud fit ho jaayein. Pehle CSS GRID (auto-fit)
+   use ho raha tha — uski ek KNOWN limitation hai: agar aakhri row poori
+   nahi bharti (jaise 8 cards, 6 per row → 2nd row mein sirf 2 bachte hain),
+   to Grid ke column-tracks pehli row jaisi hi fixed reh jaati hain, aur
+   aakhri row ke bache columns KHAALI dikhte hain (right side gap) — kyunki
+   Grid ki har row EK HI shared column-template use karti hai.
+   FLEXBOX mein yeh problem nahi hoti — har row apni bachi hui jagah khud
+   apne items mein baant deti hai (chahe wo last/incomplete row ho), isliye
+   ab Grid ki jagah flex-wrap use kar rahe hain — koi bhi row ho, khaali
+   jagah nahi bachegi. */
 @media (min-width:901px){
-  .dashboard{display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px;}
-  .dash-card{flex:none; padding:10px 12px}
-  .dash-card-wide{grid-column:span 2 !important}
+  .dashboard{display:flex; flex-wrap:wrap; gap:10px;}
+  .dash-card{flex:1 1 190px; padding:10px 12px}
+  .dash-card-wide{flex:2 1 390px !important}
 }
 
 /* dash colors */
