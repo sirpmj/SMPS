@@ -1006,6 +1006,25 @@ async function getFormulaColumnsCached_(sheetName, forceFresh) {
   return cols;
 }
 
+// 🆕 Login ke turant baad EK HI background call mein SAARE tabs ka
+// formula-columns cache bhar do — isse KISI BHI tab ka Add/Edit form
+// PEHLI BAAR khulne par bhi Apps Script ka wait nahi karna padta (jo
+// pehle "sab jagah slow" mehsoos hota tha, kyonki har tab ka apna
+// alag pehla-round-trip hota tha). Yeh silently background mein
+// chalta hai — kisi cheez ko block nahi karta.
+async function preloadFormulaColumnsForAllTabs_() {
+  const sheetNames = Object.keys(CRUD_ALLOWED_TABS);
+  try {
+    const meta = await callCrudBackend_({ action: "getFormulaColumnsBulk", sheetNames });
+    if (meta.success && meta.results) {
+      const now = Date.now();
+      Object.keys(meta.results).forEach(sheetName => {
+        FORMULA_COLS_CACHE[sheetName] = { cols: meta.results[sheetName] || [], time: now };
+      });
+    }
+  } catch (e) { /* best-effort — fail ho bhi jaye to normal per-tab fetch fallback kaam karega */ }
+}
+
 async function fetchSheet(sheetName, forceFresh){
   try{
     const now = Date.now();
@@ -1644,6 +1663,7 @@ const welcomeText = template.replace("{{Name}}", currentUser.name);
   fetchHomeSheet();
   loadFooter(); // 🆕 safety net — login ke baad bhi footer/address dobara populate karo
   buildTabs();
+  preloadFormulaColumnsForAllTabs_(); // 🆕 background mein saare tabs ka Add/Edit cache pehle se bhar do (fire-and-forget, kuch block nahi karta)
   if (shouldShowDashboard()) {
   el("mainDashboard").style.display = "flex";
   renderMainDashboard();
@@ -2475,16 +2495,16 @@ async function openAddRecordForm(sheetName) {
       const hint = samplePlaceholder_(k);
       if (hint) input.placeholder = hint; // 🆕 sample text
     }
-    // 🆕 Members Add form mein "Status" hamesha "Approved" se pre-select rahe —
+    // 🆕 Members Add form mein "Status" hamesha "Approve" se pre-select rahe —
     // admin khud se member add kare to usko approval ke liye alag se click na
     // karna pade (naya self-registration abhi bhi "Pending" hi rahega, woh
     // newRegistration() function se aata hai, is form se nahi).
     if (sheetName === "Members" && kl === "status" && input.tagName === "SELECT") {
-      setSelectValueSafe_(input, "Approved");
+      setSelectValueSafe_(input, "Approve");
     } else if (sheetName === "Members" && kl === "status" && !input.value) {
       // 🆕 Bilkul khaali sheet (abhi tak koi bhi status value hi nahi hai) mein
       // dropdown ke bajaye plain input ban jaata hai — wahan bhi default bhar do
-      input.value = "Approved";
+      input.value = "Approve";
     }
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
