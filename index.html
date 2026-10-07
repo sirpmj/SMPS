@@ -2040,6 +2040,11 @@ function setActiveTab(name){
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName, forceFresh) {
   try {
+    // 🆕 Naye tab ka data aane tak purane tab ka "Add New" button chhupa do —
+    // warna loading ke beech click karne par PICHHLE tab ka form khul jaata tha
+    const _addBtnReset = document.getElementById("addNewBtn");
+    if (_addBtnReset) { _addBtnReset.style.display = "none"; _addBtnReset.onclick = null; }
+
     // 🔹 Loading message
     el("contentArea").innerHTML =
       "<div class='muted'>Loading " + sheetName + "...</div>";
@@ -2125,11 +2130,11 @@ async function loadTab(sheetName, forceFresh) {
     document.getElementById("dateFilterBar").style.display = "flex";
   }
 
+    // ➕ Add New button — pehle set karo (render mein kuch bhi atke to bhi Add kaam kare)
+    updateAddNewButton(sheetName);
+
     // ✅ Render table (MUST exist)
     renderTable();
-
-    // ➕ Add New button — sirf tabhi dikhao jab tab CRUD-allowed ho aur role ko ADD permission ho
-    updateAddNewButton(sheetName);
 
   } catch (e) {
     console.error("loadTab error:", e);
@@ -2528,31 +2533,26 @@ async function openAddRecordForm(sheetName) {
     return;
   }
 
-  // 🆕 Popup click karte hi TURANT dikhao (loading state ke saath) — pehle
-  // popup sirf tab dikhta tha jab formula-columns wala backend call (Apps
-  // Script, slow) poora ho jaata — is beech screen par kuch nahi hota tha,
-  // isliye "Add New" khulne mein bahut time lagta mehsoos hota tha.
+  // 🆕 Popup + form TURANT dikhao — backend (Apps Script) ka wait nahi.
+  // Formula-driven columns (jaise Paid Boli, Pending Dues) ka pata agar cache mein
+  // hai to seedha use hota hai, warna form pehle dikh jaata hai aur backend se jawab
+  // aate hi woh fields apne aap hat jaate hain (neeche dekho).
   el("editTitle").textContent = "Add New: " + sheetName;
-  el("editFields").innerHTML = "<p class='muted' style='grid-column:1 / -1'>⏳ Loading Data...</p>";
-  el("saveEditBtn").disabled = true;
+  el("saveEditBtn").disabled = false;
+  el("saveEditBtn").textContent = "Save";
+  el("saveEditBtn").onclick = null; // 🆕 purane (pichhle tab/edit ka) Save handler kabhi na chale
+  el("cancelEditBtn").onclick = () => { el("editPopup").style.display = "none"; };
   el("editPopup").style.display = "flex";
 
-  // 🆕 Backend se pata karo kaunse columns formula-driven hain (jaise Paid Boli,
-  // Pending Dues) — unhe form mein dikhana hi nahi, kyonki unme kuch bhi likhoge
-  // backend use ignore kar dega (formula todhne se bachane ke liye)
-  let formulaColumns = [];
-  try {
-    formulaColumns = await getFormulaColumnsCached_(sheetName);
-  } catch (e) { /* best-effort, form ke baaki kaam pe asar nahi padne dena */ }
-
+  let formulaColumns = (FORMULA_COLS_CACHE[sheetName] && FORMULA_COLS_CACHE[sheetName].cols) || [];
   const container = el("editFields");
   container.innerHTML = "";
-  el("saveEditBtn").disabled = false; // 🆕 loading-state ke time disable kiya tha, ab wapas enable karo
+  const groupByKey = {};
   const inputIds = [];
   const memberCol = SETTINGS?.MemberColumn || "Member";
   let memberSelectEl = null, forSelectEl = null, typeSelectEl = null, amountInputEl = null, mobileInputEl = null, firmInputEl = null, boliRefInputEl = null, yearInputEl = null, donationRefInputEl = null;
 
-  columns.forEach(k => {
+  columns.forEach(k => { try {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
@@ -2598,6 +2598,7 @@ async function openAddRecordForm(sheetName) {
     group.appendChild(label);
     group.appendChild(input);
     container.appendChild(group);
+    groupByKey[k] = group;
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
     if (input.tagName === "TEXTAREA" && recentValues) attachRecallDropdown_(input, group, recentValues);
 
@@ -2623,7 +2624,15 @@ async function openAddRecordForm(sheetName) {
       if (k === memberCol || kl === "member") memberSelectEl = input;
       if (kl.includes("mobile")) mobileInputEl = input;
     }
-  });
+  } catch (fieldErr) { console.error("Add form field error:", k, fieldErr); } }); // 🆕 ek field ki gadbad poore form ko na roke
+
+  // 🆕 Backend se formula-driven columns ka pata chalte hi unhe form se hata do
+  getFormulaColumnsCached_(sheetName).then(cols => {
+    (cols || []).forEach(c => {
+      const g = groupByKey[c];
+      if (g && g.parentNode) g.parentNode.removeChild(g);
+    });
+  }).catch(() => {});
 
   // 🆕 Members Add form mein "Role" field ko user ko dikhana nahi hai (hamesha
   // "Member" hi hoga — Admin/other roles ke liye sheet mein khud change karo),
@@ -2792,9 +2801,6 @@ async function openAddRecordForm(sheetName) {
     })();
   }
 
-  el("editTitle").textContent = "Add New: " + sheetName;
-  el("editPopup").style.display = "flex";
-
   el("saveEditBtn").onclick = async () => {
     const data = {};
     inputIds.forEach(({ key, id }) => {
@@ -2818,13 +2824,20 @@ async function openAddRecordForm(sheetName) {
         delete CACHE[sheetName];
         el("editPopup").style.display = "none";
         // 🆕 Live update — turant table mein naya row dikhao, bina poori tab reload ke
+        // (yahan koi bhi display error aaye to usse "save fail" ka alert na dikhe —
+        //  record to ho chuka hai; sirf tab dobara load kar do)
         if (currentTab === sheetName) {
-          const newRow = { ...data };
-          if (res.id) newRow["ID"] = res.id;
-          tableData.push(newRow);
-          renderTable();
+          try {
+            const newRow = { ...data };
+            if (res.id) newRow["ID"] = res.id;
+            tableData.push(newRow);
+            renderTable();
+          } catch (uiErr) {
+            console.error("Live update error:", uiErr);
+            loadTab(sheetName, true);
+          }
         }
-        refreshDashboardAfterCrud_(); // 🆕 dashboard cards bhi live update
+        try { refreshDashboardAfterCrud_(); } catch (dashErr) { console.error(dashErr); } // 🆕 dashboard cards bhi live update
       } else {
         alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
       }
@@ -3068,10 +3081,54 @@ function updateFilterModeUI_() {
 })();
 
 /* ---------- RENDER TABLE ---------- */
+/* ===========================
+   📅 DISPLAY ORDER — sabse naya (last date) data TOP par
+   Sirf screen par. Export (Excel/PDF) hamesha sheet ke original (ascending) order mein.
+   =========================== */
+const LATEST_FIRST_TABS = [
+  "Members", "Fund Ledger", "Transfer", "Cash Book", "Bank Book", "Receipts",
+  "Expenses", "Boli", "Donation", "Meetings", "Announcements", "Assets"
+];
+
+// Tab ka "date" column dhoondo: pehle exact "Date", phir koi bhi "...date..."
+// (Birthday/DOB/Anniversary chhod ke), phir Joined/Joining
+function detectDateKey_(rows) {
+  const keys = Array.from(new Set(rows.flatMap(r => Object.keys(r || {})))).filter(Boolean);
+  const low = k => k.toLowerCase().trim();
+  const notBirth = k => !/birth|dob|anniversar/.test(low(k));
+  return keys.find(k => low(k) === "date")
+      || keys.find(k => low(k).includes("date") && notBirth(k))
+      || keys.find(k => /joined|joining/.test(low(k)))
+      || null;
+}
+
+// rows ko latest-date-first order mein lautata hai (same date par sheet ki pichhli row pehle)
+function sortLatestFirst_(rows, allData) {
+  const dateKey = detectDateKey_(allData);
+  const idx = new Map(allData.map((r, i) => [r, i]));
+  const ts = r => {
+    if (!dateKey) return null;
+    const d = parseRowDate_(r[dateKey]);
+    return d ? d.getTime() : null;
+  };
+  const keyed = rows.map(r => ({ r, t: ts(r), i: idx.has(r) ? idx.get(r) : -1 }));
+  keyed.sort((a, b) => {
+    if (a.t !== null && b.t !== null) {
+      if (a.t !== b.t) return b.t - a.t;
+      return b.i - a.i;
+    }
+    if (a.t === null && b.t !== null) return 1;   // bina date wali rows neeche
+    if (a.t !== null && b.t === null) return -1;
+    return b.i - a.i;
+  });
+  return keyed.map(k => k.r);
+}
+
 function renderTable(){
   // 🛑 safety guards
   if (!currentUser || !currentTab || !Array.isArray(tableData)) return;
   let filteredData = [...tableData];
+  const rowOrderIdx = new Map(tableData.map((r, i) => [r, i])); // export ke liye original (ascending) order
   const searchVal =
     el("searchInput").value.trim().toLowerCase();
 
@@ -3084,15 +3141,6 @@ if(searchVal){
   );
 }
 
-// 🎂 Birthday members first
-if(currentTab === "Members"){
-filteredData.sort((a,b)=>{
-  const aDays = getNextBirthdayDays(a["Birthday"]);
-  const bDays = getNextBirthdayDays(b["Birthday"]);
-
-  return aDays - bDays;
-});
-}
 
 
 
@@ -3141,6 +3189,19 @@ filteredData.sort((a,b)=>{
     });
   }
   /* ======================
+     📅 DEFAULT ORDER: latest date on top (sirf display)
+     ====================== */
+  const useLatestFirst = !sortColumn && LATEST_FIRST_TABS.includes(currentTab);
+  if (useLatestFirst) {
+    filteredData = sortLatestFirst_(filteredData, tableData);
+    if (currentTab === "Members") {
+      // 🎂 Aaj ka birthday wale members sabse upar (Wish link ke saath), baaki latest-first
+      const bday = [], others = [];
+      filteredData.forEach(r => (isTodayBirthday(r["Birthday"]) ? bday : others).push(r));
+      filteredData = [...bday, ...others];
+    }
+  }
+  /* ======================
      🔃 SORTING (SAFE)
      ====================== */
   if (sortColumn) {
@@ -3175,7 +3236,7 @@ const columns = Array.from(
 ).filter(c =>
   c && !hiddenCols.has(c)
 );
-  let html = "<table><thead><tr>";
+  let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
   pageData.forEach(row => {
@@ -3186,7 +3247,7 @@ const columns = Array.from(
     rowClass = "birthdayRow";
   }
 
-  html += `<tr class="${rowClass}">`;
+  html += `<tr class="${rowClass}" data-seq="${rowOrderIdx.has(row) ? rowOrderIdx.get(row) : 0}">`;
 
 columns.forEach(c => {
 
@@ -3745,8 +3806,12 @@ function getVisibleTableData() {
   const headers = Array.from(table.querySelectorAll("thead th"))
     .map(th => th.innerText.trim());
 
-  const rows = Array.from(table.querySelectorAll("tbody tr"))
-    .map(tr =>
+  let trList = Array.from(table.querySelectorAll("tbody tr"));
+  // 🆕 Screen par latest-first dikhta hai, par export hamesha original ascending order mein
+  if (table.dataset.latestFirst === "1") {
+    trList.sort((a, b) => (+a.dataset.seq) - (+b.dataset.seq));
+  }
+  const rows = trList.map(tr =>
       Array.from(tr.children).map(td => td.innerText.trim())
     );
 
@@ -3891,6 +3956,16 @@ function exportPDF() {
   }
 
   const clone = table.cloneNode(true);
+
+  // 🆕 Screen par latest-first dikhta hai, par PDF/print hamesha original ascending order mein
+  if (clone.dataset.latestFirst === "1") {
+    const tb = clone.querySelector("tbody");
+    if (tb) {
+      Array.from(tb.querySelectorAll("tr"))
+        .sort((a, b) => (+a.dataset.seq) - (+b.dataset.seq))
+        .forEach(tr => tb.appendChild(tr));
+    }
+  }
 
   // ❌ remove last column
   clone.querySelectorAll("tr").forEach(row => {
