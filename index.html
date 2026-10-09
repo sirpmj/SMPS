@@ -791,6 +791,17 @@ style="background:#008000;color:#fff;font-size:16px">
   <!-- ADD NEW (role/tab permission ke hisaab se JS dikhata/chupata hai) -->
   <button id="addNewBtn" type="button" style="display:none;background:#1a9c4b;color:#fff;border:none;">➕ Add New</button>
 
+  <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
+  <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
+    <option value="">📅 वादा: सभी</option>
+    <option value="today">आज का वादा</option>
+    <option value="tomorrow">कल का वादा</option>
+    <option value="week">अगले 7 दिन</option>
+    <option value="overdue">वादा निकल गया</option>
+    <option value="none">वादा नहीं (बाकी है)</option>
+  </select>
+  <button id="bulkRemBtn" type="button" onclick="openBulkReminders_()" style="display:none;background:#25a244;color:#fff;border:none;width:auto">📨 Reminders</button>
+
 </div>
 
       <!-- Content Table -->
@@ -1073,6 +1084,22 @@ const SOCIETY_BANK = {
 
 // Templates sheet mein agar us tab ka template na ho to yeh default chalega
 const DEFAULT_TEMPLATES = {
+  "Boli":
+"🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
+"*श्री मेवाड़ प्रजापत समाज, वापी* की ओर से स्नेहपूर्वक स्मरण —\n\n" +
+"आपकी *बोली* की राशि बाकी है।\n{{PendingLine}}\n\n" +
+"कृपया सुविधानुसार भुगतान करने की कृपा करें। 🙏",
+  "Donation":
+"🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
+"*श्री मेवाड़ प्रजापत समाज, वापी* की ओर से स्नेहपूर्वक स्मरण —\n\n" +
+"आपकी *सहयोग राशि* बाकी है।\n{{PendingLine}}\n\n" +
+"कृपया सुविधानुसार भुगतान करने की कृपा करें। 🙏",
+  "Receipts":
+"🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
+"आपके द्वारा दी गई *₹{{Received}}* की राशि {{For}} के लिए प्राप्त हुई। ✅\n\n" +
+"समाज को आपके सहयोग के लिए हृदय से *धन्यवाद*। 🙏\n\n" +
+"*मेवाड़ प्रजापत समाज – वापी*\n" +
+"*जय श्रीयादे माता की!* 🙏",
   "Meetings":
 "📅 *मीटिंग सूचना*\n\n" +
 "🙏 जय श्रीयादे माता की! 🙏\n\n" +
@@ -1125,11 +1152,16 @@ function getCommitmentKey_(row) {
   return Object.keys(row || {}).find(k => /^commitments?$/i.test(k.trim())) || null;
 }
 
-// Pending/Balance wala amount (agar sheet mein hai) — pay-link mein amount bharne ke liye
+// Pending/Balance wala amount: pehle "Pending/Due" column, warna Pledged - Paid
 function getPendingAmount_(row) {
-  const k = Object.keys(row).find(x => /pending|balance|\bdue\b|baki|bakaya|बाकी|शेष/i.test(x));
-  const n = k ? toNumber(row[k]) : 0;
-  return n > 0 ? n : 0;
+  const keys = Object.keys(row || {});
+  const pk = keys.find(x => /pending|\bdue\b|baki|bakaya|बाकी|शेष/i.test(x));
+  if (pk && String(row[pk]).trim() !== "") return Math.max(0, toNumber(row[pk]));
+  const pledged = keys.find(x => /^pledged/i.test(x.trim()));
+  const paid = keys.find(x => /^paid/i.test(x.trim()));
+  if (pledged && paid) return Math.max(0, toNumber(row[pledged]) - toNumber(row[paid]));
+  const bk = keys.find(x => /balance/i.test(x));
+  return bk ? Math.max(0, toNumber(row[bk])) : 0;
 }
 
 // Public pay page ka link (isi app ka URL + ?pay=1) — WhatsApp upi:// ko click-able nahi karta,
@@ -1158,6 +1190,7 @@ function buildBankBlock_(row) {
 }
 
 function getMessageFromTemplate(type, row) {
+  const usedDefault = !TEMPLATES[type] && !!DEFAULT_TEMPLATES[type];
   let template = TEMPLATES[type] || DEFAULT_TEMPLATES[type] || "";
   if (!template) return "";
   const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment)\s*}}/.test(template);
@@ -1170,7 +1203,12 @@ function getMessageFromTemplate(type, row) {
     .replace(/{{\s*Commitments\s*}}/g, () => commits.map(formatCommitmentLine_).join("\n"))
     .replace(/{{\s*NextCommitment\s*}}/g, () => nextC ? formatCommitmentLine_(nextC) : "")
     .replace(/{{\s*BankDetails\s*}}/g, () => buildBankBlock_(row))
-    .replace(/{{\s*UPILink\s*}}/g, () => buildPayLink_(row));
+    .replace(/{{\s*UPILink\s*}}/g, () => buildPayLink_(row))
+    .replace(/{{\s*PendingAmount\s*}}/g, () => String(getPendingAmount_(row)))
+    .replace(/{{\s*PendingLine\s*}}/g, () => {
+      const pa = getPendingAmount_(row);
+      return pa > 0 ? "💰 *बाकी राशि: ₹" + pa.toLocaleString("en-IN") + "*" : "";
+    });
 
   for (let key in row) {
     const val = row[key] || "";
@@ -1192,6 +1230,7 @@ function getMessageFromTemplate(type, row) {
   }
 
   template = template.replace(/\\n/g, "\n");
+  if (usedDefault) template = template.replace(/{{[^}]+}}/g, ""); // default template mein jo field row mein nahi, hata do
 
   // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
   if (type === "Boli" || type === "Donation") {
@@ -2098,6 +2137,33 @@ async function renderMainDashboard(forceFresh){
       </div>`;
     }
 
+    // -------- 📅 आज के वादे --------
+    if (canShowCard("Boli") || canShowCard("Donation")) {
+      const sumC = (rows) => {
+        let todayN = 0, todayAmt = 0, overdue = 0;
+        rows.forEach(r => {
+          const ci = commitInfo_(r);
+          if (ci.diffs.some(d => d === 0)) {
+            todayN++;
+            ci.list.forEach(c => {
+              const d = parseRowDate_(c.date);
+              if (d && new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === new Date(new Date().setHours(0,0,0,0)).getTime()) todayAmt += toNumber(c.amount);
+            });
+          }
+          if (ci.pending > 0 && ci.diffs.length && ci.diffs.every(d => d < 0)) overdue++;
+        });
+        return { todayN, todayAmt, overdue };
+      };
+      const cb = sumC(boli), cd = sumC(donation);
+      const goTo = (cb.todayN + cb.overdue) >= (cd.todayN + cd.overdue) ? "Boli" : "Donation";
+      el("mainDashboard").innerHTML += `
+      <div class="dash-card dash-card-wide dash-orange" style="cursor:pointer" onclick="openCommitView_('${goTo}', '${(cb.todayN + cd.todayN) ? "today" : "overdue"}')">
+        <h4>📅 आज के वादे / निकल गए वादे</h4>
+        <p>${cb.todayN + cd.todayN} (₹${(cb.todayAmt + cd.todayAmt).toLocaleString("en-IN")}) / ${cb.overdue + cd.overdue}</p>
+        <small>बोली: ${cb.todayN}/${cb.overdue} • दान: ${cd.todayN}/${cd.overdue}</small>
+      </div>`;
+    }
+
     // -------- Total Expense --------
     const totalExpense = expenseData.reduce((s,r)=>{
       return s + toNumber(r["Payment"] || r["payment"] || 0);
@@ -2177,6 +2243,7 @@ function setActiveTab(name){
   currentPage = 1;
   sortColumn = "";
   sortDir = 1;
+  commitFilter = ""; // 🆕 naye tab par वादा filter reset
   // 🔥 AUTO REFRESH ONLY HERE
   loadTab(name);
 }
@@ -2187,6 +2254,7 @@ async function loadTab(sheetName, forceFresh) {
     // warna loading ke beech click karne par PICHHLE tab ka form khul jaata tha
     const _addBtnReset = document.getElementById("addNewBtn");
     if (_addBtnReset) { _addBtnReset.style.display = "none"; _addBtnReset.onclick = null; }
+    ["commitFilter", "bulkRemBtn"].forEach(id => { const x = document.getElementById(id); if (x) x.style.display = "none"; });
 
     // 🔹 Loading message
     el("contentArea").innerHTML =
@@ -2301,6 +2369,7 @@ function updateAddNewButton(sheetName) {
     btn.style.display = "none";
     btn.onclick = null;
   }
+  updateCommitToolbar_(sheetName); // 🆕 वादा filter + bulk reminder button
 }
 
 /* =========================================================================
@@ -3131,6 +3200,7 @@ async function openAddRecordForm(sheetName) {
           }
         }
         try { refreshDashboardAfterCrud_(); } catch (dashErr) { console.error(dashErr); } // 🆕 dashboard cards bhi live update
+        setTimeout(() => { try { offerReceiptThanks_(sheetName, data); } catch (thx) { console.error(thx); } }, 400); // 🆕 धन्यवाद message
       } else {
         alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
       }
@@ -3468,6 +3538,10 @@ if(searchVal){
 
 
 
+  // 📅 वादा filter (Boli / Donation)
+  if ((currentTab === "Boli" || currentTab === "Donation") && commitFilter) {
+    filteredData = filteredData.filter(r => matchCommitFilter_(r, commitFilter));
+  }
   /* ======================
      🔐 OWN / ALL FILTER
      ====================== */
@@ -3514,6 +3588,7 @@ if(searchVal){
       }) * sortDir;
     });
   }
+  lastFilteredRows_ = filteredData; // 🆕 bulk reminders isi list se bante hain
   const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
   if(currentPage > totalPages) currentPage = 1;
   const start = (currentPage-1)*rowsPerPage;
@@ -3655,6 +3730,15 @@ function renderActionButtons(row, encId) {
   }
   if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
     html += `<a class="action-link edit" href="#" onclick="openCommitments('${encId}', event)">📅 वादा</a>`;
+  }
+  if (currentTab === "Meetings" && actions.includes("EDIT")) {
+    html += `<a class="action-link edit" href="#" onclick="openAttendance_('${encId}', event)">👥 उपस्थिति</a>`;
+  }
+  if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
+    const _nm = getRowMemberName_(row);
+    if (_nm && _nm !== "गुमनाम") {
+      html += `<a class="action-link print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)">📄 खाता</a>`;
+    }
   }
   if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
@@ -3851,6 +3935,7 @@ document.addEventListener("DOMContentLoaded", function () {
       <p style="text-align:center;margin:0 0 14px;color:#555"><b>${SOCIETY_BANK.name}</b></p>
       ${am ? `<p style="text-align:center;font-size:22px;margin:8px 0"><b>₹ ${am}</b></p>` : ""}
       <a href="${upi}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-size:18px;font-weight:700;">📲 UPI से भुगतान करें</a>
+      <div id="qrBox" style="display:flex;flex-direction:column;align-items:center;margin:14px 0 4px"></div>
       <p style="font-size:12px;color:#777;text-align:center">बटन से UPI app न खुले तो नीचे का UPI ID कॉपी करके किसी भी UPI app में डालें।</p>
       <hr>
       <div style="font-size:14px;line-height:1.9">
@@ -3865,8 +3950,361 @@ document.addEventListener("DOMContentLoaded", function () {
     (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.c) : Promise.reject())
       .then(() => { b.textContent = "✔ कॉपी हुआ"; }).catch(() => { prompt("कॉपी करें:", b.dataset.c); });
   });
+  // 🆕 QR code (दूसरे फोन से scan करने के लिए) — library न मिले तो QR छुपा रहेगा
+  try {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    sc.onload = () => {
+      try {
+        const box = document.getElementById("qrBox");
+        const holder = document.createElement("div");
+        box.appendChild(holder);
+        new QRCode(holder, { text: upi, width: 180, height: 180 });
+        const cap = document.createElement("div");
+        cap.style.cssText = "font-size:12px;color:#777;margin-top:6px";
+        cap.textContent = "दूसरे फोन के UPI app से यह QR scan करें";
+        box.appendChild(cap);
+      } catch (qe) { console.error(qe); }
+    };
+    document.head.appendChild(sc);
+  } catch (qe2) { console.error(qe2); }
   if (/Android|iPhone|iPad/i.test(navigator.userAgent)) setTimeout(() => { location.href = upi; }, 500);
 });
+
+/* ===========================
+   🧰 Common helpers (WhatsApp link, modal)
+   =========================== */
+function buildWaUrl_(mobileRaw, message) {
+  let mobile = String(mobileRaw || "").replace(/\D/g, "");
+  const cc = SETTINGS?.DefaultCountryCode || "91";
+  if (mobile.length === 10) mobile = cc + mobile;
+  return (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
+    .replace("{{Mobile}}", encodeURIComponent(mobile))
+    .replace("{{Message}}", encodeURIComponent(message || ""));
+}
+function getRowMemberName_(row) {
+  return String(row?.[SETTINGS?.MemberColumn] || row?.["Member"] || row?.["Name"] || "").trim();
+}
+function getRowMobile_(row) {
+  return String(row?.[SETTINGS?.MobileColumn] || row?.["Mobile"] || "").replace(/\D/g, "");
+}
+function escHtml_(t) {
+  return String(t == null ? "" : t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+// Ek halka sa popup (bulk reminders, khaata, upasthiti ke liye)
+function openModal_(title) {
+  const old = document.getElementById("appModal");
+  if (old) old.remove();
+  const ov = document.createElement("div");
+  ov.id = "appModal";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1300;display:flex;align-items:center;justify-content:center;";
+  const box = document.createElement("div");
+  box.style.cssText = "background:#fff;border-radius:14px;width:94%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden;";
+  const head = document.createElement("div");
+  head.style.cssText = "padding:14px 18px;font-weight:700;font-size:16px;border-bottom:1px solid #eee;background:#fafbfc;display:flex;justify-content:space-between;align-items:center;gap:10px;";
+  head.innerHTML = "<span></span>";
+  head.firstChild.textContent = title;
+  const x = document.createElement("button");
+  x.type = "button"; x.textContent = "✕";
+  x.style.cssText = "background:#fff;border:1px solid #ccc;border-radius:6px;padding:2px 10px;cursor:pointer;width:auto;";
+  const close = () => ov.remove();
+  x.onclick = close; head.appendChild(x);
+  const body = document.createElement("div");
+  body.style.cssText = "padding:14px 18px;overflow:auto;flex:1;";
+  const foot = document.createElement("div");
+  foot.style.cssText = "padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;";
+  box.appendChild(head); box.appendChild(body); box.appendChild(foot);
+  ov.appendChild(box);
+  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  document.body.appendChild(ov);
+  return { body, foot, close };
+}
+function modalBtn_(text, bg, onclick) {
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = text;
+  b.style.cssText = "background:" + (bg || "#1a9c4b") + ";color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px;width:auto;";
+  b.onclick = onclick;
+  return b;
+}
+
+/* ===========================
+   📅 वादा FILTER (Boli / Donation)
+   =========================== */
+let commitFilter = "";
+let lastFilteredRows_ = [];
+
+function commitInfo_(row) {
+  const list = parseCommitments_(row[getCommitmentKey_(row)] || "");
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diffs = list.map(c => {
+    const d = parseRowDate_(c.date);
+    return d ? Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - today) / 86400000) : null;
+  }).filter(v => v !== null);
+  return { list, diffs, pending: getPendingAmount_(row) };
+}
+function matchCommitFilter_(row, mode) {
+  const { list, diffs, pending } = commitInfo_(row);
+  switch (mode) {
+    case "today":    return diffs.some(d => d === 0);
+    case "tomorrow": return diffs.some(d => d === 1);
+    case "week":     return diffs.some(d => d >= 0 && d <= 7);
+    case "overdue":  return pending > 0 && diffs.length > 0 && diffs.every(d => d < 0);
+    case "none":     return pending > 0 && list.length === 0;
+    default: return true;
+  }
+}
+function setCommitFilter_(v) {
+  commitFilter = v || "";
+  currentPage = 1;
+  renderTable();
+}
+function updateCommitToolbar_(sheetName) {
+  const on = (sheetName === "Boli" || sheetName === "Donation");
+  const sel = document.getElementById("commitFilter");
+  const bulk = document.getElementById("bulkRemBtn");
+  if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
+  const canWa = (ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || []).includes("WHATSAPP");
+  if (bulk) bulk.style.display = (on && canWa) ? "inline-block" : "none";
+}
+function openCommitView_(sheetName, mode) {
+  setActiveTab(sheetName);
+  commitFilter = mode || "";
+}
+
+/* ===========================
+   📨 BULK REMINDERS — filter ki hui list ko ek ke baad ek WhatsApp
+   =========================== */
+function openBulkReminders_() {
+  if (currentTab !== "Boli" && currentTab !== "Donation") return;
+  const all = lastFilteredRows_ || [];
+  const items = all.filter(r => getPendingAmount_(r) > 0 && getRowMobile_(r));
+  const skipped = all.filter(r => getPendingAmount_(r) > 0 && !getRowMobile_(r)).length;
+  const m = openModal_("📨 Reminders — " + currentTab);
+  if (!items.length) {
+    m.body.innerHTML = "<p class='muted'>इस list में किसी का भी बाकी + mobile नहीं मिला।</p>";
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    return;
+  }
+  const done = new Set();
+  const info = document.createElement("div");
+  info.style.cssText = "margin-bottom:10px;font-size:13px;color:#475569;";
+  const list = document.createElement("div");
+  m.body.appendChild(info); m.body.appendChild(list);
+
+  const refresh = () => {
+    info.textContent = "भेजे गए: " + done.size + " / " + items.length +
+      (skipped ? "  •  mobile नहीं होने से छूटे: " + skipped : "") +
+      (commitFilter ? "  •  filter चालू है" : "");
+  };
+  const send = (i) => {
+    const r = items[i];
+    window.open(buildWaUrl_(getRowMobile_(r), getMessageFromTemplate(currentTab, r) || ""), "_blank");
+    done.add(i); rowEls[i].style.opacity = ".5"; rowEls[i].querySelector(".tick").textContent = "✔";
+    refresh();
+  };
+  const rowEls = items.map((r, i) => {
+    const ci = commitInfo_(r);
+    const nc = latestCommitment_(ci.list);
+    const d = document.createElement("div");
+    d.style.cssText = "display:flex;gap:10px;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 0;";
+    d.innerHTML = `<div style="font-size:13px;min-width:0"><b>${escHtml_(getRowMemberName_(r))}</b> — ₹${ci.pending.toLocaleString("en-IN")}` +
+      (nc ? `<br><span style="color:#64748b">${escHtml_(formatCommitmentLine_(nc))}</span>` : "") + `</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="tick" style="color:#1a9c4b;font-weight:700"></span></div>`;
+    const b = modalBtn_("WhatsApp", "#25a244", () => send(i));
+    d.lastElementChild.appendChild(b);
+    list.appendChild(d);
+    return d;
+  });
+  refresh();
+  m.foot.appendChild(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => {
+    const i = items.findIndex((_, k) => !done.has(k));
+    if (i === -1) { alert("सब को भेज दिया गया है।"); return; }
+    rowEls[i].scrollIntoView({ block: "center" });
+    send(i);
+  }));
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+}
+
+/* ===========================
+   📄 MEMBER KA KHAATA (Boli + Donation + Receipts)
+   =========================== */
+async function openMemberStatement_(encName, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const name = decodeURIComponent(encName || "").trim();
+  if (!name) return;
+  const m = openModal_("📄 खाता — " + name);
+  m.body.innerHTML = "<p class='muted'>⏳ Loading Data...</p>";
+  try {
+    const [boli, don, rec] = await Promise.all([fetchSheet("Boli"), fetchSheet("Donation"), fetchSheet("Receipts")]);
+    const mine = rows => rows.filter(r => getRowMemberName_(r) === name);
+    const B = mine(boli), D = mine(don), R = mine(rec);
+    const sum = (rows, re) => rows.reduce((a, r) => {
+      const k = Object.keys(r).find(x => re.test(x.trim()));
+      return a + (k ? toNumber(r[k]) : 0);
+    }, 0);
+    const bPl = sum(B, /^pledged/i), bPd = sum(B, /^paid/i);
+    const dPl = sum(D, /^pledged/i), dPd = sum(D, /^paid/i);
+    const rcv = sum(R, /^received$/i);
+    const bPend = B.reduce((a, r) => a + getPendingAmount_(r), 0);
+    const dPend = D.reduce((a, r) => a + getPendingAmount_(r), 0);
+    const totalPend = bPend + dPend;
+    const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+
+    const skip = /^(id|memberid|member|name|mobile|password|role|commitments?|showonhome)$/i;
+    const pref = /date|year|for|detail|pledged|paid|pending|amount|received|mode|remark|note|type/i;
+    const tableFor = (title, rows) => {
+      if (!rows.length) return `<h4 style="margin:14px 0 4px">${title}</h4><p class="muted">कोई रिकॉर्ड नहीं।</p>`;
+      const cols = Object.keys(rows[0]).filter(k => k && !skip.test(k.trim()) && pref.test(k)).slice(0, 7);
+      return `<h4 style="margin:14px 0 4px">${title}</h4><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr>${cols.map(c => `<th style="border:1px solid #ddd;padding:5px;background:#f4f6f9;text-align:left">${escHtml_(c)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${cols.map(c => `<td style="border:1px solid #ddd;padding:5px">${escHtml_(r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    };
+
+    const summary = `
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.8">
+        <div>🔔 <b>बोली:</b> कुल ${inr(bPl)} • जमा ${inr(bPd)} • बाकी ${inr(bPend)}</div>
+        <div>🤝 <b>दान / सहयोग:</b> कुल ${inr(dPl)} • जमा ${inr(dPd)} • बाकी ${inr(dPend)}</div>
+        <div>🧾 <b>Receipts में कुल प्राप्त:</b> ${inr(rcv)}</div>
+        <div style="font-size:15px;margin-top:4px">💰 <b>कुल बाकी: ${inr(totalPend)}</b></div>
+      </div>`;
+    m.body.innerHTML = summary + tableFor("🔔 बोली", B) + tableFor("🤝 दान / सहयोग", D) + tableFor("🧾 Receipts", R);
+
+    const mobile = getUserMobileFromMembers(name) || getRowMobile_(B[0] || D[0] || R[0] || {});
+    const waText = () => {
+      const lines = [
+        "🙏 जय श्रीयादे माता की " + name + " जी!", "",
+        "📄 *आपका खाता* (" + new Date().toLocaleDateString("en-GB") + ")", "",
+        "🔔 बोली: कुल " + inr(bPl) + " | जमा " + inr(bPd) + " | बाकी " + inr(bPend),
+        "🤝 दान/सहयोग: कुल " + inr(dPl) + " | जमा " + inr(dPd) + " | बाकी " + inr(dPend),
+        "🧾 कुल प्राप्त: " + inr(rcv), "",
+        "💰 *कुल बाकी: " + inr(totalPend) + "*"
+      ];
+      if (totalPend > 0) lines.push("", buildBankBlock_({ ID: name, "Pending Dues": totalPend }));
+      lines.push("", "*श्री मेवाड़ प्रजापत समाज, वापी*", "*जय श्रीयादे माता की!* 🙏");
+      return lines.join("\n");
+    };
+    m.foot.appendChild(modalBtn_("💬 WhatsApp", "#25a244", () => {
+      window.open(buildWaUrl_(mobile, waText()), "_blank");
+    }));
+    m.foot.appendChild(modalBtn_("🖨 Print", "#2563eb", () => {
+      const w = window.open("", "_blank");
+      if (!w) { alert("Pop-up block है — allow करें।"); return; }
+      w.document.write(`<html><head><meta charset="utf-8"><title>खाता - ${escHtml_(name)}</title>
+        <style>body{font-family:system-ui,sans-serif;padding:20px}h2,h3{text-align:center;margin:4px}</style></head><body>
+        <h2>श्री मेवाड़ प्रजापत समाज, वापी</h2><h3>खाता विवरण — ${escHtml_(name)}</h3>
+        <p style="text-align:center">दिनांक: ${new Date().toLocaleDateString("en-GB")}</p>${m.body.innerHTML}</body></html>`);
+      w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+    }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  } catch (err) {
+    console.error(err);
+    m.body.innerHTML = "<p>❌ खाता load नहीं हो पाया।</p>";
+  }
+}
+
+/* ===========================
+   👥 MEETING UPASTHITI (attendance) — Meetings sheet mein "Attendance" column chahiye
+   =========================== */
+function openAttendance_(incomingEnc, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const incoming = decodeURIComponent(incomingEnc || "");
+  const recIndex = tableData.findIndex(r => (resolveRecordId_(r).recordId || "") === incoming);
+  if (recIndex === -1) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const rec = tableData[recIndex];
+  const key = Object.keys(rec).find(k => /^attendance$/i.test(k.trim())) ||
+              tableData.map(r => Object.keys(r).find(k => /^attendance$/i.test(k.trim()))).find(Boolean) ||
+              "Attendance";
+  const { idColumn, recordId } = resolveRecordId_(rec);
+  if (!idColumn) { alert("इस sheet में 'ID' column नहीं मिला।"); return; }
+
+  const memberCol = SETTINGS?.MemberColumn || "Member";
+  const allNames = [...new Set(Object.values(MEMBERS || {}).map(r => String(r[memberCol] || r["Member"] || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "hi"));
+  const present = new Set(String(rec[key] || "").split(/[,\n]/).map(x => x.trim()).filter(Boolean));
+  [...present].forEach(n => { if (!allNames.includes(n)) allNames.push(n); }); // purane guest naam bhi dikhen
+
+  const m = openModal_("👥 उपस्थिति — " + (rec["Date"] || "Meeting"));
+  const cnt = document.createElement("div");
+  cnt.style.cssText = "font-weight:700;margin-bottom:8px;";
+  const search = document.createElement("input");
+  search.type = "text"; search.placeholder = "🔍 नाम खोजें";
+  search.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-bottom:8px;box-sizing:border-box;";
+  const guestRow = document.createElement("div");
+  guestRow.style.cssText = "display:flex;gap:8px;margin-bottom:8px;";
+  const guest = document.createElement("input");
+  guest.type = "text"; guest.placeholder = "अतिथि / बाहर का नाम जोड़ें";
+  guest.style.cssText = "flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;";
+  guestRow.appendChild(guest);
+  const list = document.createElement("div");
+  m.body.appendChild(cnt); m.body.appendChild(search); m.body.appendChild(guestRow); m.body.appendChild(list);
+
+  const updCount = () => { cnt.textContent = "उपस्थित: " + present.size + " / " + allNames.length; };
+  const draw = () => {
+    const q = search.value.trim().toLowerCase();
+    list.innerHTML = "";
+    allNames.filter(n => !q || n.toLowerCase().includes(q)).forEach(n => {
+      const lab = document.createElement("label");
+      lab.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid #f0f0f0;font-size:14px;cursor:pointer;margin:0;font-weight:400;";
+      const cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = present.has(n);
+      cb.style.cssText = "width:18px;height:18px;margin:0;padding:0;";
+      cb.onchange = () => { cb.checked ? present.add(n) : present.delete(n); updCount(); };
+      const sp = document.createElement("span"); sp.textContent = n;
+      lab.appendChild(cb); lab.appendChild(sp); list.appendChild(lab);
+    });
+  };
+  search.oninput = draw;
+  guestRow.appendChild(modalBtn_("जोड़ें", "#2563eb", () => {
+    const g = guest.value.trim();
+    if (!g) return;
+    if (!allNames.includes(g)) allNames.push(g);
+    present.add(g); guest.value = ""; updCount(); draw();
+  }));
+  updCount(); draw();
+
+  m.foot.appendChild(modalBtn_("Save", "#1a9c4b", async function () {
+    this.disabled = true; this.textContent = "Saving...";
+    try {
+      const text = allNames.filter(n => present.has(n)).join(", ");
+      const res = await callCrudBackend_({
+        action: "editRow", sheetName: currentTab, idColumn, id: recordId, data: { [key]: text }
+      });
+      if (res.success) {
+        rec[key] = text; delete CACHE[currentTab];
+        m.close();
+        try { renderTable(); } catch (x) { console.error(x); }
+        alert("उपस्थिति save हो गई (" + present.size + " उपस्थित)।");
+      } else {
+        alert("❌ Error: " + (res.msg || "Save nahi ho paya") + "\n\n(Meetings sheet mein '" + key + "' naam ka column hona chahiye)");
+        this.disabled = false; this.textContent = "Save";
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ " + (err.message || "Network error"));
+      this.disabled = false; this.textContent = "Save";
+    }
+  }));
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+}
+
+/* ===========================
+   🙏 Receipt save hone par धन्यवाद message ka offer
+   =========================== */
+function offerReceiptThanks_(sheetName, data) {
+  if (sheetName !== "Receipts") return;
+  const actions = ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || [];
+  if (!actions.includes("WHATSAPP")) return;
+  const name = String(data?.[SETTINGS?.MemberColumn] || data?.["Member"] || "").trim();
+  let mobile = pickRowValue_(data, ["Mobile"]) || (name && name !== "गुमनाम" ? getUserMobileFromMembers(name) : "");
+  mobile = String(mobile || "").replace(/\D/g, "");
+  if (!mobile) return;
+  const msg = getMessageFromTemplate("Receipts", data);
+  if (!msg) return;
+  if (confirm("🙏 " + name + " जी को धन्यवाद का WhatsApp message भेजें?")) {
+    window.open(buildWaUrl_(mobile, msg), "_blank");
+  }
+}
 
 /* ===========================
    VIEW record (popup)
