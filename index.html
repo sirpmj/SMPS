@@ -793,7 +793,8 @@ style="background:#008000;color:#fff;font-size:16px">
 
   <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
   <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
-    <option value="">📅 वादा: सभी</option>
+    <option value="pending">📅 बाकी + वादा वाले ऊपर</option>
+    <option value="">सभी रिकॉर्ड</option>
     <option value="today">आज का वादा</option>
     <option value="tomorrow">कल का वादा</option>
     <option value="week">अगले 7 दिन</option>
@@ -2155,12 +2156,12 @@ async function renderMainDashboard(forceFresh){
         return { todayN, todayAmt, overdue };
       };
       const cb = sumC(boli), cd = sumC(donation);
-      const goTo = (cb.todayN + cb.overdue) >= (cd.todayN + cd.overdue) ? "Boli" : "Donation";
+      window.__commitSummary_ = { cb, cd };
       el("mainDashboard").innerHTML += `
-      <div class="dash-card dash-card-wide dash-orange" style="cursor:pointer" onclick="openCommitView_('${goTo}', '${(cb.todayN + cd.todayN) ? "today" : "overdue"}')">
-        <h4>📅 आज के वादे / निकल गए वादे</h4>
-        <p>${cb.todayN + cd.todayN} (₹${(cb.todayAmt + cd.todayAmt).toLocaleString("en-IN")}) / ${cb.overdue + cd.overdue}</p>
-        <small>बोली: ${cb.todayN}/${cb.overdue} • दान: ${cd.todayN}/${cd.overdue}</small>
+      <div class="dash-card dash-orange" style="cursor:pointer" title="विवरण देखने के लिए क्लिक करें" onclick="openCommitSummary_()">
+        <h4>📅 आज के वादे ▾</h4>
+        <p>${cb.todayN + cd.todayN} / ${cb.overdue + cd.overdue}</p>
+        <small>आज / निकले</small>
       </div>`;
     }
 
@@ -2243,7 +2244,8 @@ function setActiveTab(name){
   currentPage = 1;
   sortColumn = "";
   sortDir = 1;
-  commitFilter = ""; // 🆕 naye tab par वादा filter reset
+  commitFilter = ""; // 🆕 naye tab par वादा filter reset (Boli/Donation par default "pending" lagta hai)
+  commitFilterInit_ = "";
   // 🔥 AUTO REFRESH ONLY HERE
   loadTab(name);
 }
@@ -3568,6 +3570,11 @@ if(searchVal){
       filteredData = [...bday, ...others];
     }
   }
+  if (!sortColumn && (currentTab === "Boli" || currentTab === "Donation") && commitFilter) {
+    const ranked = filteredData.map((r, i) => ({ r, i, k: commitSortRank_(r) }));
+    ranked.sort((a, b) => (a.k[0] - b.k[0]) || (a.k[1] - b.k[1]) || (a.i - b.i)); // stable
+    filteredData = ranked.map(x => x.r);
+  }
   /* ======================
      🔃 SORTING (SAFE)
      ====================== */
@@ -4032,6 +4039,7 @@ function modalBtn_(text, bg, onclick) {
    📅 वादा FILTER (Boli / Donation)
    =========================== */
 let commitFilter = "";
+let commitFilterInit_ = ""; // kis tab ke liye default filter lag chuka hai
 let lastFilteredRows_ = [];
 
 function commitInfo_(row) {
@@ -4043,9 +4051,23 @@ function commitInfo_(row) {
   }).filter(v => v !== null);
   return { list, diffs, pending: getPendingAmount_(row) };
 }
+function hasPendingInfo_(row) {
+  const keys = Object.keys(row || {});
+  return keys.some(x => /pending|\bdue\b|baki|bakaya|बाकी|शेष|balance/i.test(x)) ||
+         (keys.some(x => /^pledged/i.test(x.trim())) && keys.some(x => /^paid/i.test(x.trim())));
+}
+// वादा-wali rows ka order: aaj/aane wale (sabse paas wali date pehle) → nikle hue → bina वादा
+function commitSortRank_(row) {
+  const { diffs } = commitInfo_(row);
+  if (!diffs.length) return [2, 0];
+  const upcoming = diffs.filter(d => d >= 0);
+  if (upcoming.length) return [0, Math.min(...upcoming)];
+  return [1, -Math.max(...diffs)]; // nikle hue: sabse haal ka (kam purana) pehle
+}
 function matchCommitFilter_(row, mode) {
   const { list, diffs, pending } = commitInfo_(row);
   switch (mode) {
+    case "pending":  return hasPendingInfo_(row) ? pending > 0 : true;
     case "today":    return diffs.some(d => d === 0);
     case "tomorrow": return diffs.some(d => d === 1);
     case "week":     return diffs.some(d => d >= 0 && d <= 7);
@@ -4061,6 +4083,8 @@ function setCommitFilter_(v) {
 }
 function updateCommitToolbar_(sheetName) {
   const on = (sheetName === "Boli" || sheetName === "Donation");
+  if (!on) commitFilterInit_ = "";
+  else if (commitFilterInit_ !== sheetName) { commitFilter = "pending"; commitFilterInit_ = sheetName; } // 🆕 default: बाकी + वादा वाले ऊपर
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
@@ -4069,7 +4093,31 @@ function updateCommitToolbar_(sheetName) {
 }
 function openCommitView_(sheetName, mode) {
   setActiveTab(sheetName);
-  commitFilter = mode || "";
+  commitFilter = mode || "pending";
+  commitFilterInit_ = sheetName; // default filter isse override na ho
+}
+
+// Dashboard ke chhote card par click karne par poora vivaran (hide/show jaisa)
+function openCommitSummary_() {
+  const sm = window.__commitSummary_;
+  if (!sm) return;
+  const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+  const m = openModal_("📅 वादे — आज / निकले");
+  const rowHtml = (label, sheet, c) => `
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-weight:700;margin-bottom:6px">${label}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0">
+        <span>आज के वादे: <b>${c.todayN}</b> (${inr(c.todayAmt)})</span>
+        <button type="button" data-s="${sheet}" data-m="today" class="cmGo" style="width:auto;padding:5px 10px">देखें</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0">
+        <span>वादा निकल गया: <b>${c.overdue}</b></span>
+        <button type="button" data-s="${sheet}" data-m="overdue" class="cmGo" style="width:auto;padding:5px 10px">देखें</button>
+      </div>
+    </div>`;
+  m.body.innerHTML = rowHtml("🔔 बोली", "Boli", sm.cb) + rowHtml("🤝 दान / सहयोग", "Donation", sm.cd);
+  m.body.querySelectorAll(".cmGo").forEach(b => b.onclick = () => { m.close(); openCommitView_(b.dataset.s, b.dataset.m); });
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
 }
 
 /* ===========================
