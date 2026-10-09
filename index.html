@@ -2744,6 +2744,7 @@ async function openAddRecordForm(sheetName) {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
+    if (/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
     // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
     // bekaar/duplicate hai (Name column already hai) — Add Member form mein isse
     // bilkul mat dikhao.
@@ -3624,11 +3625,11 @@ function openCommitments(incomingEnc, e) {
   const recIndex = tableData.findIndex(r => (resolveRecordId_(r).recordId || "") === incoming);
   if (recIndex === -1) { alert("रिकॉर्ड नहीं मिला।"); return; }
   const rec = tableData[recIndex];
-  const key = getCommitmentKey_(rec);
-  if (!key) {
-    alert("Google Sheet के '" + currentTab + "' tab में 'Commitments' नाम का एक नया column जोड़ें (header में), फिर यह सुविधा चलेगी।");
-    return;
-  }
+  // OpenSheet khaali last-column wali cell row se hata deta hai, isliye key row mein na dikhe
+  // to bhi column maan lo — agar sheet mein sach mein nahi hoga to save par saaf error aayega
+  const key = getCommitmentKey_(rec) ||
+              (tableData.map(getCommitmentKey_).find(Boolean)) ||
+              "Commitments";
   const { idColumn, recordId } = resolveRecordId_(rec);
   if (!idColumn) { alert("इस sheet में 'ID' column नहीं मिला।"); return; }
 
@@ -3694,7 +3695,8 @@ function openCommitments(incomingEnc, e) {
         try { renderTable(); } catch (x) { console.error(x); }
         alert("वादा Google Sheet में save हो गया है।");
       } else {
-        alert("❌ Error: " + (res.msg || "Save nahi ho paya"));
+        alert("❌ Error: " + (res.msg || "Save nahi ho paya") +
+              "\n\n(Column ka naam sheet mein bilkul '" + key + "' hona chahiye)");
       }
     } catch (err) {
       console.error(err);
@@ -3997,6 +3999,7 @@ async function openEditRecord(incomingEnc, e){
     const kl = k.toLowerCase();
     if(kl === "password" || kl === "role") return; // hidden fields not editable here
     if(SYNTHETIC_DISPLAY_COLUMNS.includes(k)) return; // 🆕 webapp-computed, sheet mein hai hi nahi
+    if(/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
     const label = document.createElement("label"); label.textContent = k;
