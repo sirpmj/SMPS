@@ -1086,15 +1086,27 @@ const SOCIETY_BANK = {
 // Templates sheet mein agar us tab ka template na ho to yeh default chalega
 const DEFAULT_TEMPLATES = {
   "Boli":
-"🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
-"*श्री मेवाड़ प्रजापत समाज, वापी* की ओर से स्नेहपूर्वक स्मरण —\n\n" +
-"आपकी *बोली* की राशि बाकी है।\n{{PendingLine}}\n\n" +
-"कृपया सुविधानुसार भुगतान करने की कृपा करें। 🙏",
+"🙏 *जय श्रीयादे माता की* 🙏\n\n" +
+"नमस्ते *{{Member}}*,\n\n" +
+"{{ThanksLine}}\n" +
+"श्री मेवाड़ प्रजापत समाज, वापी आपका हृदय से आभार एवं धन्यवाद करता है।\n\n" +
+"{{StatusLine}}\n\n" +
+"{{CommitBlock}}\n\n" +
+"{{BankDetails}}\n\n" +
+"आपके सहयोग से समाज के कार्यों को नई ऊर्जा एवं मजबूती मिलती है।\n\n" +
+"🙏 *धन्यवाद*\n" +
+"*श्री मेवाड़ प्रजापत समाज, वापी*",
   "Donation":
-"🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
-"*श्री मेवाड़ प्रजापत समाज, वापी* की ओर से स्नेहपूर्वक स्मरण —\n\n" +
-"आपकी *सहयोग राशि* बाकी है।\n{{PendingLine}}\n\n" +
-"कृपया सुविधानुसार भुगतान करने की कृपा करें। 🙏",
+"🙏 *जय श्रीयादे माता की* 🙏\n\n" +
+"नमस्ते *{{Member}}*,\n\n" +
+"{{ThanksLine}}\n" +
+"श्री मेवाड़ प्रजापत समाज, वापी आपका हृदय से आभार एवं धन्यवाद करता है।\n\n" +
+"{{StatusLine}}\n\n" +
+"{{CommitBlock}}\n\n" +
+"{{BankDetails}}\n\n" +
+"आपके सहयोग से समाज के कार्यों को नई ऊर्जा एवं मजबूती मिलती है।\n\n" +
+"🙏 *धन्यवाद*\n" +
+"*श्री मेवाड़ प्रजापत समाज, वापी*",
   "Receipts":
 "🙏 जय श्रीयादे माता की {{Member}} जी!\n\n" +
 "आपके द्वारा दी गई *₹{{Received}}* की राशि {{For}} के लिए प्राप्त हुई। ✅\n\n" +
@@ -1116,6 +1128,44 @@ const DEFAULT_TEMPLATES = {
 "*मेवाड़ प्रजापत समाज – वापी*\n\n" +
 "*जय श्रीयादे माता की!* 🙏"
 };
+
+// true = Boli/Donation ke reminder ke liye app ka apna (proper format wala) template chalega,
+// Templates sheet ka nahi. Sheet wala chahiye to false kar dein.
+const USE_BUILTIN_REMINDER_TEMPLATES = true;
+
+// Boli / Donation message ke hisse: dhanyavaad line, bakaya line
+function buildReminderParts_(type, row) {
+  const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+  const keys = Object.keys(row || {});
+  const pk = keys.find(x => /^pledged/i.test(x.trim())) || keys.find(x => /^amount$/i.test(x.trim()));
+  const dk = keys.find(x => /^paid/i.test(x.trim()));
+  const pledged = pk ? toNumber(row[pk]) : 0;
+  const paid = dk ? toNumber(row[dk]) : 0;
+  const pending = getPendingAmount_(row);
+  const forTxt = String(pickRowValue_(row, ["For", "Purpose", "Reason"]) || "").trim();
+  const isBoli = type === "Boli";
+  const forIsSahyog = /सहयोग/.test(forTxt);
+
+  let thanks;
+  if (isBoli) {
+    thanks = "आपके द्वारा " + (forTxt ? "*" + forTxt + "* की " : "") + "बोली *" + inr(pledged) + "* में लेने के लिए";
+  } else if (!forTxt || forIsSahyog) {
+    thanks = "आपके द्वारा *" + inr(pledged) + "* की सहयोग राशि देने के लिए";
+  } else {
+    thanks = "आपके द्वारा *" + forTxt + "* के लिए *" + inr(pledged) + "* की सहयोग राशि देने के लिए";
+  }
+
+  let status;
+  if (pending > 0) {
+    const what = isBoli ? "बोली की राशि" : "सहयोग राशि";
+    const forPart = (forTxt && !forIsSahyog) ? forTxt + " के लिए " : "";
+    status = "आपकी " + what + " " + forPart + inr(pledged) + " में से *" + inr(pending) +
+             "* अभी बकाया है।\n\nकृपया बाकी राशि समय पर जमा करें।";
+  } else {
+    status = "✅ आपकी राशि पूर्ण रूप से जमा हो चुकी है। हृदय से धन्यवाद। 🙏";
+  }
+  return { thanks, status, pledged, paid, pending };
+}
 
 // Row ke alag-alag naam wale columns mein se pehla jo bhara ho
 function pickRowValue_(row, names) {
@@ -1192,10 +1242,11 @@ function buildBankBlock_(row) {
 }
 
 function getMessageFromTemplate(type, row) {
-  const usedDefault = !TEMPLATES[type] && !!DEFAULT_TEMPLATES[type];
-  let template = TEMPLATES[type] || DEFAULT_TEMPLATES[type] || "";
+  const forceBuiltin = USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
+  const usedDefault = (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
+  let template = (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "";
   if (!template) return "";
-  const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment)\s*}}/.test(template);
+  const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment|CommitBlock)\s*}}/.test(template);
   const hadBankPh = /{{\s*BankDetails\s*}}/.test(template);
   const hadLinkPh = /{{\s*UPILink\s*}}/.test(template);
   const hadBankText = template.includes(SOCIETY_BANK.acc);
@@ -1207,7 +1258,15 @@ function getMessageFromTemplate(type, row) {
   template = template
     .replace(/{{\s*Commitments\s*}}/g, () => commits.map(formatCommitmentLine_).join("\n"))
     .replace(/{{\s*NextCommitment\s*}}/g, () => nextC ? formatCommitmentLine_(nextC) : "")
-    .replace(/{{\s*BankDetails\s*}}/g, () => buildBankBlock_(row))
+    .replace(/{{\s*CommitBlock\s*}}/g, () => commits.length
+        ? "🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n") : "")
+    .replace(/{{\s*BankDetails\s*}}/g, () =>
+        ((type === "Boli" || type === "Donation") && hasPendingInfo_(row) && getPendingAmount_(row) <= 0)
+          ? "" : buildBankBlock_(row))
+    .replace(/{{\s*(ThanksLine|StatusLine)\s*}}/g, (m0, which) => {
+        const parts = buildReminderParts_(type, row);
+        return which === "ThanksLine" ? parts.thanks : parts.status;
+    })
     .replace(/{{\s*UPILink\s*}}/g, () => buildPayLink_(row))
     .replace(/{{\s*PendingAmount\s*}}/g, () => String(getPendingAmount_(row)))
     .replace(/{{\s*PendingLine\s*}}/g, () => {
@@ -1235,7 +1294,10 @@ function getMessageFromTemplate(type, row) {
   }
 
   template = template.replace(/\\n/g, "\n");
-  if (usedDefault) template = template.replace(/{{[^}]+}}/g, ""); // default template mein jo field row mein nahi, hata do
+  if (usedDefault) {
+    template = template.replace(/{{[^}]+}}/g, ""); // default template mein jo field row mein nahi, hata do
+    template = template.replace(/\n{3,}/g, "\n\n").trim(); // khaali blok hatne par bachi extra khaali lines
+  }
 
   // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
   if (type === "Boli" || type === "Donation") {
