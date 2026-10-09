@@ -1171,7 +1171,8 @@ function buildPayLink_(row) {
   if (!/^https?:$/.test(location.protocol)) return "";
   const base = location.origin + location.pathname;
   const amt = getPendingAmount_(row);
-  const note = (row["ID"] ? "Ref " + row["ID"] : "") ;
+  const rawId = String(row["ID"] || "").trim();
+  const note = (rawId && rawId.length <= 20 && /^[\w\- ]+$/.test(rawId)) ? "Ref " + rawId : ""; // lamba/Hindi naam ho to link chhota rakho
   let q = "?pay=1";
   if (amt) q += "&am=" + amt;
   if (note) q += "&tn=" + encodeURIComponent(note);
@@ -1195,7 +1196,10 @@ function getMessageFromTemplate(type, row) {
   let template = TEMPLATES[type] || DEFAULT_TEMPLATES[type] || "";
   if (!template) return "";
   const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment)\s*}}/.test(template);
-  const hadBankPlaceholder = /{{\s*BankDetails\s*}}/.test(template) || template.includes(SOCIETY_BANK.acc);
+  const hadBankPh = /{{\s*BankDetails\s*}}/.test(template);
+  const hadLinkPh = /{{\s*UPILink\s*}}/.test(template);
+  const hadBankText = template.includes(SOCIETY_BANK.acc);
+  const hadBankPlaceholder = hadBankPh || hadBankText;
 
   // 🆕 Special placeholders
   const commits = parseCommitments_(row[getCommitmentKey_(row)] || "");
@@ -1236,10 +1240,27 @@ function getMessageFromTemplate(type, row) {
   // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
   if (type === "Boli" || type === "Donation") {
     if (!hadCommitPlaceholder && commits.length) {
-      template += "\n\n🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n");
+      const cBlock = "🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n");
+      const ls0 = template.split("\n");
+      // Agar template mein bank details hain to वादा unse theek PEHLE lagao, warna sabse neeche
+      let bi = ls0.findIndex(l => l.includes("खाता नाम"));
+      if (bi < 0) bi = ls0.findIndex(l => l.includes(SOCIETY_BANK.acc));
+      if (bi >= 0) { ls0.splice(bi, 0, cBlock, ""); template = ls0.join("\n"); }
+      else template += "\n\n" + cBlock;
     }
     if (!hadBankPlaceholder) {
       template += "\n\n" + buildBankBlock_(row);
+    } else if (hadBankText && !hadBankPh && !hadLinkPh) {
+      // Template mein bank details pehle se hain (aapke apne shabdon mein) — unhe jyon ka tyon rakho,
+      // bas UPI wali line ke theek baad "seedha payment" ka link jod do
+      const link = buildPayLink_(row);
+      if (link) {
+        const ls = template.split("\n");
+        let idx = ls.findIndex(l => l.includes(SOCIETY_BANK.upi));
+        if (idx < 0) idx = ls.findIndex(l => l.includes(SOCIETY_BANK.acc));
+        ls.splice(idx + 1, 0, "", "👇 *UPI से सीधे भुगतान करने के लिए यह लिंक खोलें:*", link);
+        template = ls.join("\n");
+      }
     }
   }
   return template;
