@@ -2571,58 +2571,75 @@ function attachAgendaPicker_(ta, group) {
   box.appendChild(sum);
 
   // Form ke "Time" field ki current value (select ho ya text, dono chalega)
-  const readTime = () => {
+  const findGroupByLabel = (re) => {
     const root = group.parentNode;
-    if (!root) return "";
-    for (const g of Array.from(root.children)) {
+    if (!root) return null;
+    return Array.from(root.children).find(g => {
       const lab = g.querySelector && g.querySelector("label");
-      if (!lab || !/^(time|समय|meeting time)$/i.test(lab.textContent.trim())) continue;
-      const sel = g.querySelector("select");
-      if (sel && sel.value && sel.value !== "__other__") return sel.value;
-      const inp = Array.from(g.querySelectorAll("input,textarea")).find(x => x.type !== "hidden" && x.value);
-      return inp ? inp.value : "";
-    }
-    return "";
+      return lab && re.test(lab.textContent.trim());
+    }) || null;
+  };
+  const readTime = () => {
+    const g = findGroupByLabel(/^(time|समय|meeting time)$/i);
+    if (!g) return "";
+    const sel = g.querySelector("select");
+    if (sel && sel.value && sel.value !== "__other__") return sel.value;
+    const inp = Array.from(g.querySelectorAll("input,textarea")).find(x => x.type !== "hidden" && x.value);
+    return inp ? inp.value : "";
   };
 
+  // ---- Agenda points (checkbox) ----
   const rows = [];
-  const addRow = (kind, line) => {
+  MEETING_AGENDA_POINTS.forEach(line => {
     const lab = document.createElement("label");
-    lab.className = "ap-row" + (kind === "meal" ? " ap-lunch" : "");
+    lab.className = "ap-row";
     const cb = document.createElement("input"); cb.type = "checkbox";
     const sp = document.createElement("span"); sp.textContent = line;
     lab.appendChild(cb); lab.appendChild(sp); box.appendChild(lab);
-    rows.push({ kind, line, cb, sp });
+    rows.push({ line, cb });
+  });
+
+  // ---- 🍽️ Food option: Place ki tarah alag field (select) ----
+  const foodGroup = document.createElement("div");
+  const foodLabel = document.createElement("label");
+  foodLabel.textContent = "भोजन / नाश्ता (Food)";
+  const foodSel = document.createElement("select");
+  foodSel.className = "smart-select";
+  const optNo = new Option("-- कोई व्यवस्था नहीं --", "");
+  const optYes = new Option("", "1");
+  foodSel.appendChild(optNo); foodSel.appendChild(optYes);
+  foodGroup.appendChild(foodLabel); foodGroup.appendChild(foodSel);
+
+  let mealLine = mealLineForTime_(readTime());
+  const refreshMealOption = () => {
+    mealLine = mealLineForTime_(readTime());
+    optYes.textContent = "🍽️ हाँ — " + mealLabelForTime_(readTime()) + " की व्यवस्था";
   };
-  MEETING_AGENDA_POINTS.forEach(l => addRow("point", l));
-  addRow("meal", mealLineForTime_(readTime()));
-  const meal = rows[rows.length - 1];
 
   const lines = () => ta.value.split("\n").map(l => l.trim()).filter(Boolean);
   const pointSet = new Set(MEETING_AGENDA_POINTS);
 
   const syncFromText = () => {
     const cur = lines();
-    rows.forEach(r => {
-      if (r.kind === "point") r.cb.checked = cur.includes(r.line);
-    });
-    meal.cb.checked = cur.some(l => MEAL_LINE_RE.test(l));
+    rows.forEach(r => { r.cb.checked = cur.includes(r.line); });
+    foodSel.value = cur.some(l => MEAL_LINE_RE.test(l)) ? "1" : "";
   };
   const rebuildText = () => {
     const custom = lines().filter(l => !pointSet.has(l) && !MEAL_LINE_RE.test(l));
-    const pts = rows.filter(r => r.kind === "point" && r.cb.checked).map(r => r.line);
+    const pts = rows.filter(r => r.cb.checked).map(r => r.line);
     const out = [...pts, ...custom];
-    if (meal.cb.checked) out.push(meal.line);
+    if (foodSel.value === "1") out.push(mealLine);   // food hamesha sabse neeche
     ta.value = out.join("\n\n"); // har point alag line, beech mein khaali line
   };
   rows.forEach(r => r.cb.addEventListener("change", rebuildText));
+  foodSel.addEventListener("change", () => { refreshMealOption(); rebuildText(); });
   ta.addEventListener("input", syncFromText);
 
   // Time badalne par khana/nashta ka shabd (subah/dopahar/shaam/raat) apne aap badal jaaye
-  const onTimeChange = () => {
-    meal.line = mealLineForTime_(readTime());
-    meal.sp.textContent = meal.line;
-    if (meal.cb.checked) rebuildText();
+  const onTimeChange = (ev) => {
+    if (ev && ev.target === foodSel) return;
+    refreshMealOption();
+    if (foodSel.value === "1") rebuildText();
   };
   if (group.parentNode) {
     group.parentNode.addEventListener("input", onTimeChange);
@@ -2633,9 +2650,16 @@ function attachAgendaPicker_(ta, group) {
   ta.style.minHeight = "180px";
   ta.style.lineHeight = "1.6";
   group.insertBefore(box, ta);
-  // pehle se saved text mein jo meal line hai use time ke hisaab se theek kar do
-  meal.line = mealLineForTime_(readTime());
-  meal.sp.textContent = meal.line;
+
+  // Food field ko Place ke theek baad lagao (form poora ban jaane ke baad, taaki field-order ka farq na pade)
+  setTimeout(() => {
+    const placeG = findGroupByLabel(/^(place|venue|location|स्थान)$/i);
+    if (placeG) placeG.insertAdjacentElement("afterend", foodGroup);
+    else if (group.parentNode) group.parentNode.insertBefore(foodGroup, group);
+    refreshMealOption();
+    syncFromText();
+  }, 0);
+  refreshMealOption();
   syncFromText();
 }
 
@@ -3714,6 +3738,7 @@ function openCommitments(incomingEnc, e) {
   const box = el("editFields");
   box.innerHTML = `
     <div style="grid-column:1 / -1">
+      <div id="cmSummary" style="background:#fff8e6;border:1px solid #f0d58a;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px;display:none"></div>
       <div id="cmList"></div>
       <div style="margin-top:10px;padding:10px;border:1px dashed #bbb;border-radius:8px;display:grid;gap:8px;">
         <b style="font-size:13px">➕ नया वादा जोड़ें</b>
@@ -3724,7 +3749,30 @@ function openCommitments(incomingEnc, e) {
       </div>
     </div>`;
 
+  const pending = getPendingAmount_(rec); // sheet ka Pending/Balance/Due column
+  const inr = n => "₹" + Number(n).toLocaleString("en-IN");
+  const updateSummary = () => {
+    const sm = document.getElementById("cmSummary");
+    if (!sm) return;
+    if (!pending) { sm.style.display = "none"; return; }
+    const committed = list.reduce((a, c) => a + toNumber(c.amount), 0);
+    let t = "💰 <b>बाकी राशि: " + inr(pending) + "</b>";
+    if (committed > 0) {
+      const left = pending - committed;
+      t += " &nbsp;•&nbsp; वादे में: " + inr(committed) +
+           " &nbsp;•&nbsp; " + (left >= 0 ? "वादे के बिना बाकी: <b>" + inr(left) + "</b>"
+                                         : "<span style='color:#b00'>वादा बाकी राशि से ₹" + Number(-left).toLocaleString("en-IN") + " ज़्यादा है</span>");
+    }
+    sm.innerHTML = t;
+    sm.style.display = "";
+    const amt = document.getElementById("cmAmt");
+    if (amt && !amt.value) {
+      const remaining = pending - committed;
+      if (remaining > 0) amt.value = remaining; // naye वादे mein bachi hui raashi pehle se bhar do
+    }
+  };
   const draw = () => {
+    updateSummary();
     const holder = document.getElementById("cmList");
     if (!list.length) { holder.innerHTML = "<p class='muted'>अभी कोई वादा दर्ज नहीं है।</p>"; return; }
     holder.innerHTML = list.map((c, i) => `
