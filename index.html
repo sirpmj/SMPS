@@ -507,6 +507,15 @@ button:hover{opacity:0.9}
   outline:none;border-color:#4a90e2;box-shadow:0 0 0 3px rgba(74,144,226,0.15)
 }
 #editPopup input:disabled{background:#f1f5f9;color:#64748b}
+/* 📋 Meetings agenda picker */
+#editPopup .agenda-picker{margin:6px 0 10px;border:1px solid #d7dfe9;border-radius:10px;padding:8px 12px;background:#f8fafc}
+#editPopup .agenda-picker summary{cursor:pointer;font-weight:700;font-size:13px;color:#1a1a2e}
+#editPopup .agenda-picker .ap-row{display:flex;align-items:flex-start;gap:10px;margin:0;padding:8px 0;border-bottom:1px solid #e8edf3;cursor:pointer;font-weight:400;font-size:13px;line-height:1.5;color:#1f2937;letter-spacing:0}
+#editPopup .agenda-picker .ap-row:last-child{border-bottom:none}
+#editPopup .agenda-picker .ap-row input[type=checkbox]{flex:0 0 18px;width:18px;height:18px;padding:0;margin:2px 0 0;accent-color:#1a9c4b}
+#editPopup .agenda-picker .ap-row span{flex:1;min-width:0;word-break:break-word}
+#editPopup .agenda-picker .ap-lunch{background:#fff8e6;border-radius:6px;padding-left:6px;padding-right:6px}
+#tableContainer td{white-space:pre-line}
 #editPopup textarea{grid-column:1 / -1;min-height:54px;resize:vertical}
 #editPopup select{grid-column:auto}
 .popup-actions{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid #eee;background:#fafbfc}
@@ -1172,10 +1181,14 @@ function getMessageFromTemplate(type, row) {
 
   // Meetings: column ke naam thode alag hon to bhi bhar do
   if (type === "Meetings") {
+    const mTime = pickRowValue_(row, ["Time", "Meeting Time", "समय"]);
     template = template
-      .replace(/{{Time}}/g,    () => pickRowValue_(row, ["Time", "Meeting Time", "समय"]))
+      .replace(/{{Time}}/g,    () => mTime)
       .replace(/{{Place}}/g,   () => pickRowValue_(row, ["Place", "Venue", "Location", "स्थान"]))
-      .replace(/{{Details}}/g, () => pickRowValue_(row, ["Details", "Agenda", "Description"]));
+      .replace(/{{Details}}/g, () => pickRowValue_(row, ["Details", "Agenda", "Description"])
+                                       .replace(MEAL_LINE_RE, () => mealLineForTime_(mTime)));
+    // Sheet ke template mein {{Details}} pehle hi bhara ja chuka ho to uski meal line bhi time se theek karo
+    template = template.replace(MEAL_LINE_RE, () => mealLineForTime_(mTime));
   }
 
   template = template.replace(/\\n/g, "\n");
@@ -2526,43 +2539,103 @@ const MEETING_AGENDA_POINTS = [
   "📝 पिछली मीटिंग में लिए गए निर्णयों एवं लंबित कार्यों की समीक्षा की जाएगी।",
   "🤝 समाज के आगामी कार्यों, सहयोग एवं सभी समाज बंधुओं की सहभागिता के संबंध में महत्वपूर्ण चर्चा की जाएगी।"
 ];
-const MEETING_LUNCH_LINE = "🍽️ *दोपहर के भोजन* की व्यवस्था भी रखी गई है।";
+// Meeting ke time ke hisaab se khane/nashte ka shabd: subah / dopahar / shaam / raat
+function mealLabelForTime_(timeStr) {
+  const t = String(timeStr || "");
+  const m = t.match(/(\d{1,2})(?:\s*[:.]\s*(\d{2}))?/);
+  if (!m) return "दोपहर के भोजन";
+  let h = parseInt(m[1], 10);
+  if (h > 24) return "दोपहर के भोजन";
+  const pm = /pm|p\.m|शाम|रात|रात्रि/i.test(t);
+  const am = /am|a\.m|सुबह|प्रातः|सवेरे/i.test(t);
+  const noon = /दोपहर/.test(t);
+  if (pm && h < 12) h += 12;
+  else if (noon && h < 7) h += 12;
+  else if (am && h === 12) h = 0;
+  if (h >= 5 && h < 11)  return "सुबह के नाश्ते";
+  if (h >= 11 && h < 16) return "दोपहर के भोजन";
+  if (h >= 16 && h < 19) return "शाम के नाश्ते";
+  return "रात्रि के भोजन";
+}
+const MEAL_LINE_RE = /🍽️\s*\*[^*\n]+\*\s*की व्यवस्था भी रखी गई है।/;
+function mealLineForTime_(timeStr) {
+  return "🍽️ *" + mealLabelForTime_(timeStr) + "* की व्यवस्था भी रखी गई है।";
+}
+const MEETING_LUNCH_LINE = mealLineForTime_(""); // sirf default; asli shabd time se aata hai
 
 function attachAgendaPicker_(ta, group) {
-  const items = [...MEETING_AGENDA_POINTS, MEETING_LUNCH_LINE];
   const box = document.createElement("details");
-  box.style.cssText = "margin:4px 0 8px;border:1px solid #d7d7d7;border-radius:8px;padding:6px 10px;background:#fafafa;";
+  box.className = "agenda-picker";
   const sum = document.createElement("summary");
   sum.textContent = "📋 चर्चा के बिंदु चुनें (टिक करने पर नीचे Details में जुड़ जाएगा)";
-  sum.style.cssText = "cursor:pointer;font-weight:600;font-size:13px;";
   box.appendChild(sum);
 
-  const checks = [];
-  items.forEach(line => {
+  // Form ke "Time" field ki current value (select ho ya text, dono chalega)
+  const readTime = () => {
+    const root = group.parentNode;
+    if (!root) return "";
+    for (const g of Array.from(root.children)) {
+      const lab = g.querySelector && g.querySelector("label");
+      if (!lab || !/^(time|समय|meeting time)$/i.test(lab.textContent.trim())) continue;
+      const sel = g.querySelector("select");
+      if (sel && sel.value && sel.value !== "__other__") return sel.value;
+      const inp = Array.from(g.querySelectorAll("input,textarea")).find(x => x.type !== "hidden" && x.value);
+      return inp ? inp.value : "";
+    }
+    return "";
+  };
+
+  const rows = [];
+  const addRow = (kind, line) => {
     const lab = document.createElement("label");
-    lab.style.cssText = "display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:6px 0;cursor:pointer;";
-    const cb = document.createElement("input");
-    cb.type = "checkbox"; cb.style.marginTop = "3px";
+    lab.className = "ap-row" + (kind === "meal" ? " ap-lunch" : "");
+    const cb = document.createElement("input"); cb.type = "checkbox";
     const sp = document.createElement("span"); sp.textContent = line;
     lab.appendChild(cb); lab.appendChild(sp); box.appendChild(lab);
-    checks.push({ line, cb });
-  });
+    rows.push({ kind, line, cb, sp });
+  };
+  MEETING_AGENDA_POINTS.forEach(l => addRow("point", l));
+  addRow("meal", mealLineForTime_(readTime()));
+  const meal = rows[rows.length - 1];
 
   const lines = () => ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+  const pointSet = new Set(MEETING_AGENDA_POINTS);
+
   const syncFromText = () => {
-    const cur = new Set(lines());
-    checks.forEach(c => { c.cb.checked = cur.has(c.line); });
+    const cur = lines();
+    rows.forEach(r => {
+      if (r.kind === "point") r.cb.checked = cur.includes(r.line);
+    });
+    meal.cb.checked = cur.some(l => MEAL_LINE_RE.test(l));
   };
   const rebuildText = () => {
-    const known = new Set(items);
-    const custom = lines().filter(l => !known.has(l));
-    const pts = checks.filter(c => c.line !== MEETING_LUNCH_LINE && c.cb.checked).map(c => c.line);
-    const lunch = checks[checks.length - 1].cb.checked ? [MEETING_LUNCH_LINE] : [];
-    ta.value = [...pts, ...custom, ...lunch].join("\n");
+    const custom = lines().filter(l => !pointSet.has(l) && !MEAL_LINE_RE.test(l));
+    const pts = rows.filter(r => r.kind === "point" && r.cb.checked).map(r => r.line);
+    const out = [...pts, ...custom];
+    if (meal.cb.checked) out.push(meal.line);
+    ta.value = out.join("\n\n"); // har point alag line, beech mein khaali line
   };
-  checks.forEach(c => c.cb.addEventListener("change", rebuildText));
+  rows.forEach(r => r.cb.addEventListener("change", rebuildText));
   ta.addEventListener("input", syncFromText);
+
+  // Time badalne par khana/nashta ka shabd (subah/dopahar/shaam/raat) apne aap badal jaaye
+  const onTimeChange = () => {
+    meal.line = mealLineForTime_(readTime());
+    meal.sp.textContent = meal.line;
+    if (meal.cb.checked) rebuildText();
+  };
+  if (group.parentNode) {
+    group.parentNode.addEventListener("input", onTimeChange);
+    group.parentNode.addEventListener("change", onTimeChange);
+  }
+
+  ta.rows = 10;
+  ta.style.minHeight = "180px";
+  ta.style.lineHeight = "1.6";
   group.insertBefore(box, ta);
+  // pehle se saved text mein jo meal line hai use time ke hisaab se theek kar do
+  meal.line = mealLineForTime_(readTime());
+  meal.sp.textContent = meal.line;
   syncFromText();
 }
 
