@@ -1051,15 +1051,145 @@ function getHiddenColumnsForTab(tabName){
 /* ---------------------------
    Template message helper
    --------------------------- */
-function getMessageFromTemplate(type, row) {
-  let template = TEMPLATES[type] || "";
-  if (!template) return "";
-  for (let key in row) {
-    template = template.replace(new RegExp(`{{${key}}}`, "g"), row[key] || "");
+/* ===========================
+   📨 MESSAGE TEMPLATES — defaults, वादा (commitments), bank block, UPI pay-link
+   =========================== */
+const SOCIETY_BANK = {
+  name: "SHREE MEWAD PRAJAPAT SAMAJ VAPI",
+  bank: "HDFC Bank Ltd.",
+  acc:  "50200121768661",
+  ifsc: "HDFC0000737",
+  upi:  "50200121768661@HDFC0000737.ifsc.npci"
+};
+
+// Templates sheet mein agar us tab ka template na ho to yeh default chalega
+const DEFAULT_TEMPLATES = {
+  "Meetings":
+"📅 *मीटिंग सूचना*\n\n" +
+"🙏 जय श्रीयादे माता की! 🙏\n\n" +
+"*श्री मेवाड़ प्रजापत समाज, वापी*\n\n" +
+"सभी *मेवाड़ प्रजापत समाज-वापी* के सम्मानित समाज बंधुओं को सूचित किया जाता है कि —\n\n" +
+"📅 *दिनांक:* {{Date}}\n" +
+"🕒 *समय:* {{Time}}\n" +
+"📍 *स्थान:* {{Place}}\n\n" +
+"📌 {{Details}}\n\n" +
+"आप सभी से *विनम्र अनुरोध* है कि समय पर पधारकर समाज के प्रति अपनी भागीदारी निभाएं एवं समाज के कार्यों में अपना सहयोग प्रदान करें।\n\n" +
+"📢 *कृपया अपनी उपस्थिति कन्फर्म करें।*\n\n" +
+"🙏 *धन्यवाद* 🙏\n" +
+"*मेवाड़ प्रजापत समाज – वापी*\n\n" +
+"*जय श्रीयादे माता की!* 🙏"
+};
+
+// Row ke alag-alag naam wale columns mein se pehla jo bhara ho
+function pickRowValue_(row, names) {
+  for (const n of names) {
+    const k = Object.keys(row).find(x => x.trim().toLowerCase() === n.toLowerCase());
+    if (k && row[k]) return row[k];
   }
-  template = template.replace(/{{Date}}/g, formatDate(row["Date"]));
-  template = template.replace(/{{Amount}}/g, toNumber(row["Amount"]).toLocaleString());
-  return template.replace(/\\n/g, "\n");
+  return "";
+}
+
+// "Commitments" column: har line = "DD/MM/YYYY | amount | remark"
+function parseCommitments_(txt) {
+  return String(txt || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const parts = l.split("|").map(x => x.trim());
+    return { date: parts[0] || "", amount: parts[1] || "", remark: parts.slice(2).join(" / ") };
+  });
+}
+function serializeCommitments_(list) {
+  return list.map(c =>
+    [c.date, c.amount, c.remark].map(x => String(x || "").replace(/[|\n\r]+/g, " ").trim()).join(" | ")
+  ).join("\n");
+}
+function formatCommitmentLine_(c) {
+  return "📅 " + c.date + (c.amount ? " — ₹" + c.amount : "") + (c.remark ? " — " + c.remark : "");
+}
+function latestCommitment_(list) {
+  let best = null, bestT = -1;
+  list.forEach(c => {
+    const d = parseRowDate_(c.date); const t = d ? d.getTime() : -1;
+    if (!best || t >= bestT) { best = c; bestT = t; }
+  });
+  return best;
+}
+function getCommitmentKey_(row) {
+  return Object.keys(row || {}).find(k => /^commitments?$/i.test(k.trim())) || null;
+}
+
+// Pending/Balance wala amount (agar sheet mein hai) — pay-link mein amount bharne ke liye
+function getPendingAmount_(row) {
+  const k = Object.keys(row).find(x => /pending|balance|\bdue\b|baki|bakaya|बाकी|शेष/i.test(x));
+  const n = k ? toNumber(row[k]) : 0;
+  return n > 0 ? n : 0;
+}
+
+// Public pay page ka link (isi app ka URL + ?pay=1) — WhatsApp upi:// ko click-able nahi karta,
+// isliye pehle yeh https link khulta hai, aur wahan se UPI app khulta hai
+function buildPayLink_(row) {
+  if (!/^https?:$/.test(location.protocol)) return "";
+  const base = location.origin + location.pathname;
+  const amt = getPendingAmount_(row);
+  const note = (row["ID"] ? "Ref " + row["ID"] : "") ;
+  let q = "?pay=1";
+  if (amt) q += "&am=" + amt;
+  if (note) q += "&tn=" + encodeURIComponent(note);
+  return base + q;
+}
+
+function buildBankBlock_(row) {
+  let t = "🏦 *बैंक विवरण*\n" +
+    "• खाता नाम: " + SOCIETY_BANK.name + "\n" +
+    "• बैंक नाम: " + SOCIETY_BANK.bank + "\n" +
+    "• खाता संख्या: " + SOCIETY_BANK.acc + "\n" +
+    "• IFSC Code: " + SOCIETY_BANK.ifsc + "\n" +
+    "• UPI Code: " + SOCIETY_BANK.upi;
+  const link = buildPayLink_(row);
+  if (link) t += "\n\n👇 *UPI से सीधे भुगतान करने के लिए यह लिंक खोलें:*\n" + link;
+  return t;
+}
+
+function getMessageFromTemplate(type, row) {
+  let template = TEMPLATES[type] || DEFAULT_TEMPLATES[type] || "";
+  if (!template) return "";
+  const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment)\s*}}/.test(template);
+  const hadBankPlaceholder = /{{\s*BankDetails\s*}}/.test(template) || template.includes(SOCIETY_BANK.acc);
+
+  // 🆕 Special placeholders
+  const commits = parseCommitments_(row[getCommitmentKey_(row)] || "");
+  const nextC = latestCommitment_(commits);
+  template = template
+    .replace(/{{\s*Commitments\s*}}/g, () => commits.map(formatCommitmentLine_).join("\n"))
+    .replace(/{{\s*NextCommitment\s*}}/g, () => nextC ? formatCommitmentLine_(nextC) : "")
+    .replace(/{{\s*BankDetails\s*}}/g, () => buildBankBlock_(row))
+    .replace(/{{\s*UPILink\s*}}/g, () => buildPayLink_(row));
+
+  for (let key in row) {
+    const val = row[key] || "";
+    template = template.replace(new RegExp(`{{${key}}}`, "g"), () => val);
+  }
+  template = template.replace(/{{Date}}/g, () => formatDate(row["Date"]));
+  template = template.replace(/{{Amount}}/g, () => toNumber(row["Amount"]).toLocaleString());
+
+  // Meetings: column ke naam thode alag hon to bhi bhar do
+  if (type === "Meetings") {
+    template = template
+      .replace(/{{Time}}/g,    () => pickRowValue_(row, ["Time", "Meeting Time", "समय"]))
+      .replace(/{{Place}}/g,   () => pickRowValue_(row, ["Place", "Venue", "Location", "स्थान"]))
+      .replace(/{{Details}}/g, () => pickRowValue_(row, ["Details", "Agenda", "Description"]));
+  }
+
+  template = template.replace(/\\n/g, "\n");
+
+  // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
+  if (type === "Boli" || type === "Donation") {
+    if (!hadCommitPlaceholder && commits.length) {
+      template += "\n\n🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n");
+    }
+    if (!hadBankPlaceholder) {
+      template += "\n\n" + buildBankBlock_(row);
+    }
+  }
+  return template;
 }
 /* ===========================
    Fetch helper (OpenSheet)
@@ -2197,6 +2327,10 @@ function buildSmartField_(key, currentValue) {
     if (uniqueNames.length) {
       select = document.createElement("select");
       select.appendChild(new Option("-- चुनें --", ""));
+      // 🆕 Bina naam ka (गुमनाम) सहयोग jama karne ke liye
+      if (currentTab === "Donation" || currentTab === "Receipts") {
+        select.appendChild(new Option("🙏 गुमनाम (बिना नाम का सहयोग)", "गुमनाम"));
+      }
       uniqueNames.forEach(n => select.appendChild(new Option(n, n)));
     }
   }
@@ -2378,6 +2512,60 @@ function buildSmartField_(key, currentValue) {
 // entries dikhein. Koi purana entry chunte hi textarea mein bhar jaata hai,
 // aur wahan se aage jitna chaho utna edit kar sakte ho — textarea hamesha
 // khud editable rehta hai, dropdown sirf ek quick starting point hai.
+/* 📋 Meetings "Details": ready agenda points (tick karo → Details mein jud jaata hai) */
+const MEETING_AGENDA_POINTS = [
+  "👉 आगामी समाज सम्मेलन की तैयारियों, व्यवस्थाओं एवं आयोजन से संबंधित सभी महत्वपूर्ण विषयों पर विस्तार से चर्चा की जाएगी।",
+  "👉 समाज की महत्वपूर्ण मीटिंग रखी गई है। समाज से संबंधित महत्वपूर्ण विषयों पर चर्चा एवं आवश्यक निर्णय लिए जाएंगे।",
+  "👉 आगामी समाज सम्मेलन की तैयारियों, व्यवस्थाओं एवं जिम्मेदारियों पर विस्तार से चर्चा की जाएगी।",
+  "👉 सम्मेलन के विभिन्न कार्यों एवं व्यवस्थाओं के लिए जिम्मेदारियों का निर्धारण किया जाएगा।",
+  "💰 समाज/सम्मेलन के आय-व्यय से संबंधित जानकारी प्रस्तुत कर आवश्यक चर्चा की जाएगी।",
+  "💰 समाज के फंड, सहयोग राशि एवं आगामी खर्चों से संबंधित महत्वपूर्ण विषयों पर चर्चा की जाएगी।",
+  "📅 आगामी कार्यक्रम की तारीख, समय, स्थान एवं कार्यक्रम की रूपरेखा को अंतिम रूप देने के संबंध में चर्चा की जाएगी।",
+  "🍽️ कार्यक्रम की भोजन, जलपान एवं अन्य आवश्यक व्यवस्थाओं के संबंध में चर्चा एवं निर्णय लिया जाएगा।",
+  "📢 कार्यक्रम के प्रचार-प्रसार, निमंत्रण एवं समाज बंधुओं को सूचना देने के संबंध में चर्चा की जाएगी।",
+  "📝 पिछली मीटिंग में लिए गए निर्णयों एवं लंबित कार्यों की समीक्षा की जाएगी।",
+  "🤝 समाज के आगामी कार्यों, सहयोग एवं सभी समाज बंधुओं की सहभागिता के संबंध में महत्वपूर्ण चर्चा की जाएगी।"
+];
+const MEETING_LUNCH_LINE = "🍽️ *दोपहर के भोजन* की व्यवस्था भी रखी गई है।";
+
+function attachAgendaPicker_(ta, group) {
+  const items = [...MEETING_AGENDA_POINTS, MEETING_LUNCH_LINE];
+  const box = document.createElement("details");
+  box.style.cssText = "margin:4px 0 8px;border:1px solid #d7d7d7;border-radius:8px;padding:6px 10px;background:#fafafa;";
+  const sum = document.createElement("summary");
+  sum.textContent = "📋 चर्चा के बिंदु चुनें (टिक करने पर नीचे Details में जुड़ जाएगा)";
+  sum.style.cssText = "cursor:pointer;font-weight:600;font-size:13px;";
+  box.appendChild(sum);
+
+  const checks = [];
+  items.forEach(line => {
+    const lab = document.createElement("label");
+    lab.style.cssText = "display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:6px 0;cursor:pointer;";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.style.marginTop = "3px";
+    const sp = document.createElement("span"); sp.textContent = line;
+    lab.appendChild(cb); lab.appendChild(sp); box.appendChild(lab);
+    checks.push({ line, cb });
+  });
+
+  const lines = () => ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+  const syncFromText = () => {
+    const cur = new Set(lines());
+    checks.forEach(c => { c.cb.checked = cur.has(c.line); });
+  };
+  const rebuildText = () => {
+    const known = new Set(items);
+    const custom = lines().filter(l => !known.has(l));
+    const pts = checks.filter(c => c.line !== MEETING_LUNCH_LINE && c.cb.checked).map(c => c.line);
+    const lunch = checks[checks.length - 1].cb.checked ? [MEETING_LUNCH_LINE] : [];
+    ta.value = [...pts, ...custom, ...lunch].join("\n");
+  };
+  checks.forEach(c => c.cb.addEventListener("change", rebuildText));
+  ta.addEventListener("input", syncFromText);
+  group.insertBefore(box, ta);
+  syncFromText();
+}
+
 function attachRecallDropdown_(textareaEl, wrapperGroup, recentValues) {
   if (!recentValues || !recentValues.length) return;
   const recall = document.createElement("select");
@@ -2601,6 +2789,7 @@ async function openAddRecordForm(sheetName) {
     groupByKey[k] = group;
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
     if (input.tagName === "TEXTAREA" && recentValues) attachRecallDropdown_(input, group, recentValues);
+    if (sheetName === "Meetings" && input.tagName === "TEXTAREA" && /detail|agenda/i.test(k)) attachAgendaPicker_(input, group); // 🆕
 
     // Receipts ke liye Boli/Donation auto-fetch hetu references save karo
     if (sheetName === "Receipts") {
@@ -2686,6 +2875,11 @@ async function openAddRecordForm(sheetName) {
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
         if (!name) return;
+        if (name === "गुमनाम") { // 🆕 gumnam — koi firm/mobile nahi
+          if (firmInputEl) firmInputEl.value = "";
+          if (mobileInputEl) mobileInputEl.value = "";
+          return;
+        }
         if (firmInputEl && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
         if (mobileInputEl && mobileByName[name] !== undefined) mobileInputEl.value = mobileByName[name];
       });
@@ -2760,6 +2954,7 @@ async function openAddRecordForm(sheetName) {
         const name = memberSelectEl.value;
         pledgeSelectEl.innerHTML = "";
         pledgeGroup.style.display = "none";
+        if (name === "गुमनाम" && mobileInputEl) mobileInputEl.value = ""; // 🆕
         if (!name || !info[name]) return;
         const rec = info[name];
 
@@ -3360,6 +3555,9 @@ function renderActionButtons(row, encId) {
       html += `<a class="action-link delete" href="#" onclick="deleteRecord('${encId}', event)">Delete</a>`;
     }
   }
+  if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
+    html += `<a class="action-link edit" href="#" onclick="openCommitments('${encId}', event)">📅 वादा</a>`;
+  }
   if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
     mobile = mobile.replace(/\D/g, ""); // remove any non-digit characters
@@ -3414,6 +3612,138 @@ function sendBirthday(mobile,name){
 
 }
 
+
+/* ===========================
+   📅 वादा / Expected Date — ek record ke liye MULTIPLE dates + remarks
+   Sheet (Boli / Donation) mein "Commitments" naam ka column chahiye.
+   Har line: DD/MM/YYYY | amount | remark
+   =========================== */
+function openCommitments(incomingEnc, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const incoming = decodeURIComponent(incomingEnc || "");
+  const recIndex = tableData.findIndex(r => (resolveRecordId_(r).recordId || "") === incoming);
+  if (recIndex === -1) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const rec = tableData[recIndex];
+  const key = getCommitmentKey_(rec);
+  if (!key) {
+    alert("Google Sheet के '" + currentTab + "' tab में 'Commitments' नाम का एक नया column जोड़ें (header में), फिर यह सुविधा चलेगी।");
+    return;
+  }
+  const { idColumn, recordId } = resolveRecordId_(rec);
+  if (!idColumn) { alert("इस sheet में 'ID' column नहीं मिला।"); return; }
+
+  let list = parseCommitments_(rec[key]);
+  const esc = t => String(t || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const memberName = rec[SETTINGS?.MemberColumn] || rec["Member"] || "";
+
+  el("editTitle").textContent = "📅 वादा / Expected Date — " + memberName;
+  const box = el("editFields");
+  box.innerHTML = `
+    <div style="grid-column:1 / -1">
+      <div id="cmList"></div>
+      <div style="margin-top:10px;padding:10px;border:1px dashed #bbb;border-radius:8px;display:grid;gap:8px;">
+        <b style="font-size:13px">➕ नया वादा जोड़ें</b>
+        <input type="date" id="cmDate">
+        <input type="number" id="cmAmt" placeholder="राशि (optional)" inputmode="numeric">
+        <input type="text" id="cmRemark" placeholder="Remark (जैसे: बेटे की शादी के बाद देंगे)">
+        <button type="button" id="cmAddBtn" style="background:#1a9c4b;color:#fff;border:none;padding:8px;border-radius:6px;">जोड़ें</button>
+      </div>
+    </div>`;
+
+  const draw = () => {
+    const holder = document.getElementById("cmList");
+    if (!list.length) { holder.innerHTML = "<p class='muted'>अभी कोई वादा दर्ज नहीं है।</p>"; return; }
+    holder.innerHTML = list.map((c, i) => `
+      <div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0;">
+        <div style="font-size:13px"><b>${esc(c.date)}</b>${c.amount ? " — ₹" + esc(c.amount) : ""}<br>${esc(c.remark)}</div>
+        <button type="button" data-i="${i}" class="cmDel" style="background:#fff;border:1px solid #e0a0a0;color:#b00;border-radius:6px;padding:2px 8px;">✕</button>
+      </div>`).join("");
+    holder.querySelectorAll(".cmDel").forEach(b => b.onclick = () => { list.splice(+b.dataset.i, 1); draw(); });
+  };
+  draw();
+
+  document.getElementById("cmAddBtn").onclick = () => {
+    const d = isoToDDMMYYYY_(document.getElementById("cmDate").value);
+    if (!d) { alert("वादे की तारीख चुनें।"); return; }
+    list.push({
+      date: d,
+      amount: document.getElementById("cmAmt").value.trim(),
+      remark: document.getElementById("cmRemark").value.trim()
+    });
+    document.getElementById("cmDate").value = "";
+    document.getElementById("cmAmt").value = "";
+    document.getElementById("cmRemark").value = "";
+    draw();
+  };
+
+  el("saveEditBtn").disabled = false;
+  el("saveEditBtn").textContent = "Save";
+  el("cancelEditBtn").onclick = () => { el("editPopup").style.display = "none"; };
+  el("saveEditBtn").onclick = async () => {
+    el("saveEditBtn").disabled = true;
+    el("saveEditBtn").textContent = "Saving...";
+    try {
+      const text = serializeCommitments_(list);
+      const res = await callCrudBackend_({
+        action: "editRow", sheetName: currentTab, idColumn, id: recordId, data: { [key]: text }
+      });
+      if (res.success) {
+        rec[key] = text;
+        delete CACHE[currentTab];
+        el("editPopup").style.display = "none";
+        try { renderTable(); } catch (x) { console.error(x); }
+        alert("वादा Google Sheet में save हो गया है।");
+      } else {
+        alert("❌ Error: " + (res.msg || "Save nahi ho paya"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ " + (err.message || "Network error, dobara try karein"));
+    } finally {
+      el("saveEditBtn").disabled = false;
+      el("saveEditBtn").textContent = "Save";
+    }
+  };
+  el("editPopup").style.display = "flex";
+}
+
+/* ===========================
+   💳 PUBLIC PAY PAGE  (?pay=1&am=1000&tn=Ref)
+   WhatsApp message ka link yahan khulta hai → ek tap par UPI app khulta hai
+   =========================== */
+document.addEventListener("DOMContentLoaded", function () {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("pay")) return;
+  const am = (q.get("am") || "").replace(/[^\d.]/g, "");
+  const tn = q.get("tn") || "Samaj Sahyog";
+  let upi = "upi://pay?pa=" + encodeURIComponent(SOCIETY_BANK.upi) +
+            "&pn=" + encodeURIComponent(SOCIETY_BANK.name) + "&cu=INR&tn=" + encodeURIComponent(tn);
+  if (am) upi += "&am=" + am;
+
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:fixed;inset:0;z-index:99999;background:#f3f6fb;overflow:auto;padding:16px;font-family:system-ui,sans-serif;";
+  wrap.innerHTML = `
+    <div style="max-width:420px;margin:20px auto;background:#fff;border-radius:14px;padding:20px;box-shadow:0 4px 18px rgba(0,0,0,.12);">
+      <h2 style="margin:0 0 4px;text-align:center">🙏 जय श्रीयादे माता की</h2>
+      <p style="text-align:center;margin:0 0 14px;color:#555"><b>${SOCIETY_BANK.name}</b></p>
+      ${am ? `<p style="text-align:center;font-size:22px;margin:8px 0"><b>₹ ${am}</b></p>` : ""}
+      <a href="${upi}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-size:18px;font-weight:700;">📲 UPI से भुगतान करें</a>
+      <p style="font-size:12px;color:#777;text-align:center">बटन से UPI app न खुले तो नीचे का UPI ID कॉपी करके किसी भी UPI app में डालें।</p>
+      <hr>
+      <div style="font-size:14px;line-height:1.9">
+        <div>🏦 ${SOCIETY_BANK.bank}</div>
+        <div>खाता संख्या: <b>${SOCIETY_BANK.acc}</b> <button data-c="${SOCIETY_BANK.acc}">कॉपी</button></div>
+        <div>IFSC: <b>${SOCIETY_BANK.ifsc}</b> <button data-c="${SOCIETY_BANK.ifsc}">कॉपी</button></div>
+        <div style="word-break:break-all">UPI ID: <b>${SOCIETY_BANK.upi}</b> <button data-c="${SOCIETY_BANK.upi}">कॉपी</button></div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelectorAll("button[data-c]").forEach(b => b.onclick = () => {
+    (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.c) : Promise.reject())
+      .then(() => { b.textContent = "✔ कॉपी हुआ"; }).catch(() => { prompt("कॉपी करें:", b.dataset.c); });
+  });
+  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) setTimeout(() => { location.href = upi; }, 500);
+});
 
 /* ===========================
    VIEW record (popup)
@@ -3704,6 +4034,7 @@ async function openEditRecord(incomingEnc, e){
     container.appendChild(group);
     if (input.tagName === "SELECT") attachOtherToggle_(input, group, k);
     if (input.tagName === "TEXTAREA" && editRecentValues) attachRecallDropdown_(input, group, editRecentValues); // 🆕
+    if (currentTab === "Meetings" && input.tagName === "TEXTAREA" && /detail|agenda/i.test(k)) attachAgendaPicker_(input, group); // 🆕
   });
   el("saveEditBtn").onclick = async () => {
     const updated = {};
