@@ -1243,6 +1243,11 @@ function buildBankBlock_(row) {
 
 function getMessageFromTemplate(type, row) {
   const forceBuiltin = USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
+  // "सहयोग राशि" wali row: message mein Member ki jagah Notes ka naam
+  if (row && isAnonMember_(row[SETTINGS?.MemberColumn] || row["Member"])) {
+    const mk = (SETTINGS?.MemberColumn && SETTINGS.MemberColumn in row) ? SETTINGS.MemberColumn : "Member";
+    row = { ...row, [mk]: displayMemberFromRow_(row) };
+  }
   const usedDefault = (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
   let template = (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "";
   if (!template) return "";
@@ -2496,7 +2501,7 @@ function buildSmartField_(key, currentValue) {
       select.appendChild(new Option("-- चुनें --", ""));
       // 🆕 Bina naam ka (गुमनाम) सहयोग jama karne ke liye
       if (currentTab === "Donation" || currentTab === "Receipts") {
-        select.appendChild(new Option("🙏 गुमनाम (बिना नाम का सहयोग)", "गुमनाम"));
+        select.appendChild(new Option("सहयोग राशि", ANON_MEMBER_LABEL));
       }
       uniqueNames.forEach(n => select.appendChild(new Option(n, n)));
     }
@@ -3127,9 +3132,10 @@ async function openAddRecordForm(sheetName) {
       memberSelectEl.addEventListener("change", () => {
         const name = memberSelectEl.value;
         if (!name) return;
-        if (name === "गुमनाम") { // 🆕 gumnam — koi firm/mobile nahi
+        if (isAnonMember_(name)) { // 🆕 "सहयोग राशि" — koi firm/mobile nahi, naam Notes mein
           if (firmInputEl) firmInputEl.value = "";
           if (mobileInputEl) mobileInputEl.value = "";
+          hintNotesForAnon_();
           return;
         }
         if (firmInputEl && firmByName[name] !== undefined) firmInputEl.value = firmByName[name];
@@ -3206,7 +3212,7 @@ async function openAddRecordForm(sheetName) {
         const name = memberSelectEl.value;
         pledgeSelectEl.innerHTML = "";
         pledgeGroup.style.display = "none";
-        if (name === "गुमनाम" && mobileInputEl) mobileInputEl.value = ""; // 🆕
+        if (isAnonMember_(name)) { if (mobileInputEl) mobileInputEl.value = ""; hintNotesForAnon_(); } // 🆕
         if (!name || !info[name]) return;
         const rec = info[name];
 
@@ -3785,7 +3791,13 @@ const msg =
   }
 
   else{
-    html += `<td>${row[c] || ""}</td>`;
+    if ((currentTab === "Receipts" || currentTab === "Donation") &&
+        /^member$/i.test(String(c).trim()) && isAnonMember_(row[c])) {
+      const nm = displayMemberFromRow_(row);
+      html += `<td>${nm}${nm !== row[c] ? ' <small style="color:#b45309">(' + ANON_MEMBER_LABEL + ')</small>' : ""}</td>`;
+    } else {
+      html += `<td>${row[c] || ""}</td>`;
+    }
   }
 
 }
@@ -3826,7 +3838,7 @@ function renderActionButtons(row, encId) {
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
-    if (_nm && _nm !== "गुमनाम") {
+    if (_nm && !isAnonMember_(_nm)) {
       html += `<a class="action-link print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)">📄 खाता</a>`;
     }
   }
@@ -4064,6 +4076,43 @@ document.addEventListener("DOMContentLoaded", function () {
 /* ===========================
    🧰 Common helpers (WhatsApp link, modal)
    =========================== */
+/* ===========================
+   "सहयोग राशि" (bina member ke jama) — dataa ka naam Notes mein likhte hain,
+   aur wahi naam Member ki jagah dikhta hai
+   =========================== */
+const ANON_MEMBER_LABEL = "सहयोग राशि";
+function isAnonMember_(v) {
+  const t = String(v || "").trim();
+  return t === ANON_MEMBER_LABEL || t === "गुमनाम"; // purane "गुमनाम" records bhi chalte hain
+}
+function getNotesKey_(row) {
+  const keys = Object.keys(row || {});
+  return keys.find(k => /^notes?$/i.test(k.trim())) ||
+         keys.find(k => /note|remark|नोट|टिप्पणी/i.test(k)) || null;
+}
+// Member anon ho aur Notes mein naam ho to wahi naam dikhao
+function displayMemberFromRow_(row) {
+  const raw = String(row?.[SETTINGS?.MemberColumn] || row?.["Member"] || "").trim();
+  if (!isAnonMember_(raw)) return raw;
+  const nk = getNotesKey_(row);
+  const note = nk ? String(row[nk] || "").trim() : "";
+  return note || raw;
+}
+// Add form mein "सहयोग राशि" chunte hi Notes field ko naam likhne ka sanket do
+function hintNotesForAnon_() {
+  const root = document.getElementById("editFields");
+  if (!root) return;
+  Array.from(root.children).forEach(g => {
+    const lab = g.querySelector && g.querySelector("label");
+    if (!lab || !/note|remark|नोट|टिप्पणी/i.test(lab.textContent)) return;
+    const f = g.querySelector("textarea,input:not([type=hidden])");
+    if (f) {
+      f.placeholder = "दाता का नाम यहाँ लिखें (जैसे: श्री रमेश जी, वापी) — यही नाम Receipt में दिखेगा";
+      f.style.borderColor = "#f59e0b";
+    }
+  });
+}
+
 function buildWaUrl_(mobileRaw, message) {
   let mobile = String(mobileRaw || "").replace(/\D/g, "");
   const cc = SETTINGS?.DefaultCountryCode || "91";
@@ -4427,7 +4476,7 @@ function offerReceiptThanks_(sheetName, data) {
   const actions = ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || [];
   if (!actions.includes("WHATSAPP")) return;
   const name = String(data?.[SETTINGS?.MemberColumn] || data?.["Member"] || "").trim();
-  let mobile = pickRowValue_(data, ["Mobile"]) || (name && name !== "गुमनाम" ? getUserMobileFromMembers(name) : "");
+  let mobile = pickRowValue_(data, ["Mobile"]) || (name && !isAnonMember_(name) ? getUserMobileFromMembers(name) : "");
   mobile = String(mobile || "").replace(/\D/g, "");
   if (!mobile) return;
   const msg = getMessageFromTemplate("Receipts", data);
@@ -4493,7 +4542,7 @@ function viewRecord(incomingEnc, e) {
   if (currentTab === "Members") {
     heading = "सदस्य जानकारी";
     rows += rowItem("समाज ID", rec["MemberID"] || rec["ID"]);
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || rec["Phone"]);
 rows += rowItem("पेशा/व्यवसाय का नाम ", rec["Occupation / Business Name"] || "");
 rows += rowItem("गोत्र  ", rec["Gotra"] || "");
@@ -4509,7 +4558,7 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
     heading = "फंड लेजर रसीद";
     rows += rowItem("लेन-देन ID", rec["ID"]);
     rows += rowItem("तारीख", formatDateLocal(rec["Date"] || rec["Payment Date"]));
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || "");
     rows += rowItem("शहर", rec[SETTINGS?.CityColumn] || rec["City"] || "");
     const creditCol = SETTINGS?.FundLedgerCreditColumn || "Credit";
@@ -4528,7 +4577,7 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
     heading = "रसीद";
     rows += rowItem("रसीद नंबर", rec["ID"]);
     rows += rowItem("तारीख", formatDateLocal(rec["Date"]));
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("रसीद राशि (₹)", rec["Received"]);
     rows += rowItem("उद्देश्य (For)", rec["For"]);
     rows += rowItem("भुगतान का तरीका (Mode)", rec["Mode"]);
@@ -4540,7 +4589,7 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
     heading = "खर्चा विवरण";
     rows += rowItem("खर्चा नंबर", rec["ID"]);
     rows += rowItem("तारीख", formatDateLocal(rec["Date"]));
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("भुगतान राशि  (₹)", toNumberLocal(rec["Payment"]).toLocaleString());
     rows += rowItem("उद्देश्य (For)", rec["For"]);
     rows += rowItem("भुगतान का तरीका (Mode)", rec["Mode"]);
@@ -4555,7 +4604,7 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
     const balance = toNumberLocal(rec["Pending Dues Boli"] || (pledged - paid));
     rows += rowItem("बोली नं", rec["ID"]);
     rows += rowItem("तारीख", formatDateLocal(rec["Date"]));
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || "");
     rows += rowItem("बोली राशि ₹", pledged.toLocaleString());
     rows += rowItem("भुगतान राशि ₹", paid.toLocaleString());
@@ -4570,7 +4619,7 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
     const balance = toNumberLocal(rec["Pending Dues Donation"] || (pledged - paid));
     rows += rowItem("दान नं", rec["ID"]);
     rows += rowItem("तारीख", formatDateLocal(rec["Date"]));
-    rows += rowItem("सदस्य का नाम ", rec[SETTINGS?.MemberColumn] || rec["Member"]);
+    rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || "");
     rows += rowItem("दान राशि ₹", pledged.toLocaleString());
     rows += rowItem("भुगतान राशि ₹", paid.toLocaleString());
