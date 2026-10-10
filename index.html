@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.230  (icons + header alignment)
+   - Action buttons ab icon mein: 👁️ View, ✏️ Edit, 🗑️ Delete, 📅 वादा, 📒 खाता, 👥 उपस्थिति, 💬 WhatsApp (dabane par naam tooltip mein)
+   - "Actions" header aur buttons center mein; baaki header data ke hisaab se (raashi = right, baaki = left)
   v1.229  (mobile makeover — table view hi rakha)
    - Mobile table saaf: header highlight, ek-ek row chhodkar halka rang, naam bold, raashi sahi align, bade action buttons (2 line)
    - Table thodi chaudi + side scroll; Naam wala column left mein chipka rehta hai (naam 4 line mein nahi tootta)
@@ -25,7 +28,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.229"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.230"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -743,6 +746,20 @@ td.act-cell { vertical-align: top; }
     box-shadow: 0 -4px 12px rgba(0,0,0,.06);
   }
   #editPopup .popup-actions button { flex: 1; min-height: 46px; font-size: 15px; }
+}
+
+/* ===== 🆕 v1.230: icon action buttons + Actions column center ===== */
+td.act-cell { text-align: center; }
+th:last-child { text-align: center; }
+.action-wrap { margin-left: auto; margin-right: auto; }
+.action-link.ic { font-size: 16px; line-height: 1; padding: 6px 8px; min-width: 34px; text-align: center; margin-right: 6px; }
+.action-link.ic:last-child { margin-right: 0; }
+@media (max-width: 700px) {
+  #contentArea .action-wrap a.ic, #contentArea td.act-cell .action-link.ic,
+  #contentArea #tableContainer .action-wrap a.ic, #contentArea #tableContainer td.act-cell .action-link.ic {
+    font-size: 16px !important; line-height: 1 !important; padding: 6px 4px !important; min-height: 34px; min-width: 34px; margin: 0 !important;
+  }
+  #contentArea .action-wrap { margin-left: auto; margin-right: auto; }
 }
 </style>
 
@@ -3983,6 +4000,7 @@ const msg =
   });
   html += "</tbody></table>";	
   el("tableContainer").innerHTML = html;
+  alignHeaders_();    // 🆕 v1.230: header ka alignment data ke hisaab se
   stickyNameCol_();   // 🆕 v1.229: mobile par Naam column chipka rahe
   renderPagination(totalPages);
 }
@@ -3991,27 +4009,27 @@ const msg =
    =========================== */
 function renderActionButtons(row, encId) {
   let html = `<div class="action-wrap">
-    <a class="action-link print" href="#" onclick="viewRecord('${encId}', event)">View</a>`;
+    <a class="action-link ic print" href="#" onclick="viewRecord('${encId}', event)" title="View" aria-label="View" data-label="View">👁️</a>`;
   const actions = ROLE_ACCESS[currentUser.role]?.[currentTab]?.canAction || [];
   const crudCfg = CRUD_ALLOWED_TABS[currentTab];
   if (crudCfg && crudCfg.allowEditDelete) {
     if (actions.includes("EDIT")) {
-      html += `<a class="action-link edit" href="#" onclick="openEditRecord('${encId}', event)">Edit</a>`;
+      html += `<a class="action-link ic edit" href="#" onclick="openEditRecord('${encId}', event)" title="Edit" aria-label="Edit" data-label="Edit">✏️</a>`;
     }
     if (actions.includes("DELETE")) {
-      html += `<a class="action-link delete" href="#" onclick="deleteRecord('${encId}', event)">Delete</a>`;
+      html += `<a class="action-link ic delete" href="#" onclick="deleteRecord('${encId}', event)" title="Delete" aria-label="Delete" data-label="Delete">🗑️</a>`;
     }
   }
   if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
-    html += `<a class="action-link edit" href="#" onclick="openCommitments('${encId}', event)">📅 वादा</a>`;
+    html += `<a class="action-link ic edit" href="#" onclick="openCommitments('${encId}', event)" title="📅 वादा" aria-label="📅 वादा" data-label="📅 वादा">📅</a>`;
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
-    html += `<a class="action-link edit" href="#" onclick="openAttendance_('${encId}', event)">👥 उपस्थिति</a>`;
+    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥</a>`;
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
     if (_nm && !isAnonMember_(_nm)) {
-      html += `<a class="action-link print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)">📄 खाता</a>`;
+      html += `<a class="action-link ic print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)" title="📄 खाता" aria-label="📄 खाता" data-label="📄 खाता">📒</a>`;
     }
   }
   if (actions.includes("WHATSAPP")) {
@@ -4026,7 +4044,7 @@ function renderActionButtons(row, encId) {
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
-    html += `<a class="action-link whatsapp" target="_blank" href="${waUrl}">WhatsApp</a>`;
+    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">💬</a>`;
   }
   html += `</div>`;
   // 🆕 v1.226: mobile par buttons 2 line mein — columns = ceil(buttons / 2)
@@ -5053,6 +5071,20 @@ function mobileKeyboardHint_(input, key){
   else if (/amount|received|pledged|paid|credit|debit|payment|balance|raashi|राशि/.test(k)) input.setAttribute("inputmode", "decimal");
 }
 // 🆕 v1.229: Naam wale column (td.nm) aur uske header ko "sticky" mark karo (CSS mobile par hi use karti hai)
+// 🆕 v1.230: header ka alignment data ke hisaab se — raashi = right, Actions = center, baaki = left
+function alignHeaders_(){
+  const t = document.querySelector("#tableContainer table");
+  if (!t) return;
+  const heads = t.querySelectorAll("thead th");
+  const first = t.querySelector("tbody tr");
+  if (!first) return;
+  Array.prototype.forEach.call(first.children, (td, i) => {
+    const th = heads[i]; if (!th) return;
+    if (td.classList.contains("act-cell")) th.style.textAlign = "center";
+    else if (/text-align:\s*right/i.test(td.getAttribute("style") || "")) th.style.textAlign = "right";
+    else th.style.textAlign = "left";
+  });
+}
 function stickyNameCol_(){
   const t = document.querySelector("#tableContainer table");
   if (!t) return;
@@ -5077,7 +5109,9 @@ function getVisibleTableData() {
     trList.sort((a, b) => (+a.dataset.seq) - (+b.dataset.seq));
   }
   const rows = trList.map(tr =>
-      Array.from(tr.children).map(td => td.innerText.trim())
+      Array.from(tr.children).map(td => td.classList.contains("act-cell")
+        ? Array.from(td.querySelectorAll("a")).map(a => a.dataset.label || a.textContent.trim()).join(" ")
+        : td.innerText.trim())
     );
 
   return { headers, rows };
