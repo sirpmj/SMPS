@@ -4044,7 +4044,7 @@ function renderActionButtons(row, encId) {
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
-    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">💬</a>`;
+    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">📱WhatsApp</a>`;
   }
   html += `</div>`;
   // 🆕 v1.226: mobile par buttons 2 line mein — columns = ceil(buttons / 2)
