@@ -4024,7 +4024,7 @@ function renderActionButtons(row, encId) {
     html += `<a class="action-link ic edit" href="#" onclick="openCommitments('${encId}', event)" title="📅 वादा" aria-label="📅 वादा" data-label="📅 वादा">📅वादा</a>`;
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
-    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥उपस्थिति</a>`;
+    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥</a>`;
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
@@ -4044,7 +4044,7 @@ function renderActionButtons(row, encId) {
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
-    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">📱WhatsApp</a>`;
+    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">💬</a>`;
   }
   html += `</div>`;
   // 🆕 v1.226: mobile par buttons 2 line mein — columns = ceil(buttons / 2)
