@@ -8,6 +8,10 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.235  (cards regroup, aaj ke vade last, welcome 1-line, tabs, login look)
+   - Dashboard: [Members, Fund, Cash] / [Bank, Income, Expense] ek-ek line mein; Boli, Donation; "आज के वादे" sabse last mein ek line
+   - Welcome naam ek line mein (lamba ho to font apne aap chhota); tab ke naam bade, side padding kam
+   - Login window mobile par naya look (bade fields/buttons, saaf cards)
   v1.234  (mobile: dashboard cards compact, chhote Refresh/Logout, extra space kam)
    - Dashboard cards: 3 per row, extra space hata di; bache cards row bhar dete hain; Boli/Donation wide card ek line
    - Refresh / Excel / Logout buttons ki height kam (28px); upar ki hero band, header, filter row compact
@@ -40,7 +44,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.234"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.235"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -805,9 +809,11 @@ td.act-cell { text-align: center; }
     display: flex; align-items: center; justify-content: center; text-align: center;
     white-space: normal; overflow-wrap: break-word; box-sizing: border-box;
     min-height: 40px; margin: 0; padding: 6px 3px !important;
-    font-size: 11px !important; line-height: 1.2; border-radius: 10px;
+    font-size: 12.5px !important; line-height: 1.15; border-radius: 10px; letter-spacing: -.1px;
   }
-  #tabs .tab.tab-long { font-size: 9.5px !important; letter-spacing: -.1px; }
+  #tabs.tabs { gap: 5px; }
+  #tabs .tab { padding: 6px 1px !important; }
+  #tabs .tab.tab-long { font-size: 10.5px !important; letter-spacing: -.2px; }
   #tabs .tab:hover { transform: none; }
   #tabs .tab:active { transform: scale(.96); }
 
@@ -823,6 +829,15 @@ td.act-cell { text-align: center; }
   }
   #mainDashboard .dash-card-wide, #mainDashboard .dash-r1 { grid-column: 1 / -1; }
   #mainDashboard .dash-r2 { grid-column: span 3; }
+  #mainDashboard .dash-card { order: var(--o, 50); }
+  /* आज के वादे: sabse last, poori chaudai, ek hi line (naam left | aankde right) */
+  #mainDashboard .dash-commit {
+    grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 12px !important; text-align: left; flex-wrap: nowrap;
+  }
+  #mainDashboard .dash-commit h4 { font-size: 12.5px; white-space: nowrap; }
+  #mainDashboard .dash-commit p { font-size: 17px; white-space: nowrap; margin-left: auto !important; }
+  #mainDashboard .dash-commit small { font-size: 11px; white-space: nowrap; }
   #mainDashboard .dash-card h4 { margin: 0 !important; font-size: 10.5px; line-height: 1.2; }
   #mainDashboard .dash-card p { margin: 0 !important; font-size: clamp(13px, 4.3vw, 15.5px); line-height: 1.15; overflow-wrap: anywhere; }
   #mainDashboard .dash-card-wide { padding: 6px 8px !important; }
@@ -847,12 +862,41 @@ td.act-cell { text-align: center; }
   header .muted { font-size: 12px; }
   #appView > .card { padding: 6px !important; margin-bottom: 6px !important; }
   .welcome-filter-row { gap: 6px !important; margin-top: 4px; }
-  .welcome-filter-row #welcomeMsg { flex: 1 1 100%; font-size: 12.5px; padding: 4px 6px; }
+  .welcome-filter-row #welcomeMsg { flex: 1 1 100%; font-size: 14px; padding: 5px 8px; white-space: nowrap; overflow: hidden; line-height: 1.3; }
   .welcome-filter-row #dateFilterBar { margin-left: 0; flex-basis: 100%; }
   .tabs { margin-top: 4px; }
   #contentArea.card, #contentArea { margin-bottom: 6px !important; }
   .site-footer { padding: 8px 10px !important; font-size: 12px !important; }
   #appModal > div { width: 96% !important; max-height: 92vh !important; max-height: 92dvh !important; }
+
+  /* ===== Login window (v1.235): saaf, bade tap-area, ek jaisa look ===== */
+  .prelogin-row { gap: 10px !important; margin-top: 8px; }
+  .prelogin-col, .prelogin-cards .card, .prelogin-center { min-width: 0 !important; flex: 1 1 100% !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; box-sizing: border-box; }
+  .prelogin-center .login-card { max-width: 100% !important; }
+  #bankCardBody > div { flex-wrap: nowrap !important; }
+  #bankCardBody > div > span { min-width: 0; flex: 1 1 auto; }
+  #bankCardBody button[data-c] { flex: 0 0 auto; }
+  .login-card {
+    padding: 16px 14px !important; border-radius: 16px !important;
+    box-shadow: 0 8px 24px rgba(11,99,214,.18); border-top: 4px solid #0b63d6 !important; background: #fff;
+  }
+  .login-card h2 { font-size: 20px !important; text-align: center; margin: 0 0 8px !important; }
+  .login-card label { margin-top: 8px !important; font-size: 13px !important; }
+  .login-card input {
+    height: 46px; padding: 0 12px !important; font-size: 16px !important; border-radius: 10px !important;
+    margin: 4px 0 0 !important; background: #f8fbff;
+  }
+  .login-card button {
+    height: 46px; padding: 0 12px !important; margin: 12px 0 0 !important; border-radius: 10px !important;
+    font-size: 16px !important; font-weight: 600 !important; box-shadow: 0 3px 8px rgba(0,0,0,.12);
+  }
+  #newUserBtn { background: #fff !important; color: #0a7a2f !important; border: 1.5px solid #0a7a2f !important; box-shadow: none !important; font-size: 15px !important; }
+  #loginMsg { text-align: center; font-size: 13px; margin-top: 8px !important; }
+  .home-card { padding: 10px 12px !important; border-radius: 14px !important; }
+  .home-card h3 { font-size: 15px !important; color: #0b63d6; margin: 0 0 6px !important; padding-bottom: 6px; border-bottom: 1px solid #e3ecfb; line-height: 1.2 !important; }
+  .prelogin-cards { gap: 10px !important; }
+  #bankCardBody { font-size: 13px !important; line-height: 1.55 !important; }
+  #payLinkBtn { height: 44px; font-size: 15px !important; font-weight: 600; border-radius: 10px !important; border: none !important; padding: 0 12px !important; }
 }
 </style>
 
@@ -2295,6 +2339,7 @@ async function openApp(){
   const welcomeText = template.replace("{{Name}}", nameWithRole);
   el("welcomeMsg").textContent = welcomeText;
   el("welcomeMsg").style.display = "block";
+  fitWelcome_();
   fetchHomeSheet();
   loadFooter(); // 🆕 safety net — login ke baad bhi footer/address dobara populate karo
   buildTabs();
@@ -2549,13 +2594,26 @@ async function renderMainDashboard(forceFresh){
     fixDashboardRows_();   // 🆕 v1.233: mobile par adhoori (akeli) card wali row poori chaudi ho jaye
   }
 }
-// 🆕 v1.234: Mobile par cards 3-per-row; jo cards bach jayein unhe row bharne ke liye failaao
-//   bacha 1 card  -> poori chaudai (dash-r1) | bache 2 cards -> aadha-aadha (dash-r2) | "wide" card hamesha poori chaudai
+// 🆕 v1.235: Mobile par cards ka order — [Members, Fund, Cash] / [Bank, Income, Expense] / Boli / Donation / aaj ke vade (sabse last, ek line)
+//   (order sirf CSS variable --o se, mobile CSS hi use karti hai — desktop par DOM order jyon ka tyon)
+const DASH_ORDER_ = [
+  [/total members/i, 1], [/fund balance/i, 2], [/cash balance/i, 3], [/bank balance/i, 4],
+  [/total income/i, 5], [/total expense/i, 6], [/pending boli/i, 7], [/pending donation/i, 8], [/आज के वादे/, 99]
+];
 function fixDashboardRows_() {
   const d = document.getElementById("mainDashboard");
   if (!d) return;
   const kids = Array.from(d.children);
-  kids.forEach(k => k.classList.remove("dash-r1", "dash-r2"));
+  kids.forEach(k => {
+    k.classList.remove("dash-r1", "dash-r2", "dash-commit");
+    const t = (k.querySelector("h4") || {}).textContent || "";
+    let o = 50;
+    DASH_ORDER_.forEach(x => { if (x[0].test(t)) o = x[1]; });
+    if (o === 99) k.classList.add("dash-commit");
+    k.style.setProperty("--o", o);
+    k._o = o;
+  });
+  // 3-per-row: jo cards bach jayein unhe row bharne ke liye failaao
   let run = [];
   const flush = () => {
     const rem = run.length % 3;
@@ -2563,9 +2621,24 @@ function fixDashboardRows_() {
     else if (rem === 2) { run[run.length - 1].classList.add("dash-r2"); run[run.length - 2].classList.add("dash-r2"); }
     run = [];
   };
-  kids.forEach(k => { if (k.classList.contains("dash-card-wide")) flush(); else run.push(k); });
+  kids.filter(k => !k.classList.contains("dash-commit")).sort((a, b) => a._o - b._o).forEach(k => {
+    if (k.classList.contains("dash-card-wide")) flush(); else run.push(k);
+  });
   flush();
 }
+// 🆕 v1.235: Welcome naam mobile par hamesha EK line mein — lamba ho to font apne aap chhota
+function fitWelcome_() {
+  const w = document.getElementById("welcomeMsg");
+  if (!w || w.style.display === "none") return;
+  w.style.fontSize = ""; w.style.whiteSpace = "";
+  if (!window.matchMedia("(max-width: 600px)").matches) return;
+  w.style.whiteSpace = "nowrap";
+  let fs = 14;
+  w.style.fontSize = fs + "px";
+  while (w.scrollWidth > w.clientWidth && fs > 8.5) { fs -= 0.5; w.style.fontSize = fs + "px"; }
+}
+window.addEventListener("resize", fitWelcome_);
+window.addEventListener("orientationchange", fitWelcome_);
 
 /* Load RoleAccess from sheet */
 async function loadRoleAccess() {
