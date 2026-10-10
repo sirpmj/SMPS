@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.231  (action buttons rows + SVG icons)
+   - Buttons ki rows: 1-3 = ek line | 4 = 2+2 | 5 = 3+2 (neeche wale lambe) | 6 = 3+3
+   - View/Edit/Delete/WhatsApp = sirf icon (WhatsApp ka asli logo); वादा / खाता / Attn = icon + chhota naam; Receipts mein खाता sirf icon
   v1.230  (icons + header alignment)
    - Action buttons ab icon mein: 👁️ View, ✏️ Edit, 🗑️ Delete, 📅 वादा, 📒 खाता, 👥 उपस्थिति, 💬 WhatsApp (dabane par naam tooltip mein)
    - "Actions" header aur buttons center mein; baaki header data ke hisaab se (raashi = right, baaki = left)
@@ -28,7 +31,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.230"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.231"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -760,6 +763,29 @@ th:last-child { text-align: center; }
     font-size: 16px !important; line-height: 1 !important; padding: 6px 4px !important; min-height: 34px; min-width: 34px; margin: 0 !important;
   }
   #contentArea .action-wrap { margin-left: auto; margin-right: auto; }
+}
+
+/* ===== 🆕 v1.231: action buttons — rows (1-3 | 2+2 | 3+2 | 3+3), SVG icons ===== */
+td.act-cell { text-align: center; }
+.abtns { display: inline-flex; flex-direction: column; gap: 5px; align-items: stretch; margin: 0 auto; vertical-align: middle; }
+.ab-row { display: flex; gap: 5px; justify-content: center; }
+.ab-btn {
+  flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: 36px; height: 34px; padding: 0 9px; box-sizing: border-box;
+  border: 1px solid #ccc; border-radius: 8px; text-decoration: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+}
+.ab-btn svg { width: 17px; height: 17px; flex: none; display: block; }
+.ab-btn:active { transform: scale(.95); }
+.ab-print  { background: #eef6ff; border-color: #c9e0ff; color: #03427a; }
+.ab-edit   { background: #fff8e6; border-color: #ffe9b0; color: #6a4b00; }
+.ab-delete { background: #fff0f0; border-color: #f6c6c6; color: #9b1b1b; }
+.ab-wa     { background: #e6fef0; border-color: #a1e0b0; color: #128c3e; }
+.ab-wa svg { width: 19px; height: 19px; }
+@media (max-width: 700px) {
+  #contentArea td.act-cell { padding: 5px 3px !important; width: 1%; white-space: normal; }
+  .ab-btn { height: 32px; min-width: 34px; padding: 0 8px; font-size: 11.5px; }
+  .abtns, .ab-row { gap: 4px; }
 }
 </style>
 
@@ -4007,29 +4033,51 @@ const msg =
 /* ===========================
    Actions: View / WhatsApp / Edit / Delete
    =========================== */
+// 🆕 v1.231: SVG icons (sab device par ek jaisa dikhta hai)
+const AB_ICON = {
+  view:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  edit:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
+  del:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  khata:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a4 4 0 014 4v12H8a4 4 0 01-4-4z"/><path d="M8 9h8M8 13h8"/></svg>',
+  vada:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  attn:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+  wa:     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>'
+};
+// ek button: label = export/tooltip ka naam, text = icon ke saath dikhne wala chhota naam (khaali = sirf icon)
+function abBtn_(cls, icon, label, text, attrs) {
+  return `<a class="ab-btn ${cls}" ${attrs} title="${label}" aria-label="${label}" data-label="${label}">${AB_ICON[icon]}${text ? `<span>${text}</span>` : ""}</a>`;
+}
+// 🆕 v1.231: buttons ki rows — 1-3: ek line | 4: 2+2 | 5: 3+2 | 6: 3+3 (neeche wali row ke button chaude hokar barabar bhar dete hain)
+function layoutActionRows_(btns) {
+  const n = btns.length;
+  const rows = n <= 3 ? [btns] : [btns.slice(0, Math.ceil(n / 2)), btns.slice(Math.ceil(n / 2))];
+  return `<div class="abtns">` + rows.map(r => `<div class="ab-row">${r.join("")}</div>`).join("") + `</div>`;
+}
 function renderActionButtons(row, encId) {
-  let html = `<div class="action-wrap">
-    <a class="action-link ic print" href="#" onclick="viewRecord('${encId}', event)" title="View" aria-label="View" data-label="View">👁️</a>`;
+  const btns = [];
+  btns.push(abBtn_("ab-print", "view", "View", "", `href="#" onclick="viewRecord('${encId}', event)"`));
   const actions = ROLE_ACCESS[currentUser.role]?.[currentTab]?.canAction || [];
   const crudCfg = CRUD_ALLOWED_TABS[currentTab];
   if (crudCfg && crudCfg.allowEditDelete) {
     if (actions.includes("EDIT")) {
-      html += `<a class="action-link ic edit" href="#" onclick="openEditRecord('${encId}', event)" title="Edit" aria-label="Edit" data-label="Edit">✏️</a>`;
+      btns.push(abBtn_("ab-edit", "edit", "Edit", "", `href="#" onclick="openEditRecord('${encId}', event)"`));
     }
     if (actions.includes("DELETE")) {
-      html += `<a class="action-link ic delete" href="#" onclick="deleteRecord('${encId}', event)" title="Delete" aria-label="Delete" data-label="Delete">🗑️</a>`;
+      btns.push(abBtn_("ab-delete", "del", "Delete", "", `href="#" onclick="deleteRecord('${encId}', event)"`));
     }
   }
   if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
-    html += `<a class="action-link ic edit" href="#" onclick="openCommitments('${encId}', event)" title="📅 वादा" aria-label="📅 वादा" data-label="📅 वादा">📅वादा</a>`;
+    btns.push(abBtn_("ab-edit", "vada", "📅 वादा", "वादा", `href="#" onclick="openCommitments('${encId}', event)"`));
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
-    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥</a>`;
+    btns.push(abBtn_("ab-edit", "attn", "👥 उपस्थिति", "Attn", `href="#" onclick="openAttendance_('${encId}', event)"`));
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
     if (_nm && !isAnonMember_(_nm)) {
-      html += `<a class="action-link ic print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)" title="📄 खाता" aria-label="📄 खाता" data-label="📄 खाता">📒खाता</a>`;
+      // Receipts mein jagah kam hoti hai — wahan sirf icon, baaki tabs mein icon + "खाता"
+      btns.push(abBtn_("ab-print", "khata", "📄 खाता", currentTab === "Receipts" ? "" : "खाता",
+        `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
   }
   if (actions.includes("WHATSAPP")) {
@@ -4044,13 +4092,9 @@ function renderActionButtons(row, encId) {
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
-    html += `<a class="action-link ic whatsapp" target="_blank" href="${waUrl}" title="WhatsApp" aria-label="WhatsApp" data-label="WhatsApp">💬</a>`;
+    btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
   }
-  html += `</div>`;
-  // 🆕 v1.226: mobile par buttons 2 line mein — columns = ceil(buttons / 2)
-  const _acN = (html.match(/class="action-link/g) || []).length;
-  html = html.replace('<div class="action-wrap">', '<div class="action-wrap" style="--ac:' + Math.max(1, Math.ceil(_acN / 2)) + '">');
-  return html;
+  return layoutActionRows_(btns);
 }
 /* helper to get user's 	mobile from MEMBERS map by name */
 function getUserMobileFromMembers(name){
