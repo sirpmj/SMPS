@@ -515,7 +515,47 @@ button:hover{opacity:0.9}
 #editPopup .agenda-picker .ap-row input[type=checkbox]{flex:0 0 18px;width:18px;height:18px;padding:0;margin:2px 0 0;accent-color:#1a9c4b}
 #editPopup .agenda-picker .ap-row span{flex:1;min-width:0;word-break:break-word}
 #editPopup .agenda-picker .ap-lunch{background:#fff8e6;border-radius:6px;padding-left:6px;padding-right:6px}
-#tableContainer td{white-space:pre-line}
+/* ===== Table cells: classes (JS se lagti hain) ===== */
+td.txt, td.nm, td.lg { white-space: pre-line; overflow-wrap: break-word; }  /* Details/Notes ki alag lines dikhen */
+td.nw { white-space: nowrap; }                                               /* raashi: hamesha 1 line */
+td.dt { white-space: nowrap; }                                               /* date: desktop par 1 line; mobile par jagah kam ho to 2 line */
+td.act-cell { vertical-align: top; }
+
+/* ===== 📱 MOBILE: table ke saare column screen mein fit — 1 line, nahi to 2, nahi to 3 ===== */
+@media (max-width: 700px) {
+  #contentArea { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #contentArea table { min-width: 0 !important; width: 100%; table-layout: auto; }
+  #contentArea th, #contentArea td {
+    padding: 4px 3px !important;
+    font-size: 11px !important;
+    line-height: 1.35;
+    vertical-align: top;
+  }
+  #contentArea th { white-space: normal; line-height: 1.2; }
+  td.dt { white-space: normal; }
+  td.nm { min-width: 68px; }             /* naam 3 line tak mein aa jaye, 5-6 mein na tute */
+  td.lg { min-width: 56px; }             /* details / notes / address jaise lambe text */
+  td.act-cell { white-space: normal; width: 1%; }
+  /* Action buttons: ek lambi line ki jagah 2 line mein (jahan zaroorat ho) */
+  .action-wrap {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 4px;
+    white-space: normal !important;
+    width: max-content;
+    max-width: 96px;                     /* ~2 button ek line mein, baaki neeche ki line mein */
+  }
+  .action-wrap a, td.act-cell .action-link {
+    margin: 0 !important;
+    padding: 3px 4px !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap;
+  }
+  .page-btn { padding: 6px 9px; }
+  .card { padding: 10px 8px; }           /* table ko screen ki zyada chaudai mile */
+  img, svg, video, canvas { max-width: 100%; height: auto; }
+}
 #editPopup textarea{grid-column:1 / -1;min-height:54px;resize:vertical}
 #editPopup select{grid-column:auto}
 .popup-actions{display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid #eee;background:#fafbfc}
@@ -3578,6 +3618,18 @@ function sortLatestFirst_(rows, allData) {
   return keyed.map(k => k.r);
 }
 
+// Column ke naam se cell ka type: naam / lamba text / normal text (mobile par width tay karne ke liye)
+// "11/10/2026" → "11/10/<wbr>2026": mobile par jagah kam ho to saal neeche ki line mein aa sakta hai
+function dateWbr_(t) {
+  return String(t == null ? "" : t).replace(/^(\d{1,2}\/\d{1,2}\/)(\d{2,4})$/, "$1<wbr>$2");
+}
+function cellClass_(colName) {
+  const c = String(colName || "").trim();
+  if (/^(member|name|firm|नाम|सदस्य)/i.test(c)) return "txt nm";
+  if (/detail|note|remark|address|agenda|description|commitment|attendance|place|venue|message|purpose|for$/i.test(c)) return "txt lg";
+  return "txt";
+}
+
 function renderTable(){
   // 🛑 safety guards
   if (!currentUser || !currentTab || !Array.isArray(tableData)) return;
@@ -3730,14 +3782,12 @@ columns.forEach(c => {
     cl.includes("closing") ||
     cl.includes("pending")
   ) {
-    html += `<td style="text-align:right">
-      ${toNumber(row[c]).toLocaleString()}
-    </td>`;
+    html += `<td class="nw" style="text-align:right">${toNumber(row[c]).toLocaleString()}</td>`;
   }
 
   // 📅 Date columns
   else if (cl.includes("date")) {
-    html += `<td>${formatDate(row[c])}</td>`;
+    html += `<td class="dt">${dateWbr_(formatDate(row[c]))}</td>`;
   }
 
 // 📝 Normal text
@@ -3787,16 +3837,16 @@ const msg =
       cell += `<br><a target="_blank" href="${wa}">🎂 Wish</a>`;
     }
 
-    html += `<td>${cell}</td>`;
+    html += `<td class="nw">${cell}</td>`;
   }
 
   else{
     if ((currentTab === "Receipts" || currentTab === "Donation") &&
         /^member$/i.test(String(c).trim()) && isAnonMember_(row[c])) {
       const nm = displayMemberFromRow_(row);
-      html += `<td>${nm}${nm !== row[c] ? ' <small style="color:#b45309">(' + ANON_MEMBER_LABEL + ')</small>' : ""}</td>`;
+      html += `<td class="${cellClass_(c)}">${nm}${nm !== row[c] ? ' <small style="color:#b45309">(' + ANON_MEMBER_LABEL + ')</small>' : ""}</td>`;
     } else {
-      html += `<td>${row[c] || ""}</td>`;
+      html += `<td class="${cellClass_(c)}">${row[c] || ""}</td>`;
     }
   }
 
@@ -3807,7 +3857,7 @@ const msg =
 
     // Actions column
     const encId = encodeURIComponent(resolveRecordId_(row).recordId || "");
-    html += "<td>" + renderActionButtons(row, encId) + "</td>";
+    html += '<td class="act-cell">' + renderActionButtons(row, encId) + "</td>";
     html += "</tr>";
   });
   html += "</tbody></table>";	
