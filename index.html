@@ -1,5 +1,4 @@
 <!doctype html>
-<!-- smps v1.226: Boli/Donation toolbar line fix, action buttons 2-line + center + bade, login 0 ke saath, footer mein version -->
 <html lang="hi">
 <head>
 
@@ -7,8 +6,17 @@
 <meta name="theme-color" content="#4a90e2">
 
 <meta charset="utf-8">
+<!--
+  ===== VERSION HISTORY =====
+  v1.226  (mobile fixes)
+   - Mobile table: Action buttons ab hamesha max 2 line mein (equal size, proper gap) -> Name column ko zyada jagah
+   - Login: mobile number 0 ke saath bhi accept (09876543210 / +91 / 91 sab chalega)
+   - Boli / Donation: search row mobile par sahi (search bar ab dikhta hai, filter + buttons neeche wrap hote hain)
+  v1.225  (previous base version)
+-->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
+<script>window.APP_VERSION = "v1.226"; console.info("SMPS app", window.APP_VERSION);</script>
 
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
@@ -382,26 +390,6 @@ tr:hover{background:#f5faff}
 
 
 /* ---------- Search & Pagination ---------- */
-/* ===== Search + Add New + वादा filter + Reminders wali line ===== */
-#searchWrapper { flex-wrap: wrap; row-gap: 6px; }
-#searchWrapper .search-input { flex: 1 1 160px; min-width: 0; width: auto; }
-#searchWrapper #pageSize { flex: 0 0 auto; }
-#searchWrapper #addNewBtn, #searchWrapper #bulkRemBtn { flex: 0 0 auto; white-space: nowrap; }
-#commitFilter { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
-.sw-break { display: none !important; }
-@media (max-width: 700px) {
-  /* Line 1: [10 ▾] [🔍 Search ........] [➕ Add New]     Line 2 (Boli/Donation): [📅 वादा filter ▾ ......] [📨 Reminders] */
-  #searchWrapper { gap: 6px !important; }
-  #searchWrapper > select, #searchWrapper > input, #searchWrapper > button {
-    height: 38px; box-sizing: border-box; font-size: 13px; margin: 0;
-  }
-  #searchWrapper .search-input { flex: 1 1 0; padding: 0 10px; }
-  #searchWrapper #pageSize { padding: 0 4px !important; }
-  #searchWrapper #customSize { width: 70px !important; }
-  #searchWrapper #addNewBtn, #searchWrapper #bulkRemBtn { padding: 0 12px; }
-  #commitFilter { flex: 1 1 0; padding: 0 8px !important; font-size: 12.5px !important; }
-  .sw-break.on { display: block !important; flex: 0 0 100%; height: 0; }
-}
 .search-input {
   width: 100%;
   max-width: 100%;
@@ -556,41 +544,9 @@ td.act-cell { vertical-align: top; }
   td.dt { white-space: normal; }
   td.nm { min-width: 68px; }             /* naam 3 line tak mein aa jaye, 5-6 mein na tute */
   td.lg { min-width: 56px; }             /* details / notes / address jaise lambe text */
-  td.act-cell { white-space: normal; width: 1%; text-align: center; vertical-align: middle; }
-  /* Actions column screen ke right kinare chipki rahe — baaki column slide hon to bhi buttons hamesha dabane ko mile */
-  td.act-cell, #contentArea thead th:last-child {
-    position: sticky; right: 0;
-    background: #fff;
-    box-shadow: -3px 0 5px rgba(0,0,0,.10);
-  }
-  #contentArea thead th:last-child { background: #f0f4ff; z-index: 3; text-align: center; }
-  td.act-cell { z-index: 2; }
-  .birthdayRow td.act-cell { background: #fff3cd; }
-  .alert-row td.act-cell { background: #fff0f0; }
-  /* Action buttons: ek line mein 3 → 6 button tak sirf 2 line; center + barabar ऊँचाई; ungli se dabane layak (36px) */
-  .action-wrap {
-    display: flex !important;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: center;
-    gap: 5px !important;
-    white-space: normal !important;
-    width: max-content;
-    max-width: 170px;
-    margin: 0 auto;
-  }
-  .action-wrap a, td.act-cell .action-link {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    margin: 0 !important;
-    padding: 0 6px !important;
-    font-size: 10.5px !important;
-    line-height: 1.1 !important;
-    border-radius: 8px;
-    white-space: nowrap;
-  }
+  td.act-cell { white-space: normal; width: 1%; }
+  /* Action buttons: hamesha 2 line (grid) — columns = ceil(buttons/2), JS --ac set karta hai
+     (v1.226: neeche ke "v1.226 mobile fixes" block mein final styling hai) */
   .page-btn { padding: 6px 9px; }
   .card { padding: 10px 8px; }           /* table ko screen ki zyada chaudai mile */
   img, svg, video, canvas { max-width: 100%; height: auto; }
@@ -672,6 +628,52 @@ td.act-cell { vertical-align: top; }
 }
 
 
+
+/* ===== 🆕 v1.226 mobile fixes ===== */
+@media (max-width: 700px) {
+  /* Action buttons: 2 line, barabar size, proper gap */
+  #contentArea .action-wrap {
+    display: grid !important;
+    grid-template-columns: repeat(var(--ac, 2), auto);
+    gap: 5px;
+    width: max-content;
+    max-width: none;
+    white-space: normal !important;
+    align-items: stretch;
+    justify-items: stretch;
+  }
+  #contentArea .action-wrap a,
+  #contentArea td.act-cell .action-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    text-align: center;
+    border-radius: 6px !important;
+  }
+}
+@media (max-width: 700px) {
+  /* Search row (Boli / Donation par filter + buttons ki wajah se search bar dab jaata tha) */
+  #searchWrapper { flex-wrap: wrap !important; gap: 6px !important; }
+  #searchWrapper #pageSize { order: 1; flex: 0 0 auto; }
+  #searchWrapper #customSize { order: 1; flex: 0 0 auto; }
+  #searchWrapper #searchInput {
+    order: 2;
+    flex: 1 1 calc(100% - 80px);
+    min-width: 120px;
+    width: auto;
+    height: 36px !important;
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+  }
+  #searchWrapper #addNewBtn,
+  #searchWrapper #bulkRemBtn { order: 3; flex: 0 0 auto; padding: 8px 12px; font-size: 13px; }
+  #searchWrapper #commitFilter { order: 3; flex: 1 1 140px; min-width: 0; max-width: 100%; }
+}
 </style>
 
 
@@ -719,7 +721,7 @@ td.act-cell { vertical-align: top; }
         <div class="card login-card" style="width:100%;max-width:380px;">
          <h2 id="loginTitle" style="margin-top:0">🔐 Login</h2>
 <label id="labelMobile">User Name</label>
-<input id="username" type="text" placeholder="10 अंको का मोबाइल नंबर डालें (0 के साथ भी चलेगा)">
+<input id="username" type="text" inputmode="tel" autocomplete="tel" placeholder="10 अंको का मोबाइल नंबर डालें">
 <label>OTP</label>
 <input id="otpInput" type="text" placeholder="WhatsApp पर आया OTP डालें" style="display:none">
 
@@ -871,7 +873,6 @@ style="background:#008000;color:#fff;font-size:16px">
   <button id="addNewBtn" type="button" style="display:none;background:#1a9c4b;color:#fff;border:none;">➕ Add New</button>
 
   <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
-  <div id="swBreak" class="sw-break"></div>
   <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
     <option value="pending">📅 बाकी + वादा वाले ऊपर</option>
     <option value="">सभी रिकॉर्ड</option>
@@ -1086,6 +1087,15 @@ let homeInfo = {}, USERS = {}, TEMPLATES = {}, SETTINGS = {}, MEMBERS = {}, ROLE
    --------------------------- */
 function onlyDigits(s){
   return String(s||"").replace(/\D/g,"");
+}
+// 🆕 v1.226: Mobile number ko hamesha 10 digit mein badal do —
+// 09876543210 (0 ke saath), 919876543210 / +91 98765 43210, 0919876543210 sab chalenge
+function normLoginMobile_(s){
+  let d = String(s||"").replace(/\D/g,"");
+  if (d.length === 13 && d.startsWith("091")) d = d.slice(3);
+  else if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
 }
 function toNumber(val){
   if(val===undefined||val===null||val==="") return 0;
@@ -1610,7 +1620,7 @@ async function loadMembers(){
   const data = await fetchSheet("Members");
   const map = {};
   data.forEach(r=>{
-    const mobileKey = onlyDigits(r["Mobile"] || r["mobile"] || "");
+    const mobileKey = normLoginMobile_(r["Mobile"] || r["mobile"] || "");
     if(mobileKey) {
       map[mobileKey] = r;
     }
@@ -1644,7 +1654,6 @@ async function loadFooter(){
     if(contact) thirdLineParts.push(`<a href="tel:${contact}">✆${contact}</a>`);
     if(email) thirdLineParts.push(`<a href="mailto:${email}">✉️${email}</a>`);
     thirdLineParts.push(`©${year}`);
-    thirdLineParts.push(`v${APP_VERSION}`);
     const thirdLine = thirdLineParts.join('&nbsp;•&nbsp;');
     // Set footer HTML
     footerEl.innerHTML = `
@@ -1659,20 +1668,9 @@ async function loadFooter(){
   }
 }
 
-// 🆕 Mobile number ko 10 ank mein badlo: 09876543210 / +91 98765 43210 / 919876543210 sab chalenge
-function normalizeLoginMobile_(v) {
-  let d = String(v || "").replace(/\D/g, "");
-  if (d.length === 13 && d.startsWith("091")) d = d.slice(3);       // 0 91 XXXXXXXXXX
-  else if (d.length === 12 && d.startsWith("91")) d = d.slice(2);   // 91 XXXXXXXXXX
-  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);    // 0 XXXXXXXXXX
-  return d;
-}
-
-const APP_VERSION = "1.226"; // har update par badhta hai (footer mein dikhta hai)
-
 document.getElementById("sendOtpBtn").onclick = async () => {
 
-  const mobile = normalizeLoginMobile_(username.value);
+  const mobile = normLoginMobile_(username.value);
 
   if (mobile.length !== 10) {
     alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
@@ -1726,7 +1724,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
 
 document.getElementById("verifyOtpBtn").onclick = async () => {
   const otp = otpInput.value.trim();
-  const mobile = normalizeLoginMobile_(username.value);
+  const mobile = normLoginMobile_(username.value);
 
   if (otp.length !== 6) {
     alert("6 अंकों का OTP डालें");
@@ -2437,7 +2435,6 @@ async function loadTab(sheetName, forceFresh) {
     const _addBtnReset = document.getElementById("addNewBtn");
     if (_addBtnReset) { _addBtnReset.style.display = "none"; _addBtnReset.onclick = null; }
     ["commitFilter", "bulkRemBtn"].forEach(id => { const x = document.getElementById(id); if (x) x.style.display = "none"; });
-    const _swb = document.getElementById("swBreak"); if (_swb) _swb.classList.remove("on");
 
     // 🔹 Loading message
     el("contentArea").innerHTML =
@@ -3960,6 +3957,9 @@ function renderActionButtons(row, encId) {
     html += `<a class="action-link whatsapp" target="_blank" href="${waUrl}">WhatsApp</a>`;
   }
   html += `</div>`;
+  // 🆕 v1.226: mobile par buttons 2 line mein — columns = ceil(buttons / 2)
+  const _acN = (html.match(/class="action-link/g) || []).length;
+  html = html.replace('<div class="action-wrap">', '<div class="action-wrap" style="--ac:' + Math.max(1, Math.ceil(_acN / 2)) + '">');
   return html;
 }
 /* helper to get user's 	mobile from MEMBERS map by name */
@@ -4323,8 +4323,6 @@ function updateCommitToolbar_(sheetName) {
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
-  const swb = document.getElementById("swBreak");
-  if (swb) swb.classList.toggle("on", on);
   const canWa = (ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || []).includes("WHATSAPP");
   if (bulk) bulk.style.display = (on && canWa) ? "inline-block" : "none";
 }
