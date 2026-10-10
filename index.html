@@ -4021,15 +4021,15 @@ function renderActionButtons(row, encId) {
     }
   }
   if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
-    html += `<a class="action-link ic edit" href="#" onclick="openCommitments('${encId}', event)" title="📅 वादा" aria-label="📅 वादा" data-label="📅 वादा">📅</a>`;
+    html += `<a class="action-link ic edit" href="#" onclick="openCommitments('${encId}', event)" title="📅 वादा" aria-label="📅 वादा" data-label="📅 वादा">📅वादा</a>`;
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
-    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥</a>`;
+    html += `<a class="action-link ic edit" href="#" onclick="openAttendance_('${encId}', event)" title="👥 उपस्थिति" aria-label="👥 उपस्थिति" data-label="👥 उपस्थिति">👥उपस्थिति</a>`;
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
     if (_nm && !isAnonMember_(_nm)) {
-      html += `<a class="action-link ic print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)" title="📄 खाता" aria-label="📄 खाता" data-label="📄 खाता">📒</a>`;
+      html += `<a class="action-link ic print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)" title="📄 खाता" aria-label="📄 खाता" data-label="📄 खाता">📒खाता</a>`;
     }
   }
   if (actions.includes("WHATSAPP")) {
