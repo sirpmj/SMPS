@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.234  (mobile: dashboard cards compact, chhote Refresh/Logout, extra space kam)
+   - Dashboard cards: 3 per row, extra space hata di; bache cards row bhar dete hain; Boli/Donation wide card ek line
+   - Refresh / Excel / Logout buttons ki height kam (28px); upar ki hero band, header, filter row compact
   v1.233  (login ke baad Tabs + Dashboard cards, mobile)
    - Tabs: 4 per row, sab ek saath, barabar height; Cards: 2 per row, akela bachne wala card poori chaudai mein
   v1.232  (Members freeze + login payment link + fully-paid filter)
@@ -37,7 +40,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.233"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.234"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -808,18 +811,48 @@ td.act-cell { text-align: center; }
   #tabs .tab:hover { transform: none; }
   #tabs .tab:active { transform: scale(.96); }
 
-  /* Dashboard cards: 2 per row, akela bachne wala + "wide" card poori chaudai */
-  #mainDashboard.dashboard { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  #mainDashboard .dash-card {
-    flex: none !important; min-width: 0; box-sizing: border-box; padding: 10px 8px; border-radius: 12px;
-    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  /* Dashboard cards (v1.234): 3 per row, extra space hata di; bache hue cards row bhar dete hain */
+  #mainDashboard.dashboard {
+    display: grid !important; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;
+    padding: 0 !important; margin: 0 0 6px !important;
   }
-  #mainDashboard .dash-card-wide, #mainDashboard .dash-card-full { grid-column: 1 / -1; }
-  #mainDashboard .dash-card h4 { margin: 0; font-size: 11.5px; line-height: 1.25; }
-  #mainDashboard .dash-card p { margin: 0; font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
-  #mainDashboard .dash-card-wide p { font-size: 15px; }
-  #mainDashboard .dash-card small { font-size: 11px; opacity: .8; }
+  #mainDashboard .dash-card {
+    grid-column: span 2; flex: none !important; min-width: 0; box-sizing: border-box;
+    padding: 7px 3px !important; border-radius: 10px; margin: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+  }
+  #mainDashboard .dash-card-wide, #mainDashboard .dash-r1 { grid-column: 1 / -1; }
+  #mainDashboard .dash-r2 { grid-column: span 3; }
+  #mainDashboard .dash-card h4 { margin: 0 !important; font-size: 10.5px; line-height: 1.2; }
+  #mainDashboard .dash-card p { margin: 0 !important; font-size: clamp(13px, 4.3vw, 15.5px); line-height: 1.15; overflow-wrap: anywhere; }
+  #mainDashboard .dash-card-wide { padding: 6px 8px !important; }
+  #mainDashboard .dash-card-wide p { font-size: clamp(12.5px, 4vw, 14.5px); }
+  #mainDashboard .dash-card small { font-size: 10px; opacity: .8; line-height: 1.1; }
   #mainDashboard .dash-card[onclick]:active { transform: scale(.98); }
+
+  /* ---- Refresh / Excel / Logout buttons: kam height ---- */
+  #refreshBtn, #logoutBtn, #loginBtn { min-height: 0 !important; }
+  .app-header { gap: 4px !important; }
+  .app-header button, .toolbar-btns > button, #excelMenuWrapper button {
+    height: 28px; min-height: 0 !important; padding: 0 6px !important; margin: 0 !important;
+    font-size: 11px !important; line-height: 1 !important; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+    border: 1px solid rgba(0,0,0,.18) !important; border-radius: 8px !important;
+  }
+  .toolbar-btns { gap: 4px !important; }
+
+  /* ---- Poori app: extra space kam, upar ki hero band chhoti ---- */
+  html, body { max-width: 100%; overflow-x: hidden; }
+  header { padding: 8px 8px 10px !important; border-radius: 0 0 22px 22px; }
+  header h1 { font-size: 17px; letter-spacing: .3px; margin: 0 0 2px !important; line-height: 1.25 !important; }
+  header .muted { font-size: 12px; }
+  #appView > .card { padding: 6px !important; margin-bottom: 6px !important; }
+  .welcome-filter-row { gap: 6px !important; margin-top: 4px; }
+  .welcome-filter-row #welcomeMsg { flex: 1 1 100%; font-size: 12.5px; padding: 4px 6px; }
+  .welcome-filter-row #dateFilterBar { margin-left: 0; flex-basis: 100%; }
+  .tabs { margin-top: 4px; }
+  #contentArea.card, #contentArea { margin-bottom: 6px !important; }
+  .site-footer { padding: 8px 10px !important; font-size: 12px !important; }
+  #appModal > div { width: 96% !important; max-height: 92vh !important; max-height: 92dvh !important; }
 }
 </style>
 
@@ -2516,14 +2549,20 @@ async function renderMainDashboard(forceFresh){
     fixDashboardRows_();   // 🆕 v1.233: mobile par adhoori (akeli) card wali row poori chaudi ho jaye
   }
 }
-// 🆕 v1.233: Mobile par cards 2-per-row; jahan ek card akela bach jaye wo poori chaudai le (CSS: .dash-card-full)
+// 🆕 v1.234: Mobile par cards 3-per-row; jo cards bach jayein unhe row bharne ke liye failaao
+//   bacha 1 card  -> poori chaudai (dash-r1) | bache 2 cards -> aadha-aadha (dash-r2) | "wide" card hamesha poori chaudai
 function fixDashboardRows_() {
   const d = document.getElementById("mainDashboard");
   if (!d) return;
   const kids = Array.from(d.children);
-  kids.forEach(k => k.classList.remove("dash-card-full"));
+  kids.forEach(k => k.classList.remove("dash-r1", "dash-r2"));
   let run = [];
-  const flush = () => { if (run.length % 2 === 1) run[run.length - 1].classList.add("dash-card-full"); run = []; };
+  const flush = () => {
+    const rem = run.length % 3;
+    if (rem === 1) run[run.length - 1].classList.add("dash-r1");
+    else if (rem === 2) { run[run.length - 1].classList.add("dash-r2"); run[run.length - 2].classList.add("dash-r2"); }
+    run = [];
+  };
   kids.forEach(k => { if (k.classList.contains("dash-card-wide")) flush(); else run.push(k); });
   flush();
 }
