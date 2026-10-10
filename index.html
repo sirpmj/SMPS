@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.228  (mobile makeover)
+   - Mobile par table ki jagah CARD view (naam bada, har field label ke saath, neeche bade action buttons) + "क्रम" sort dropdown
+   - Edit/Add popup mobile par bottom-sheet (Save/Cancel hamesha neeche dikhte hain, keyboard ke saath bhi)
+   - Bade tap-area (buttons / page numbers / form fields 16px), iPhone auto-zoom band, notch + home-bar safe area
+   - Form mein raashi/mobile fields par numeric keyboard
   v1.227  (search row fix)
    - Har tab mein search row pehle jaisi ek line mein (page size + search bar + buttons)
    - "Add New" ki jagah sirf "+" button; "बाकी + वादा वाले ऊपर" ki jagah chhota "बाकी+वादा"; Reminders mobile par sirf icon
@@ -17,9 +22,15 @@
    - Boli / Donation: search row mobile par sahi (search bar ab dikhta hai, filter + buttons neeche wrap hote hain)
   v1.225  (previous base version)
 -->
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.227"; console.info("SMPS app", window.APP_VERSION);</script>
+<script>window.APP_VERSION = "v1.228"; console.info("SMPS app", window.APP_VERSION);
+// iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
+document.addEventListener("DOMContentLoaded", function () {
+  var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var m = document.querySelector('meta[name="viewport"]');
+  if (ios && m && !/maximum-scale/.test(m.content)) m.content += ",maximum-scale=1";
+});</script>
 
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
@@ -662,19 +673,88 @@ td.act-cell { vertical-align: top; }
 @media (max-width: 700px) {
   /* v1.227: search row har tab mein pehle jaisi EK line mein — sab chhota */
   #searchWrapper { flex-wrap: nowrap !important; gap: 4px !important; }
-  #searchWrapper #pageSize { flex: 0 0 auto; padding: 4px 2px !important; font-size: 12px; width: 52px; }
+  #searchWrapper #pageSize { flex: 0 0 auto; padding: 0 !important; font-size: 12px; width: 44px; }
   #searchWrapper #customSize { flex: 0 0 auto; width: 56px !important; }
   #searchWrapper #searchInput {
     flex: 1 1 0; min-width: 0; width: auto;
     height: 32px !important; padding: 4px 8px !important; font-size: 13px !important;
   }
-  #searchWrapper #addNewBtn { flex: 0 0 auto; padding: 4px 10px !important; font-size: 15px !important; line-height: 1.2; }
-  #searchWrapper #bulkRemBtn { flex: 0 0 auto; padding: 4px 8px !important; font-size: 14px !important; }
+  #searchWrapper #addNewBtn { flex: 0 0 auto; padding: 4px 8px !important; font-size: 15px !important; line-height: 1.2; }
+  #searchWrapper #bulkRemBtn { flex: 0 0 auto; padding: 4px 6px !important; font-size: 14px !important; }
   #searchWrapper #bulkRemBtn .rem-txt { display: none; }
   #searchWrapper #commitFilter {
-    flex: 0 1 auto; width: auto; max-width: 92px; min-width: 0;
+    flex: 0 1 auto; width: auto; max-width: 84px; min-width: 0;
     padding: 4px 2px !important; font-size: 11px !important;
   }
+}
+
+/* ===== 🆕 v1.228 mobile makeover ===== */
+.m-sort { display: none; }
+@media screen and (max-width: 600px) {
+  .wrap { padding: 8px 6px !important; }
+  #contentArea.card { padding: 8px 6px !important; }
+  body { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .site-footer { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+
+  /* ---- Table -> Card view ---- */
+  .m-sort { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #475569; }
+  .m-sort select { flex: 1; height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 8px; background: #fff; font-size: 14px; }
+  #contentArea #tableContainer table { display: block; width: 100%; min-width: 0 !important; }
+  #contentArea #tableContainer thead { display: none; }
+  #contentArea #tableContainer tbody { display: block; }
+  #contentArea #tableContainer tr {
+    display: block; background: #fff; border: 1px solid #dbe4f3; border-radius: 12px;
+    margin: 0 0 10px; padding: 4px 12px 10px; box-shadow: 0 1px 4px rgba(15,23,42,.07);
+  }
+  #contentArea #tableContainer tr:hover { background: #fff; }
+  #contentArea #tableContainer tr.birthdayRow { background: #fff3cd; }
+  #contentArea #tableContainer td {
+    display: block; position: relative; box-sizing: border-box;
+    width: auto !important; min-width: 0 !important;
+    padding: 7px 0 7px 40% !important; min-height: 30px;
+    border: none !important; border-bottom: 1px dashed #e3e8f2 !important;
+    font-size: 13.5px !important; line-height: 1.4;
+    text-align: left !important; white-space: normal !important; overflow-wrap: anywhere;
+  }
+  #contentArea #tableContainer td::before {
+    content: attr(data-label); position: absolute; left: 0; top: 7px; width: 36%;
+    font-size: 12px; font-weight: 600; color: #64748b; line-height: 1.35; overflow-wrap: anywhere;
+  }
+  #contentArea #tableContainer td:empty { display: none !important; }
+  #contentArea #tableContainer td.nm { font-weight: 700; font-size: 15px !important; color: #1a1a2e; }
+  #contentArea #tableContainer td.act-cell { padding: 10px 0 0 !important; border-bottom: none !important; }
+  #contentArea #tableContainer td.act-cell::before { display: none; }
+
+  /* Card ke andar action buttons: poori chaudai, bade tap area, max 2 line */
+  #contentArea #tableContainer .action-wrap {
+    display: grid !important; width: 100%; gap: 8px;
+    grid-template-columns: repeat(var(--ac, 2), minmax(0, 1fr));
+  }
+  #contentArea #tableContainer .action-wrap a,
+  #contentArea #tableContainer td.act-cell .action-link {
+    min-height: 38px; padding: 8px 6px !important; font-size: 12.5px !important; border-radius: 8px !important;
+  }
+
+  /* ---- Bade tap-area ---- */
+  .page-btn { min-height: 38px; min-width: 38px; padding: 8px 12px !important; }
+  #searchWrapper #pageSize, #searchWrapper #searchInput,
+  #searchWrapper #addNewBtn, #searchWrapper #bulkRemBtn, #searchWrapper #commitFilter { height: 38px !important; box-sizing: border-box; }
+  #loginBtn, #refreshBtn, #logoutBtn { min-height: 40px; }
+
+  /* ---- Edit / Add popup = bottom sheet ---- */
+  #editPopup { align-items: flex-end !important; }
+  #editPopup .edit-content {
+    width: 100% !important; max-width: 100% !important; max-height: 92vh; max-height: 92dvh;
+    border-radius: 18px 18px 0 0 !important;
+  }
+  #editPopup #editFields { padding: 12px 16px !important; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #editPopup input, #editPopup textarea, #editPopup select { font-size: 16px !important; min-height: 44px; }
+  #editPopup textarea { min-height: 80px; }
+  #editPopup .popup-actions {
+    gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -4px 12px rgba(0,0,0,.06);
+  }
+  #editPopup .popup-actions button { flex: 1; min-height: 46px; font-size: 15px; }
 }
 </style>
 
@@ -3104,6 +3184,7 @@ async function openAddRecordForm(sheetName) {
 
     const { el: input, isTextarea, recentValues } = buildSmartField_(k, "");
     input.id = id;
+    mobileKeyboardHint_(input, k);
     if (isDateField_(k)) {
       // 🆕 Native date-picker (calendar se select karo), sheet format DD/MM/YYYY mein save hoga
       if (input.tagName !== "SELECT") {
@@ -3804,7 +3885,7 @@ const columns = Array.from(
 ).filter(c =>
   c && !hiddenCols.has(c)
 );
-  let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
+  let html = mobileSortBar_(columns) + "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
   pageData.forEach(row => {
@@ -3914,6 +3995,7 @@ const msg =
   });
   html += "</tbody></table>";	
   el("tableContainer").innerHTML = html;
+  labelCardCells_();   // 🆕 v1.228: mobile card view ke liye har cell par column ka naam
   renderPagination(totalPages);
 }
 /* ===========================
@@ -4874,6 +4956,7 @@ async function openEditRecord(incomingEnc, e){
       }
     }
     input.id = id;
+    mobileKeyboardHint_(input, k);
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
     group.appendChild(label);
@@ -4974,6 +5057,31 @@ function renderPagination(total){
   el("pagination").innerHTML=html;
 }
 function gotoPage(p){ currentPage=p; renderTable(); }
+// 🆕 v1.228: Mobile card view mein header nahi dikhta, isliye "क्रम" dropdown (desktop par hidden)
+function mobileSortBar_(cols){
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  let o = '<option value="">— चुनें —</option>';
+  cols.forEach(c => {
+    const on = (typeof sortColumn !== "undefined" && sortColumn === c);
+    o += '<option value="' + esc(c) + '"' + (on ? " selected" : "") + ">" + esc(c) + (on ? (sortDir === 1 ? " ▲" : " ▼") : "") + "</option>";
+  });
+  return '<div class="m-sort"><span>↕ क्रम</span><select onchange="if(this.value){sortBy(this.value)}">' + o + "</select></div>";
+}
+// 🆕 v1.228: raashi / mobile wale fields par phone ka sahi (numeric) keyboard
+function mobileKeyboardHint_(input, key){
+  if (!input || input.tagName !== "INPUT" || input.type !== "text") return;
+  const k = String(key || "").toLowerCase();
+  if (/mobile|phone|contact|whatsapp/.test(k)) input.setAttribute("inputmode", "tel");
+  else if (/amount|received|pledged|paid|credit|debit|payment|balance|raashi|राशि/.test(k)) input.setAttribute("inputmode", "decimal");
+}
+function labelCardCells_(){
+  const t = document.querySelector("#tableContainer table");
+  if (!t) return;
+  const heads = Array.from(t.querySelectorAll("thead th")).map(h => h.textContent.trim());
+  t.querySelectorAll("tbody tr").forEach(tr => {
+    Array.from(tr.children).forEach((td, i) => td.setAttribute("data-label", heads[i] || ""));
+  });
+}
 function sortBy(c){ if(sortColumn===c){ sortDir*=-1; } else { sortColumn=c; sortDir=1; } renderTable(); }
 
 
