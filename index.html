@@ -520,6 +520,13 @@ td.txt, td.nm, td.lg { white-space: pre-line; overflow-wrap: break-word; }  /* D
 td.nw { white-space: nowrap; }                                               /* raashi: hamesha 1 line */
 td.dt { white-space: nowrap; }                                               /* date: desktop par 1 line; mobile par jagah kam ho to 2 line */
 td.act-cell { vertical-align: top; }
+.action-link .ic { display: none; }          /* desktop par pehle ki tarah sirf naam */
+.action-link .lb { display: inline; }
+/* Header row: raashi ke header raashi ke saath right, Actions beech mein, chhote header 1 line mein */
+th.th-num { text-align: right; white-space: nowrap; }
+th.th-dt  { white-space: nowrap; }
+th.th-act { text-align: center; }
+th { vertical-align: middle; }
 
 /* ===== 📱 MOBILE: table ke saare column screen mein fit — 1 line, nahi to 2, nahi to 3 ===== */
 @media (max-width: 700px) {
@@ -535,23 +542,43 @@ td.act-cell { vertical-align: top; }
   td.dt { white-space: normal; }
   td.nm { min-width: 68px; }             /* naam 3 line tak mein aa jaye, 5-6 mein na tute */
   td.lg { min-width: 56px; }             /* details / notes / address jaise lambe text */
-  td.act-cell { white-space: normal; width: 1%; }
-  /* Action buttons: ek lambi line ki jagah 2 line mein (jahan zaroorat ho) */
+  td.act-cell { white-space: normal; width: 1%; text-align: center; vertical-align: middle; }
+  /* Actions column screen ke right kinare chipki rahe — baaki column slide hon to bhi buttons hamesha dabane ko mile */
+  td.act-cell, th.th-act {
+    position: sticky; right: 0;
+    background: #fff;
+    box-shadow: -3px 0 5px rgba(0,0,0,.10);
+  }
+  th.th-act { background: #f0f4ff; z-index: 3; }
+  td.act-cell { z-index: 2; }
+  .birthdayRow td.act-cell { background: #fff3cd; }
+  .alert-row td.act-cell { background: #fff0f0; }
+  /* Action buttons: ungli se dabane layak bade (36px), center mein, ek line mein 3 → max 2 row (6 button tak) */
   .action-wrap {
     display: flex !important;
     flex-wrap: wrap;
-    gap: 4px;
+    justify-content: center;
+    align-content: center;
+    gap: 5px !important;
     white-space: normal !important;
     width: max-content;
-    max-width: 96px;                     /* ~2 button ek line mein, baaki neeche ki line mein */
+    max-width: 122px;                    /* 3 × 36px + 2 × 5px (+ thoda margin) */
+    margin: 0 auto;
   }
   .action-wrap a, td.act-cell .action-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     margin: 0 !important;
-    padding: 3px 4px !important;
-    font-size: 10px !important;
-    line-height: 1.25 !important;
-    white-space: nowrap;
+    padding: 0 !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    border-radius: 9px;
   }
+  .action-link .lb { display: none; }
+  .action-link .ic { display: inline; }
   .page-btn { padding: 6px 9px; }
   .card { padding: 10px 8px; }           /* table ko screen ki zyada chaudai mile */
   img, svg, video, canvas { max-width: 100%; height: auto; }
@@ -3620,6 +3647,23 @@ function sortLatestFirst_(rows, allData) {
 
 // Column ke naam se cell ka type: naam / lamba text / normal text (mobile par width tay karne ke liye)
 // "11/10/2026" → "11/10/<wbr>2026": mobile par jagah kam ho to saal neeche ki line mein aa sakta hai
+// Boli / Donation ke header: chhote aur saaf naam (sirf screen par; export mein asli column naam hi jaate hain)
+function headerLabel_(tab, col) {
+  if (tab === "Boli" || tab === "Donation") {
+    const c = String(col).trim();
+    if (/^pledged/i.test(c)) return tab === "Boli" ? "बोली राशि" : "सहयोग राशि";
+    if (/^paid/i.test(c)) return "जमा";
+    if (/pending|\bdue\b|baki|बाकी/i.test(c)) return "बाकी";
+    if (/^commitments?$/i.test(c)) return "वादा";
+  }
+  return col;
+}
+function thClass_(col) {
+  const cl = String(col).toLowerCase();
+  if (/amount|received|pledged|paid|credit|debit|payment|balance|closing|pending/.test(cl)) return "th-num";
+  if (cl.includes("date")) return "th-dt";
+  return "";
+}
 function dateWbr_(t) {
   return String(t == null ? "" : t).replace(/^(\d{1,2}\/\d{1,2}\/)(\d{2,4})$/, "$1<wbr>$2");
 }
@@ -3753,8 +3797,8 @@ const columns = Array.from(
   c && !hiddenCols.has(c)
 );
   let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
-  columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
-  html += "<th>Actions</th></tr></thead><tbody>";
+  columns.forEach(c => html += `<th class="${thClass_(c)}" data-col="${escHtml_(c)}" onclick="sortBy('${c.replace(/'/g,"\\'")}')">${headerLabel_(currentTab, c)}</th>`);
+  html += '<th class="th-act">Actions</th></tr></thead><tbody>';
   pageData.forEach(row => {
 
   let rowClass = "";
@@ -3869,27 +3913,27 @@ const msg =
    =========================== */
 function renderActionButtons(row, encId) {
   let html = `<div class="action-wrap">
-    <a class="action-link print" href="#" onclick="viewRecord('${encId}', event)">View</a>`;
+    <a class="action-link print" href="#" onclick="viewRecord('${encId}', event)" title="View"><span class="ic">👁</span><span class="lb">View</span></a>`;
   const actions = ROLE_ACCESS[currentUser.role]?.[currentTab]?.canAction || [];
   const crudCfg = CRUD_ALLOWED_TABS[currentTab];
   if (crudCfg && crudCfg.allowEditDelete) {
     if (actions.includes("EDIT")) {
-      html += `<a class="action-link edit" href="#" onclick="openEditRecord('${encId}', event)">Edit</a>`;
+      html += `<a class="action-link edit" href="#" onclick="openEditRecord('${encId}', event)" title="Edit"><span class="ic">✏️</span><span class="lb">Edit</span></a>`;
     }
     if (actions.includes("DELETE")) {
-      html += `<a class="action-link delete" href="#" onclick="deleteRecord('${encId}', event)">Delete</a>`;
+      html += `<a class="action-link delete" href="#" onclick="deleteRecord('${encId}', event)" title="Delete"><span class="ic">🗑</span><span class="lb">Delete</span></a>`;
     }
   }
   if ((currentTab === "Boli" || currentTab === "Donation") && actions.includes("EDIT")) {
-    html += `<a class="action-link edit" href="#" onclick="openCommitments('${encId}', event)">📅 वादा</a>`;
+    html += `<a class="action-link edit" href="#" onclick="openCommitments('${encId}', event)" title="वादा"><span class="ic">📅</span><span class="lb">वादा</span></a>`;
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
-    html += `<a class="action-link edit" href="#" onclick="openAttendance_('${encId}', event)">👥 उपस्थिति</a>`;
+    html += `<a class="action-link edit" href="#" onclick="openAttendance_('${encId}', event)" title="उपस्थिति"><span class="ic">👥</span><span class="lb">उपस्थिति</span></a>`;
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
     if (_nm && !isAnonMember_(_nm)) {
-      html += `<a class="action-link print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)">📄 खाता</a>`;
+      html += `<a class="action-link print" href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)" title="खाता"><span class="ic">📄</span><span class="lb">खाता</span></a>`;
     }
   }
   if (actions.includes("WHATSAPP")) {
@@ -3904,7 +3948,7 @@ function renderActionButtons(row, encId) {
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
-    html += `<a class="action-link whatsapp" target="_blank" href="${waUrl}">WhatsApp</a>`;
+    html += `<a class="action-link whatsapp" target="_blank" href="${waUrl}" title="WhatsApp"><span class="ic">💬</span><span class="lb">WhatsApp</span></a>`;
   }
   html += `</div>`;
   return html;
@@ -4927,7 +4971,7 @@ function getVisibleTableData() {
   if (!table) return { headers: [], rows: [] };
 
   const headers = Array.from(table.querySelectorAll("thead th"))
-    .map(th => th.innerText.trim());
+    .map(th => (th.dataset.col || th.innerText).trim());
 
   let trList = Array.from(table.querySelectorAll("tbody tr"));
   // 🆕 Screen par latest-first dikhta hai, par export hamesha original ascending order mein
@@ -4935,7 +4979,10 @@ function getVisibleTableData() {
     trList.sort((a, b) => (+a.dataset.seq) - (+b.dataset.seq));
   }
   const rows = trList.map(tr =>
-      Array.from(tr.children).map(td => td.innerText.trim())
+      Array.from(tr.children).map(td =>
+        td.classList.contains("act-cell")
+          ? Array.from(td.querySelectorAll(".lb")).map(x => x.textContent).join(" ")
+          : td.innerText.trim())
     );
 
   return { headers, rows };
@@ -5126,6 +5173,7 @@ function exportPDF() {
   clone.style.borderCollapse = "collapse";
 
   clone.querySelectorAll("th").forEach(th => {
+    if (th.dataset.col) th.textContent = th.dataset.col; // 🆕 PDF mein asli column naam
     th.style.border = "1px solid #bbb";
     th.style.background = "#f2f2f2";
     th.style.padding = "5px";
