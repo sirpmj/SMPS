@@ -8,6 +8,8 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.233  (login ke baad Tabs + Dashboard cards, mobile)
+   - Tabs: 4 per row, sab ek saath, barabar height; Cards: 2 per row, akela bachne wala card poori chaudai mein
   v1.232  (Members freeze + login payment link + fully-paid filter)
    - Members tab: "MemberID" ki jagah "Member" (naam) wala column freeze, aur chhota (92px)
    - Login page par naya card: bank details (copy button) + "पेमेंट लिंक भेजें" (राशि ke saath / bina राशि, WhatsApp ya copy)
@@ -35,7 +37,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.232"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.233"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -790,6 +792,34 @@ td.act-cell { text-align: center; }
   #contentArea td.act-cell { padding: 5px 3px !important; width: 1%; white-space: normal; }
   .ab-btn { height: 32px; min-width: 34px; padding: 0 8px; font-size: 11.5px; }
   .abtns, .ab-row { gap: 4px; }
+}
+
+/* ===== 🆕 v1.233: login ke baad ke Tabs + Dashboard cards (mobile) ===== */
+@media (max-width: 600px) {
+  /* Tabs: 4 per row, sab ek saath dikhein, barabar height, text 2 line tak */
+  #tabs.tabs { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-items: stretch; padding: 2px 0 6px; overflow: visible; }
+  #tabs .tab {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    white-space: normal; overflow-wrap: break-word; box-sizing: border-box;
+    min-height: 40px; margin: 0; padding: 6px 3px !important;
+    font-size: 11px !important; line-height: 1.2; border-radius: 10px;
+  }
+  #tabs .tab.tab-long { font-size: 9.5px !important; letter-spacing: -.1px; }
+  #tabs .tab:hover { transform: none; }
+  #tabs .tab:active { transform: scale(.96); }
+
+  /* Dashboard cards: 2 per row, akela bachne wala + "wide" card poori chaudai */
+  #mainDashboard.dashboard { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #mainDashboard .dash-card {
+    flex: none !important; min-width: 0; box-sizing: border-box; padding: 10px 8px; border-radius: 12px;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  }
+  #mainDashboard .dash-card-wide, #mainDashboard .dash-card-full { grid-column: 1 / -1; }
+  #mainDashboard .dash-card h4 { margin: 0; font-size: 11.5px; line-height: 1.25; }
+  #mainDashboard .dash-card p { margin: 0; font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
+  #mainDashboard .dash-card-wide p { font-size: 15px; }
+  #mainDashboard .dash-card small { font-size: 11px; opacity: .8; }
+  #mainDashboard .dash-card[onclick]:active { transform: scale(.98); }
 }
 </style>
 
@@ -2482,7 +2512,20 @@ async function renderMainDashboard(forceFresh){
 
   }catch(e){
     console.error("Dashboard error:", e);
+  } finally {
+    fixDashboardRows_();   // 🆕 v1.233: mobile par adhoori (akeli) card wali row poori chaudi ho jaye
   }
+}
+// 🆕 v1.233: Mobile par cards 2-per-row; jahan ek card akela bach jaye wo poori chaudai le (CSS: .dash-card-full)
+function fixDashboardRows_() {
+  const d = document.getElementById("mainDashboard");
+  if (!d) return;
+  const kids = Array.from(d.children);
+  kids.forEach(k => k.classList.remove("dash-card-full"));
+  let run = [];
+  const flush = () => { if (run.length % 2 === 1) run[run.length - 1].classList.add("dash-card-full"); run = []; };
+  kids.forEach(k => { if (k.classList.contains("dash-card-wide")) flush(); else run.push(k); });
+  flush();
 }
 
 /* Load RoleAccess from sheet */
@@ -2528,6 +2571,7 @@ function buildTabs() {
     d.className = "tab" + (first ? " active" : "");
     first = false;
     d.textContent = tabName;
+    if (tabName.split(/\s+/).some(w => w.length >= 10)) d.classList.add("tab-long"); // 🆕 v1.233: lamba shabd mobile par beech se na tute
     // ✅ tab click = auto refresh
     d.onclick = () => setActiveTab(tabName);
     tabs.appendChild(d);
