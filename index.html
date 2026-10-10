@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- smps v1.226: Boli/Donation toolbar line fix, action buttons 2-line + center + bade, login 0 ke saath, footer mein version -->
 <html lang="hi">
 <head>
 
@@ -555,21 +556,39 @@ td.act-cell { vertical-align: top; }
   td.dt { white-space: normal; }
   td.nm { min-width: 68px; }             /* naam 3 line tak mein aa jaye, 5-6 mein na tute */
   td.lg { min-width: 56px; }             /* details / notes / address jaise lambe text */
-  td.act-cell { white-space: normal; width: 1%; }
-  /* Action buttons: ek lambi line ki jagah 2 line mein (jahan zaroorat ho) */
+  td.act-cell { white-space: normal; width: 1%; text-align: center; vertical-align: middle; }
+  /* Actions column screen ke right kinare chipki rahe — baaki column slide hon to bhi buttons hamesha dabane ko mile */
+  td.act-cell, #contentArea thead th:last-child {
+    position: sticky; right: 0;
+    background: #fff;
+    box-shadow: -3px 0 5px rgba(0,0,0,.10);
+  }
+  #contentArea thead th:last-child { background: #f0f4ff; z-index: 3; text-align: center; }
+  td.act-cell { z-index: 2; }
+  .birthdayRow td.act-cell { background: #fff3cd; }
+  .alert-row td.act-cell { background: #fff0f0; }
+  /* Action buttons: ek line mein 3 → 6 button tak sirf 2 line; center + barabar ऊँचाई; ungli se dabane layak (36px) */
   .action-wrap {
     display: flex !important;
     flex-wrap: wrap;
-    gap: 4px;
+    justify-content: center;
+    align-content: center;
+    gap: 5px !important;
     white-space: normal !important;
     width: max-content;
-    max-width: 96px;                     /* ~2 button ek line mein, baaki neeche ki line mein */
+    max-width: 170px;
+    margin: 0 auto;
   }
   .action-wrap a, td.act-cell .action-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
     margin: 0 !important;
-    padding: 3px 4px !important;
-    font-size: 10px !important;
-    line-height: 1.25 !important;
+    padding: 0 6px !important;
+    font-size: 10.5px !important;
+    line-height: 1.1 !important;
+    border-radius: 8px;
     white-space: nowrap;
   }
   .page-btn { padding: 6px 9px; }
@@ -700,7 +719,7 @@ td.act-cell { vertical-align: top; }
         <div class="card login-card" style="width:100%;max-width:380px;">
          <h2 id="loginTitle" style="margin-top:0">🔐 Login</h2>
 <label id="labelMobile">User Name</label>
-<input id="username" type="text" placeholder="10 अंको का मोबाइल नंबर डालें">
+<input id="username" type="text" placeholder="10 अंको का मोबाइल नंबर डालें (0 के साथ भी चलेगा)">
 <label>OTP</label>
 <input id="otpInput" type="text" placeholder="WhatsApp पर आया OTP डालें" style="display:none">
 
@@ -1625,6 +1644,7 @@ async function loadFooter(){
     if(contact) thirdLineParts.push(`<a href="tel:${contact}">✆${contact}</a>`);
     if(email) thirdLineParts.push(`<a href="mailto:${email}">✉️${email}</a>`);
     thirdLineParts.push(`©${year}`);
+    thirdLineParts.push(`v${APP_VERSION}`);
     const thirdLine = thirdLineParts.join('&nbsp;•&nbsp;');
     // Set footer HTML
     footerEl.innerHTML = `
@@ -1639,9 +1659,20 @@ async function loadFooter(){
   }
 }
 
+// 🆕 Mobile number ko 10 ank mein badlo: 09876543210 / +91 98765 43210 / 919876543210 sab chalenge
+function normalizeLoginMobile_(v) {
+  let d = String(v || "").replace(/\D/g, "");
+  if (d.length === 13 && d.startsWith("091")) d = d.slice(3);       // 0 91 XXXXXXXXXX
+  else if (d.length === 12 && d.startsWith("91")) d = d.slice(2);   // 91 XXXXXXXXXX
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);    // 0 XXXXXXXXXX
+  return d;
+}
+
+const APP_VERSION = "1.226"; // har update par badhta hai (footer mein dikhta hai)
+
 document.getElementById("sendOtpBtn").onclick = async () => {
 
-  const mobile = username.value.replace(/\D/g, "");
+  const mobile = normalizeLoginMobile_(username.value);
 
   if (mobile.length !== 10) {
     alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
@@ -1695,7 +1726,7 @@ document.getElementById("sendOtpBtn").onclick = async () => {
 
 document.getElementById("verifyOtpBtn").onclick = async () => {
   const otp = otpInput.value.trim();
-  const mobile = username.value.replace(/\D/g, "");
+  const mobile = normalizeLoginMobile_(username.value);
 
   if (otp.length !== 6) {
     alert("6 अंकों का OTP डालें");
