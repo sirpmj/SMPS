@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.227  (search row fix)
+   - Har tab mein search row pehle jaisi ek line mein (page size + search bar + buttons)
+   - "Add New" ki jagah sirf "+" button; "बाकी + वादा वाले ऊपर" ki jagah chhota "बाकी+वादा"; Reminders mobile par sirf icon
   v1.226  (mobile fixes)
    - Mobile table: Action buttons ab hamesha max 2 line mein (equal size, proper gap) -> Name column ko zyada jagah
    - Login: mobile number 0 ke saath bhi accept (09876543210 / +91 / 91 sab chalega)
@@ -16,7 +19,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.226"; console.info("SMPS app", window.APP_VERSION);</script>
+<script>window.APP_VERSION = "v1.227"; console.info("SMPS app", window.APP_VERSION);</script>
 
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
@@ -657,22 +660,21 @@ td.act-cell { vertical-align: top; }
   }
 }
 @media (max-width: 700px) {
-  /* Search row (Boli / Donation par filter + buttons ki wajah se search bar dab jaata tha) */
-  #searchWrapper { flex-wrap: wrap !important; gap: 6px !important; }
-  #searchWrapper #pageSize { order: 1; flex: 0 0 auto; }
-  #searchWrapper #customSize { order: 1; flex: 0 0 auto; }
+  /* v1.227: search row har tab mein pehle jaisi EK line mein — sab chhota */
+  #searchWrapper { flex-wrap: nowrap !important; gap: 4px !important; }
+  #searchWrapper #pageSize { flex: 0 0 auto; padding: 4px 2px !important; font-size: 12px; width: 52px; }
+  #searchWrapper #customSize { flex: 0 0 auto; width: 56px !important; }
   #searchWrapper #searchInput {
-    order: 2;
-    flex: 1 1 calc(100% - 80px);
-    min-width: 120px;
-    width: auto;
-    height: 36px !important;
-    padding: 6px 10px !important;
-    font-size: 14px !important;
+    flex: 1 1 0; min-width: 0; width: auto;
+    height: 32px !important; padding: 4px 8px !important; font-size: 13px !important;
   }
-  #searchWrapper #addNewBtn,
-  #searchWrapper #bulkRemBtn { order: 3; flex: 0 0 auto; padding: 8px 12px; font-size: 13px; }
-  #searchWrapper #commitFilter { order: 3; flex: 1 1 140px; min-width: 0; max-width: 100%; }
+  #searchWrapper #addNewBtn { flex: 0 0 auto; padding: 4px 10px !important; font-size: 15px !important; line-height: 1.2; }
+  #searchWrapper #bulkRemBtn { flex: 0 0 auto; padding: 4px 8px !important; font-size: 14px !important; }
+  #searchWrapper #bulkRemBtn .rem-txt { display: none; }
+  #searchWrapper #commitFilter {
+    flex: 0 1 auto; width: auto; max-width: 92px; min-width: 0;
+    padding: 4px 2px !important; font-size: 11px !important;
+  }
 }
 </style>
 
@@ -870,11 +872,11 @@ style="background:#008000;color:#fff;font-size:16px">
          placeholder=" 🔍 Search in table...">
 
   <!-- ADD NEW (role/tab permission ke hisaab se JS dikhata/chupata hai) -->
-  <button id="addNewBtn" type="button" style="display:none;background:#1a9c4b;color:#fff;border:none;">➕ Add New</button>
+  <button id="addNewBtn" type="button" title="Add New" aria-label="Add New" style="display:none;background:#1a9c4b;color:#fff;border:none;">➕</button>
 
   <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
   <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
-    <option value="pending">📅 बाकी + वादा वाले ऊपर</option>
+    <option value="pending">बाकी+वादा</option>
     <option value="">सभी रिकॉर्ड</option>
     <option value="today">आज का वादा</option>
     <option value="tomorrow">कल का वादा</option>
@@ -882,7 +884,7 @@ style="background:#008000;color:#fff;font-size:16px">
     <option value="overdue">वादा निकल गया</option>
     <option value="none">वादा नहीं (बाकी है)</option>
   </select>
-  <button id="bulkRemBtn" type="button" onclick="openBulkReminders_()" style="display:none;background:#25a244;color:#fff;border:none;width:auto">📨 Reminders</button>
+  <button id="bulkRemBtn" type="button" onclick="openBulkReminders_()" style="display:none;background:#25a244;color:#fff;border:none;width:auto" title="Reminders">📨<span class="rem-txt"> Reminders</span></button>
 
 </div>
 
