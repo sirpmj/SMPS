@@ -8,6 +8,10 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.239  (सलाहकार upar + कार्यकारिणी neeche, pay link amount edit, meeting notes + photo)
+   - वरिष्ठ सलाहकार upar, कार्यकारिणी neeche (mobile par tap se khulti); naam + number ek line (number par tap = call)
+   - Payment link page: राशि edit kar sakte hain (UPI button + QR apne aap update); auto-redirect hata diya
+   - Meetings: Attn popup mein "मीटिंग में क्या हुआ" (text) + photo bhi save; View popup mein photo dikhti hai
   v1.238  (सलाहकार+कार्यकारिणी ek card + और देखें, footer gap theek)
    - वरिष्ठ सलाहकार aur कार्यकारिणी ek hi card mein; jo na aaye wo "और देखें" se; khaali jagah ka use
    - Footer aur cards ke beech ki extra jagah hatai (login ke time khaali dashboard/tabs/table ke dibbe ab jagah nahi gherte)
@@ -54,7 +58,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.238"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.239"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -1017,6 +1021,36 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
   .ppl-body { grid-template-columns: minmax(0, 1fr); gap: 10px; max-height: 200px; }
   .site-footer { margin-top: 8px !important; }
 }
+/* ===== 🆕 v1.239: सलाहकार (upar) + कार्यकारिणी (neeche), naam + number ek line ===== */
+.ppl-body { display: block !important; max-height: 340px; }
+.ppl-body.open { max-height: none; }
+.ppl-off { margin-top: 12px; }
+.ppl-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 4px 0; border-bottom: 1px solid #eef2fb; font-size: 13px; }
+.ppl-n { min-width: 0; overflow-wrap: anywhere; }
+.ppl-sub { color: #64748b; font-size: 12px; }
+.ppl-tel { color: #0b63d6; font-weight: 600; white-space: nowrap; text-decoration: none; }
+.ppl-adv #homeLeftContent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+.ppl-off #homeRightContent { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ppl-off .official-block { border: 1px solid #e3ecfb; border-radius: 8px; padding: 6px 9px; margin: 0; min-width: 0; }
+.ppl-off .official-title { font-size: 11.5px; color: #64748b; font-weight: 600; margin-bottom: 2px; }
+.ppl-off .official-block .ppl-row { border-bottom: none; padding: 2px 0; }
+@media (max-width: 1100px) { .ppl-off #homeRightContent { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .ppl-body { max-height: none !important; overflow: visible !important; }
+  .ppl-body.clamped::after { display: none; }
+  .ppl-adv #homeLeftContent { grid-template-columns: minmax(0, 1fr); }
+  .ppl-off { margin-top: 10px; }
+  .ppl-off .ppl-h { display: flex; justify-content: space-between; align-items: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .ppl-off .ppl-h::after { content: "▴"; font-size: 13px; color: #64748b; }
+  .ppl-off.collapsed .ppl-h::after { content: "▾"; }
+  .ppl-off.collapsed #homeRightContent { display: none; }
+  .ppl-off.collapsed .ppl-h { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .ppl-off #homeRightContent { display: block; }
+  .ppl-off .official-block { display: flex; gap: 8px; border: none; border-bottom: 1px solid #eef2fb; border-radius: 0; padding: 5px 0; }
+  .ppl-off .official-title { flex: 0 0 78px; margin: 0; padding-top: 3px; }
+  .ppl-off .official-names { flex: 1; min-width: 0; }
+  .ppl-off .official-block .ppl-row { padding: 3px 0; }
+}
 </style>
 
 
@@ -1474,6 +1508,7 @@ function parseDDMMYYYY(dateStr){
   const [dd, mm, yyyy] = parts.map(Number);
   return new Date(yyyy, mm - 1, dd);
 }
+function isMeetingPhotoCol_(c) { return currentTab === "Meetings" && /^(meeting[\s_]*)?(photo|image|फोटो)s?$/i.test(String(c || "").trim()); }
 function getHiddenColumnsForTab(tabName){
   if(!SETTINGS || !tabName) return new Set();
 
@@ -2263,6 +2298,7 @@ document.addEventListener("click", function (e) {
 /* ===========================
    Render Home (pre-login)
    =========================== */
+function pplTel_(m) { return m ? `<a class="ppl-tel" href="tel:${m}">${m}</a>` : ""; }
 async function renderLoginHomeStructure(){
   try{
     const data = await fetchSheet("HomeStructure");
@@ -2280,15 +2316,12 @@ if (row["Salakar"]) {
     .map(n => n.trim())
     .filter(Boolean);
   names.forEach(n => {
-    // comma se split
-    const parts = n.split(",").map(p => p.trim());
-    // first line = name
-    leftHtml += `<div class="advisor-name">• ${parts[0]}</div>`;
-
-    // second line = age / extra info (if exists)
-    if (parts[1]) {
-      leftHtml += `<div class="advisor-sub">${parts[1]}</div>`;
-    }
+    // 🆕 v1.239: naam (+ chhota extra) LEFT, mobile number RIGHT — ek hi line mein
+    const mob = (n.match(/(\d{10})/) || [])[1] || "";
+    const clean = n.replace(/[-–,]?\s*\d{10}/, "").trim();
+    const parts = clean.split(",").map(p => p.trim()).filter(Boolean);
+    const sub = parts.slice(1).join(", ");
+    leftHtml += `<div class="ppl-row"><span class="ppl-n">• ${parts[0] || clean}${sub ? `<span class="ppl-sub"> · ${sub}</span>` : ""}</span>${pplTel_(mob)}</div>`;
   });
 }
      /* ===== Officials ===== */
@@ -2302,7 +2335,7 @@ if (row["Padhadhikari"]) {
     const names = parts[1].split(",").map(n => n.trim());
 
     rightHtml += `<div class="official-block">
-                    <div class="official-title">${title}</div>`;
+                    <div class="official-title">${title}</div><div class="official-names">`;
     names.forEach(n => {
       // mobile extract (last 10 digit)
       const mobileMatch = n.match(/(\d{10})$/);
@@ -2312,13 +2345,9 @@ if (row["Padhadhikari"]) {
         .replace(/-\s*\d{10}$/, "")
         .replace(/\d{10}$/, "")
         .trim();
-      rightHtml += `
-        <div class="official-name">
-          • ${cleanName}
-          ${mobile ? `<span class="official-mobile"> ${mobile}</span>` : ""}
-        </div>`;
+      rightHtml += `<div class="ppl-row"><span class="ppl-n">• ${cleanName}</span>${pplTel_(mobile)}</div>`;
     });
-    rightHtml += `</div>`;
+    rightHtml += `</div></div>`;
   });
 }
     });
@@ -3500,6 +3529,7 @@ async function openAddRecordForm(sheetName) {
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
     if (/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
+    if (isMeetingPhotoCol_(k)) return; // 🆕 v1.239
     // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
     // bekaar/duplicate hai (Name column already hai) — Add Member form mein isse
     // bilkul mat dikhao.
@@ -4227,7 +4257,7 @@ const hiddenCols = getHiddenColumnsForTab(currentTab);
 const columns = Array.from(
   new Set(tableData.flatMap(row => Object.keys(row)))
 ).filter(c =>
-  c && !hiddenCols.has(c)
+  c && !hiddenCols.has(c) && !isMeetingPhotoCol_(c)   // 🆕 v1.239: photo ka lamba data table mein nahi
 );
   let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
@@ -4573,11 +4603,11 @@ function openCommitments(incomingEnc, e) {
 document.addEventListener("DOMContentLoaded", function () {
   const q = new URLSearchParams(location.search);
   if (!q.has("pay")) return;
-  const am = (q.get("am") || "").replace(/[^\d.]/g, "");
   const tn = q.get("tn") || "Samaj Sahyog";
-  let upi = "upi://pay?pa=" + encodeURIComponent(SOCIETY_BANK.upi) +
-            "&pn=" + encodeURIComponent(SOCIETY_BANK.name) + "&cu=INR&tn=" + encodeURIComponent(tn);
-  if (am) upi += "&am=" + am;
+  const cleanAmt = v => { v = String(v || "").replace(/[^\d.]/g, ""); const p = v.split("."); return p.length > 1 ? p[0] + "." + p.slice(1).join("").slice(0, 2) : v; };
+  const mkUpi = a => "upi://pay?pa=" + encodeURIComponent(SOCIETY_BANK.upi) +
+            "&pn=" + encodeURIComponent(SOCIETY_BANK.name) + "&cu=INR&tn=" + encodeURIComponent(tn) + (a ? "&am=" + a : "");
+  let upi = mkUpi(cleanAmt(q.get("am")));
 
   const wrap = document.createElement("div");
   wrap.style.cssText = "position:fixed;inset:0;z-index:99999;background:#f3f6fb;overflow:auto;padding:16px;font-family:system-ui,sans-serif;";
@@ -4585,10 +4615,12 @@ document.addEventListener("DOMContentLoaded", function () {
     <div style="max-width:420px;margin:20px auto;background:#fff;border-radius:14px;padding:20px;box-shadow:0 4px 18px rgba(0,0,0,.12);">
       <h2 style="margin:0 0 4px;text-align:center">🙏 जय श्रीयादे माता की</h2>
       <p style="text-align:center;margin:0 0 14px;color:#555"><b>${SOCIETY_BANK.name}</b></p>
-      ${am ? `<p style="text-align:center;font-size:22px;margin:8px 0"><b>₹ ${am}</b></p>` : ""}
-      <a href="${upi}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-size:18px;font-weight:700;">📲 UPI से भुगतान करें</a>
+      <label for="payAmt" style="display:block;text-align:center;font-size:13px;color:#555;margin-bottom:4px">राशि (₹) — बदल सकते हैं</label>
+      <input id="payAmt" type="text" inputmode="decimal" autocomplete="off" value="${cleanAmt(q.get("am"))}" placeholder="राशि डालें"
+        style="display:block;width:100%;box-sizing:border-box;text-align:center;font-size:24px;font-weight:700;padding:10px;border:2px solid #cfe0fb;border-radius:10px;margin-bottom:12px;">
+      <a id="payBtn" href="${upi}" style="display:block;text-align:center;background:#1a9c4b;color:#fff;text-decoration:none;padding:14px;border-radius:10px;font-size:18px;font-weight:700;">📲 UPI से भुगतान करें</a>
       <div id="qrBox" style="display:flex;flex-direction:column;align-items:center;margin:14px 0 4px"></div>
-      <p style="font-size:12px;color:#777;text-align:center">बटन से UPI app न खुले तो नीचे का UPI ID कॉपी करके किसी भी UPI app में डालें।</p>
+      <p style="font-size:12px;color:#777;text-align:center">राशि खाली हो तो UPI app में राशि डालनी होगी। बटन से UPI app न खुले तो नीचे का UPI ID कॉपी करके किसी भी UPI app में डालें।</p>
       <hr>
       <div style="font-size:14px;line-height:1.9">
         <div>🏦 ${SOCIETY_BANK.bank}</div>
@@ -4602,25 +4634,34 @@ document.addEventListener("DOMContentLoaded", function () {
     (navigator.clipboard ? navigator.clipboard.writeText(b.dataset.c) : Promise.reject())
       .then(() => { b.textContent = "✔ कॉपी हुआ"; }).catch(() => { prompt("कॉपी करें:", b.dataset.c); });
   });
-  // 🆕 QR code (दूसरे फोन से scan करने के लिए) — library न मिले तो QR छुपा रहेगा
-  try {
-    const sc = document.createElement("script");
-    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
-    sc.onload = () => {
-      try {
-        const box = document.getElementById("qrBox");
-        const holder = document.createElement("div");
-        box.appendChild(holder);
-        new QRCode(holder, { text: upi, width: 180, height: 180 });
+  // 🆕 v1.239: राशि edit karte hi UPI button + QR dono update (auto-redirect hata diya, taaki राशि badli ja sake)
+  const amtIn = wrap.querySelector("#payAmt"), payBtn = wrap.querySelector("#payBtn"), qrBox = wrap.querySelector("#qrBox");
+  let qrHolder = null;
+  const drawQR = () => {
+    if (!window.QRCode) return;
+    try {
+      if (!qrHolder) {
+        qrHolder = document.createElement("div"); qrBox.appendChild(qrHolder);
         const cap = document.createElement("div");
         cap.style.cssText = "font-size:12px;color:#777;margin-top:6px";
         cap.textContent = "दूसरे फोन के UPI app से यह QR scan करें";
-        box.appendChild(cap);
-      } catch (qe) { console.error(qe); }
-    };
+        qrBox.appendChild(cap);
+      }
+      qrHolder.innerHTML = "";
+      new QRCode(qrHolder, { text: upi, width: 180, height: 180 });
+    } catch (qe) { console.error(qe); }
+  };
+  amtIn.addEventListener("input", () => {
+    const v = cleanAmt(amtIn.value);
+    if (v !== amtIn.value) amtIn.value = v;
+    upi = mkUpi(v); payBtn.href = upi; drawQR();
+  });
+  try {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    sc.onload = drawQR;
     document.head.appendChild(sc);
   } catch (qe2) { console.error(qe2); }
-  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) setTimeout(() => { location.href = upi; }, 500);
 });
 
 
@@ -4705,6 +4746,7 @@ document.addEventListener("DOMContentLoaded", renderBankCard_);
 function updatePeopleMore_() {
   const body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
   if (!body || !btn) return;
+  if (window.matchMedia("(max-width: 600px)").matches) { btn.style.display = "none"; body.classList.remove("clamped", "open"); return; }
   if (body.classList.contains("open")) { btn.style.display = "block"; btn.textContent = "कम देखें ▴"; body.classList.remove("clamped"); return; }
   const more = body.scrollHeight > body.clientHeight + 4;
   body.classList.toggle("clamped", more);
@@ -4715,6 +4757,10 @@ document.addEventListener("DOMContentLoaded", function () {
   var body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
   if (!body || !btn) return;
   btn.addEventListener("click", function () { body.classList.toggle("open"); updatePeopleMore_(); });
+  // 🆕 v1.239: Mobile par वरिष्ठ सलाहकार upar khula, कार्यकारिणी heading par tap karne se khulti hai
+  var off = document.querySelector(".ppl-off"), offH = off && off.querySelector(".ppl-h");
+  if (offH) offH.addEventListener("click", function () { if (window.matchMedia("(max-width: 600px)").matches) off.classList.toggle("collapsed"); });
+  if (off && window.matchMedia("(max-width: 600px)").matches) off.classList.add("collapsed");
   ["homeLeftContent", "homeRightContent"].forEach(function (id) {
     var n = document.getElementById(id);
     if (n && window.MutationObserver) new MutationObserver(updatePeopleMore_).observe(n, { childList: true, subtree: true, characterData: true });
@@ -5050,6 +5096,28 @@ async function openMemberStatement_(encName, e) {
 /* ===========================
    👥 MEETING UPASTHITI (attendance) — Meetings sheet mein "Attendance" column chahiye
    =========================== */
+// 🆕 v1.239: photo ko canvas se chhota (JPEG) karo — maxChars se chhota hone tak size/quality ghatate jao
+function compressImage_(file, dims, quals, maxChars) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      for (const d of dims) {
+        const sc = Math.min(1, d / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * sc)); c.height = Math.max(1, Math.round(img.height * sc));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        for (const q of quals) {
+          const out = c.toDataURL("image/jpeg", q);
+          if (out.length <= maxChars) return resolve(out);
+        }
+      }
+      resolve(null);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("फोटो पढ़ नहीं पाया")); };
+    img.src = url;
+  });
+}
 function openAttendance_(incomingEnc, e) {
   if (e && e.preventDefault) e.preventDefault();
   const incoming = decodeURIComponent(incomingEnc || "");
@@ -5068,7 +5136,40 @@ function openAttendance_(incomingEnc, e) {
   const present = new Set(String(rec[key] || "").split(/[,\n]/).map(x => x.trim()).filter(Boolean));
   [...present].forEach(n => { if (!allNames.includes(n)) allNames.push(n); }); // purane guest naam bhi dikhen
 
+  // 🆕 v1.239: "मीटिंग में क्या हुआ" (text) + photo — column ke naam sheet se pehchane, na mile to Minutes / Photo
+  const notesKey = Object.keys(rec).find(k => /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i.test(k.trim())) || "Minutes";
+  const photoKey = Object.keys(rec).find(k => /^(meeting[\s_]*)?(photo|image|फोटो)s?$/i.test(k.trim())) || "Photo";
+  const origNotes = String(rec[notesKey] || ""), origPhoto = String(rec[photoKey] || "");
+  let photoFile = null, photoRemoved = false;
+
   const m = openModal_("👥 उपस्थिति — " + (rec["Date"] || "Meeting"));
+  const extra = document.createElement("div");
+  extra.style.cssText = "border:1px solid #e3ecfb;border-radius:10px;padding:10px;margin-bottom:10px;background:#f8fbff;";
+  extra.innerHTML = `
+    <div style="font-weight:700;margin-bottom:6px">📝 मीटिंग में क्या हुआ</div>
+    <textarea id="mtNotes" rows="3" placeholder="चर्चा / निर्णय / कार्यवाही लिखें…" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:16px;resize:vertical"></textarea>
+    <div style="font-weight:700;margin:10px 0 6px">📷 मीटिंग की फोटो</div>
+    <div id="mtPhotoWrap"></div>
+    <input id="mtPhotoIn" type="file" accept="image/*" style="display:none">`;
+  const notesEl = extra.querySelector("#mtNotes"); notesEl.value = origNotes;
+  const photoWrap = extra.querySelector("#mtPhotoWrap"), photoIn = extra.querySelector("#mtPhotoIn");
+  const drawPhoto = () => {
+    photoWrap.innerHTML = "";
+    const src = photoFile ? URL.createObjectURL(photoFile) : (!photoRemoved && /^(data:image\/|https?:\/\/)/i.test(origPhoto) ? origPhoto : "");
+    if (src) {
+      const im = document.createElement("img"); im.src = src;
+      im.style.cssText = "max-width:100%;max-height:200px;border-radius:8px;display:block;margin-bottom:6px;border:1px solid #ddd";
+      photoWrap.appendChild(im);
+    }
+    const row = document.createElement("div"); row.style.cssText = "display:flex;gap:8px;flex-wrap:wrap";
+    row.appendChild(modalBtn_(src ? "📷 बदलें" : "📷 फोटो जोड़ें", "#2563eb", () => photoIn.click()));
+    if (src) row.appendChild(modalBtn_("🗑️ हटाएं", "#b91c1c", () => { photoFile = null; photoRemoved = true; photoIn.value = ""; drawPhoto(); }));
+    photoWrap.appendChild(row);
+  };
+  photoIn.onchange = () => { if (photoIn.files && photoIn.files[0]) { photoFile = photoIn.files[0]; photoRemoved = false; drawPhoto(); } };
+  drawPhoto();
+  m.body.appendChild(extra);
+
   const cnt = document.createElement("div");
   cnt.style.cssText = "font-weight:700;margin-bottom:8px;";
   const search = document.createElement("input");
@@ -5116,9 +5217,37 @@ function openAttendance_(incomingEnc, e) {
       });
       if (res.success) {
         rec[key] = text; delete CACHE[currentTab];
+        // 🆕 v1.239: notes + photo alag se save (fail ho to उपस्थिति phir bhi save rehti hai)
+        let extraMsg = "";
+        const newNotes = notesEl.value.trim();
+        const data2 = {};
+        if (newNotes !== origNotes.trim()) data2[notesKey] = newNotes;
+        try {
+          if (photoFile) {
+            this.textContent = "Photo save ho rahi hai...";
+            let val = "";
+            const big = await compressImage_(photoFile, [1280, 1024], [0.72, 0.6], Infinity);
+            try {
+              const up = await callCrudBackend_({ action: "uploadImage", sheetName: currentTab, fileName: "meeting_" + String(rec["Date"] || recordId).replace(/[^\w-]+/g, "_") + "_" + Date.now() + ".jpg", mimeType: "image/jpeg", base64: big.split(",")[1] });
+              if (up && up.success && up.url) val = up.url;
+            } catch (ue) { console.warn("uploadImage nahi chala, chhoti photo sheet mein rakhenge:", ue); }
+            if (!val) {
+              val = await compressImage_(photoFile, [900, 720, 600, 520, 440, 380], [0.6, 0.5, 0.4], 48000) || "";
+              if (!val) extraMsg += "\nफोटो बहुत बड़ी है, save नहीं हो पाई।";
+            }
+            if (val) data2[photoKey] = val;
+          } else if (photoRemoved && origPhoto) data2[photoKey] = "";
+        } catch (pe) { console.error(pe); extraMsg += "\nफोटो: " + (pe.message || "error"); }
+        if (Object.keys(data2).length) {
+          try {
+            const r2 = await callCrudBackend_({ action: "editRow", sheetName: currentTab, idColumn, id: recordId, data: data2 });
+            if (r2.success) { Object.assign(rec, data2); delete CACHE[currentTab]; }
+            else extraMsg += "\nनोट्स/फोटो save नहीं हुए: " + (r2.msg || "error") + "\n(Meetings sheet mein '" + notesKey + "' aur '" + photoKey + "' naam ke column जोड़ें)";
+          } catch (e2) { console.error(e2); extraMsg += "\nनोट्स/फोटो save नहीं हुए: " + (e2.message || "network error"); }
+        }
         m.close();
         try { renderTable(); } catch (x) { console.error(x); }
-        alert("उपस्थिति save हो गई (" + present.size + " उपस्थित)।");
+        alert("उपस्थिति save हो गई (" + present.size + " उपस्थित)।" + (extraMsg ? "\n\n⚠️" + extraMsg : (Object.keys(data2).length ? "\nनोट्स / फोटो भी save हो गए।" : "")));
       } else {
         alert("❌ Error: " + (res.msg || "Save nahi ho paya") + "\n\n(Meetings sheet mein '" + key + "' naam ka column hona chahiye)");
         this.disabled = false; this.textContent = "Save";
@@ -5188,9 +5317,15 @@ function viewRecord(incomingEnc, e) {
 
   if (value === undefined || value === null || value === "") return "";
 
+  // 🆕 v1.239: photo (URL / data) → image dikhao, tap karne par poori khule
+  if (/photo|image|फोटो/i.test(label) && /^(data:image\/|https?:\/\/)/i.test(String(value))) {
+    value = `<a href="${value}" target="_blank" rel="noopener"><img src="${value}" alt="" style="max-width:100%;max-height:340px;border-radius:8px;display:block"></a>`;
+  }
+  const multi = /\n/.test(String(value)) ? ' style="white-space:pre-line"' : "";
+
   return `<tr>
     <td style="font-weight:bold;width:20%">${label}</td>
-    <td>${value}</td>
+    <td${multi}>${value}</td>
   </tr>`;
 }
 
@@ -5403,6 +5538,7 @@ async function openEditRecord(incomingEnc, e){
     if(kl === "password" || kl === "role") return; // hidden fields not editable here
     if(SYNTHETIC_DISPLAY_COLUMNS.includes(k)) return; // 🆕 webapp-computed, sheet mein hai hi nahi
     if(/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
+    if(isMeetingPhotoCol_(k)) return; // 🆕 v1.239: photo Attn popup se jodte hain
     const val = rec[k] || "";
     const id = "ef_"+k.replace(/\s+/g,"_");
     const label = document.createElement("label"); label.textContent = k;
