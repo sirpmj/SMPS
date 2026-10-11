@@ -8,6 +8,10 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.244  (login = sample D: header ke niche dono list (full, number naam ke paas) | Login, Meeting, Announcements, Bank; Meetings Attendance column; action buttons 3+2)
+   - Meetings tab: Attendance column hamesha dikhta hai (Settings mein hide ho ya sheet mein khaali ho tab bhi) — Minutes jaisa 2 line, click se poora
+   - Action buttons: jagah ho to ek line, kam ho to pehle jaisa 3 upar + 2 neeche (4: 2+2, 6: 3+3); button lambe nahi hote
+   - Login: bayein neele panel mein वरिष्ठ सलाहकार + कार्यकारिणी (poori list, 2 column, naam ke turant baad number); daayein Login -> Meeting -> Announcements -> Bank
   v1.243  (कार्यकारिणी pad ke hisaab se group, bank "Account No" + UPI ek line, action buttons width ke hisaab se 1/2 line)
    - कार्यकारिणी: ek pad ke log saath (अध्यक्ष / उपाध्यक्ष / कोषाध्यक्ष ...) — pad upar, uske neeche naam + number; pehle 5 naam, baaki "और देखें"
    - Bank card: "Account No" label, UPI ID ek hi line mein
@@ -1071,6 +1075,22 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; white-space: pre-line; overflow-wrap: anywhere; }
 .clamp2.open { display: block; -webkit-line-clamp: unset; }
 .clamp2:not(.open)::after { content: ""; }
+/* ===== 🆕 v1.244: login = sample D ===== */
+@media (min-width: 601px) {
+  .login-grid { align-items: stretch; }
+  .lg-right, .lg-left { align-self: start; }
+  .lg-left { background: linear-gradient(160deg, #0b3d66, #0b63d6 70%, #64b5ff); border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px rgba(11,99,214,.18); }
+  .lg-top { display: flex; flex-direction: column; gap: 12px; }
+}
+@media (min-width: 901px) {
+  .login-grid { grid-template-columns: minmax(0, 1fr) 330px; }
+  .lg-adv #homeLeftContent, .lg-off #homeRightContent { column-count: 2; column-gap: 26px; }
+}
+.lg-adv .ppl-row, .lg-off .ppl-row { justify-content: flex-start; flex-wrap: wrap; column-gap: 10px; break-inside: avoid; }
+.lg-adv .ppl-n, .lg-off .ppl-n { flex: 0 1 auto; }
+.lg-off .gp { break-inside: avoid; }
+@media (max-width: 600px) { .lg-bank { order: 4; } .lg-adv { order: 5; } .lg-off { order: 6; } }
+#bankCardBody .bk-row { padding: 3px 0 !important; }
 /* ===== 🆕 v1.241 ===== */
 /* Login layout: [सलाहकार | कार्यकारिणी] upar, [Meeting | Announcements] neeche; Login + Bank patle */
 .lg-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
@@ -1122,9 +1142,10 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 @media (max-width: 380px) { #bankCardBody .bk-row.bk-stack .bk-v b { font-size: 10.5px; } }
 
 /* Action buttons (sab tabs, desktop + mobile): baaki columns ki width ke hisaab se ek line ya do line */
-.abtns.ab-flex { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 5px; }
-.abtns.ab-flex .ab-btn { flex: 1 1 auto; }
-@media (max-width: 700px) { .abtns.ab-flex { gap: 4px; } }
+.abtns.ab-flex { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 5px; }
+.abtns.ab-flex .ab-row { display: flex; flex: 0 0 auto; justify-content: center; gap: 5px; }
+.abtns.ab-flex .ab-btn { flex: 0 0 auto; }
+@media (max-width: 700px) { .abtns.ab-flex, .abtns.ab-flex .ab-row { gap: 4px; } }
 </style>
 
 
@@ -1180,16 +1201,6 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
             <button type="button" id="offMoreBtn" class="ppl-more" style="display:none">और देखें ▾</button>
           </div>
         </div>
-        <div class="lg-mid">
-      <div class="card home-card lg-meet">
-        <h3>🗓️ Meeting Updates</h3>
-        <div id="homeMeeting" class="muted">Loading...</div>
-      </div>
-      <div class="card home-card lg-ann">
-        <h3>📢 Announcements</h3>
-        <div id="homeAnnouncement" class="muted">Loading...</div>
-      </div>
-        </div>
       </div>
       <div class="lg-right">
         <div class="card login-card lg-login">
@@ -1228,6 +1239,15 @@ style="background:#008000;color:#fff;font-size:16px">
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
+      <!-- 🆕 v1.244: Login ke neeche Meeting + Announcements, phir Bank -->
+      <div class="card home-card lg-meet">
+        <h3>🗓️ Meeting Updates</h3>
+        <div id="homeMeeting" class="muted">Loading...</div>
+      </div>
+      <div class="card home-card lg-ann">
+        <h3>📢 Announcements</h3>
+        <div id="homeAnnouncement" class="muted">Loading...</div>
+      </div>
       <!-- 🆕 v1.232: Bank details + payment link bhejne ka button (login se pehle bhi) -->
       <div class="card home-card lg-bank" id="bankCard">
         <h3>🏦 बैंक विवरण / भुगतान</h3>
@@ -4331,8 +4351,14 @@ const hiddenCols = getHiddenColumnsForTab(currentTab);
 const columns = Array.from(
   new Set(tableData.flatMap(row => Object.keys(row)))
 ).filter(c =>
-  c && !hiddenCols.has(c) && !isMeetingPhotoCol_(c)   // 🆕 v1.239: photo ka lamba data table mein nahi
+  c && (!hiddenCols.has(c) || (currentTab === "Meetings" && /^attendance$/i.test(String(c).trim()))) && !isMeetingPhotoCol_(c)   // 🆕 v1.239: photo ka lamba data table mein nahi | v1.244: Attendance hamesha dikhe
 );
+// 🆕 v1.244: Meetings mein Attendance / Minutes column sheet mein khaali ya key na ho tab bhi dikhe
+if (currentTab === "Meetings") {
+  [[/^attendance$/i, "Attendance"], [/^(minutes|meeting[\s_]*notes?|summary|कार्यवाही|चर्चा)$/i, "Minutes"]].forEach(([re, nm]) => {
+    if (!columns.some(c => re.test(String(c).trim()))) columns.push(nm);
+  });
+}
   let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
@@ -4468,15 +4494,16 @@ const AB_ICON = {
 function abBtn_(cls, icon, label, text, attrs) {
   return `<a class="ab-btn ${cls}" ${attrs} title="${label}" aria-label="${label}" data-label="${label}">${AB_ICON[icon]}${text ? `<span>${text}</span>` : ""}</a>`;
 }
-// 🆕 v1.243: buttons ek flex-wrap box mein — jagah ho to ek line, kam ho to do line (kabhi 2 se zyada nahi).
-// Cell ki min-width = aadhe buttons + 1 button, taaki table baaki columns ko jagah dete hue bhi 2 line mein fit rakhe.
+// 🆕 v1.244: buttons 2 rows mein baante jaate hain (1-3: ek | 4: 2+2 | 5: 3+2 | 6: 3+3). Dono rows ek wrap-box mein hain:
+// jagah ho to rows saath-saath (ek line), kam ho to pehle jaisa upar badi row, neeche chhoti row. Button kabhi lambe nahi hote.
 function layoutActionRows_(btns) {
   const mobile = window.matchMedia("(max-width: 700px)").matches;
   const w = b => /<span>/.test(b) ? (mobile ? 58 : 64) : (mobile ? 34 : 36);
-  const gap = mobile ? 4 : 5;
-  const total = btns.reduce((t, b) => t + w(b) + gap, 0) - gap;
-  const minW = Math.min(total, Math.ceil(total / 2) + 66);
-  return `<div class="abtns ab-flex" style="min-width:${minW}px">${btns.join("")}</div>`;
+  const gap = mobile ? 4 : 5, n = btns.length;
+  const rows = n <= 3 ? [btns] : [btns.slice(0, Math.ceil(n / 2)), btns.slice(Math.ceil(n / 2))];
+  const rw = r => r.reduce((t, b) => t + w(b) + gap, 0) - gap;
+  const minW = Math.max.apply(null, rows.map(rw));
+  return `<div class="abtns ab-flex" style="min-width:${minW}px">` + rows.map(r => `<div class="ab-row">${r.join("")}</div>`).join("") + `</div>`;
 }
 function renderActionButtons(row, encId) {
   const btns = [];
@@ -4828,7 +4855,7 @@ document.addEventListener("DOMContentLoaded", renderBankCard_);
 function setupOffMore_() {
   const card = document.querySelector(".lg-off"), body = document.getElementById("homeRightContent"), btn = document.getElementById("offMoreBtn");
   if (!card || !body || !btn) return;
-  const LIM = 5, gps = Array.prototype.slice.call(body.querySelectorAll(".gp"));
+  const LIM = 999, gps = Array.prototype.slice.call(body.querySelectorAll(".gp"));
   let shown = 0, hidden = 0;
   gps.forEach(function (g) {
     const n = +g.dataset.n || 1;
