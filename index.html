@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.245  (login = sample G: do Tab (सलाहकार | कार्यकारिणी) + Meeting | Announcements neeche, daayein Login + Bank)
+   - बाएँ: Tab card — 🎖️ वरिष्ठ सलाहकार (sab naam + number) | 👥 कार्यकारिणी (pad ke hisaab se group, pehle 3 pad, baaki "और देखें"); uske neeche 🗓️ Meeting Updates | 📢 Announcements
+   - दाएँ (patle): Login, Bank (Account No, UPI ek line)
   v1.244  (login = sample D: header ke niche dono list (full, number naam ke paas) | Login, Meeting, Announcements, Bank; Meetings Attendance column; action buttons 3+2)
    - Meetings tab: Attendance column hamesha dikhta hai (Settings mein hide ho ya sheet mein khaali ho tab bhi) — Minutes jaisa 2 line, click se poora
    - Action buttons: jagah ho to ek line, kam ho to pehle jaisa 3 upar + 2 neeche (4: 2+2, 6: 3+3); button lambe nahi hote
@@ -1075,22 +1078,24 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 .clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; white-space: pre-line; overflow-wrap: anywhere; }
 .clamp2.open { display: block; -webkit-line-clamp: unset; }
 .clamp2:not(.open)::after { content: ""; }
-/* ===== 🆕 v1.244: login = sample D ===== */
-@media (min-width: 601px) {
-  .login-grid { align-items: stretch; }
-  .lg-right, .lg-left { align-self: start; }
-  .lg-left { background: linear-gradient(160deg, #0b3d66, #0b63d6 70%, #64b5ff); border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px rgba(11,99,214,.18); }
-  .lg-top { display: flex; flex-direction: column; gap: 12px; }
-}
-@media (min-width: 901px) {
-  .login-grid { grid-template-columns: minmax(0, 1fr) 330px; }
-  .lg-adv #homeLeftContent, .lg-off #homeRightContent { column-count: 2; column-gap: 26px; }
-}
-.lg-adv .ppl-row, .lg-off .ppl-row { justify-content: flex-start; flex-wrap: wrap; column-gap: 10px; break-inside: avoid; }
-.lg-adv .ppl-n, .lg-off .ppl-n { flex: 0 1 auto; }
-.lg-off .gp { break-inside: avoid; }
-@media (max-width: 600px) { .lg-bank { order: 4; } .lg-adv { order: 5; } .lg-off { order: 6; } }
+/* ===== 🆕 v1.245: login = sample G ===== */
 #bankCardBody .bk-row { padding: 3px 0 !important; }
+.lg-people .tb { display: flex; border-bottom: 2px solid #e3ecfb; margin-bottom: 8px; }
+.lg-people .tb button { flex: 1; width: auto; height: auto; margin: 0 0 -2px; padding: 9px 6px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; box-shadow: none; font-weight: 700; font-size: 14px; color: #64748b; cursor: pointer; }
+.lg-people .tb button.on { color: #0b63d6; border-bottom-color: #0b63d6; }
+.lg-people .pn { display: none; }
+.lg-people .pn.on { display: block; }
+.lg-people .lg-adv, .lg-people .lg-off { display: block; padding: 0 !important; }
+.lg-off .gp { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #e3ecfb; }
+.lg-off .gp:last-child { border-bottom: none; }
+.lg-off.open .ppl-x { display: flex !important; }
+.lg-off .pt { display: block; flex: 0 0 78px; text-align: center; margin: 3px 0 0; padding: 3px 6px; }
+.lg-off .gp > div { flex: 1; min-width: 0; }
+@media (max-width: 600px) {
+  .lg-bank { order: 4; } .lg-people { order: 5; }
+  .lg-off .gp { flex-direction: column; gap: 2px; }
+  .lg-off .pt { flex: 0 0 auto; align-self: flex-start; }
+}
 /* ===== 🆕 v1.241 ===== */
 /* Login layout: [सलाहकार | कार्यकारिणी] upar, [Meeting | Announcements] neeche; Login + Bank patle */
 .lg-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
@@ -1189,17 +1194,24 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
     <!-- 🆕 v1.236: naya login layout — desktop: [सलाहकार|कार्यकारिणी / Meeting|Announcements] + [Login / Bank]; mobile: Login pehle -->
     <div class="login-grid">
       <div class="lg-left">
-        <!-- 🆕 v1.241: वरिष्ठ सलाहकार (sab naam) aur कार्यकारिणी (5 naam + और देखें) — alag-alag card, dono Meeting/Announcements ke upar -->
-        <div class="lg-top">
-          <div class="card home-card lg-adv">
-            <h3>🎖️ वरिष्ठ सलाहकार</h3>
-            <div id="homeLeftContent" class="muted">Loading...</div>
-          </div>
-          <div class="card home-card lg-off">
-            <h3>👥 कार्यकारिणी</h3>
+        <!-- 🆕 v1.245 (sample G): do Tab — सलाहकार | कार्यकारिणी -->
+        <div class="card home-card lg-people">
+          <div class="tb"><button type="button" class="on">🎖️ वरिष्ठ सलाहकार</button><button type="button">👥 कार्यकारिणी</button></div>
+          <div class="pn on"><div class="lg-adv"><div id="homeLeftContent" class="muted">Loading...</div></div></div>
+          <div class="pn"><div class="lg-off">
             <div id="homeRightContent" class="muted">Loading...</div>
             <button type="button" id="offMoreBtn" class="ppl-more" style="display:none">और देखें ▾</button>
-          </div>
+          </div></div>
+        </div>
+        <div class="lg-mid">
+      <div class="card home-card lg-meet">
+        <h3>🗓️ Meeting Updates</h3>
+        <div id="homeMeeting" class="muted">Loading...</div>
+      </div>
+      <div class="card home-card lg-ann">
+        <h3>📢 Announcements</h3>
+        <div id="homeAnnouncement" class="muted">Loading...</div>
+      </div>
         </div>
       </div>
       <div class="lg-right">
@@ -1239,15 +1251,6 @@ style="background:#008000;color:#fff;font-size:16px">
 </button>
           <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
-      <!-- 🆕 v1.244: Login ke neeche Meeting + Announcements, phir Bank -->
-      <div class="card home-card lg-meet">
-        <h3>🗓️ Meeting Updates</h3>
-        <div id="homeMeeting" class="muted">Loading...</div>
-      </div>
-      <div class="card home-card lg-ann">
-        <h3>📢 Announcements</h3>
-        <div id="homeAnnouncement" class="muted">Loading...</div>
-      </div>
       <!-- 🆕 v1.232: Bank details + payment link bhejne ka button (login se pehle bhi) -->
       <div class="card home-card lg-bank" id="bankCard">
         <h3>🏦 बैंक विवरण / भुगतान</h3>
@@ -2443,7 +2446,7 @@ if (row["Padhadhikari"]) {
   });
 }
     });
-    rightHtml = offG.map(g => `<div class="gp" data-n="${g.l.length}"><div class="pt">${g.t}</div>${g.l.join("")}</div>`).join("");
+    rightHtml = offG.map(g => `<div class="gp" data-n="${g.l.length}"><span class="pt">${g.t}</span><div>${g.l.join("")}</div></div>`).join("");
     el("homeLeftContent").innerHTML = leftHtml || "—";
     el("homeRightContent").innerHTML = rightHtml || "—";
     setupOffMore_();
@@ -4851,11 +4854,21 @@ function openPayLinkDialog_() {
 }
 document.addEventListener("DOMContentLoaded", renderBankCard_);
 
+// 🆕 v1.245: login ke do Tab (सलाहकार | कार्यकारिणी)
+document.addEventListener("DOMContentLoaded", function () {
+  const btns = document.querySelectorAll(".lg-people .tb button"), panes = document.querySelectorAll(".lg-people .pn");
+  btns.forEach(function (b, i) {
+    b.addEventListener("click", function () {
+      btns.forEach(function (x) { x.classList.remove("on"); }); b.classList.add("on");
+      panes.forEach(function (p, j) { p.classList.toggle("on", i === j); });
+    });
+  });
+});
 // 🆕 v1.241: कार्यकारिणी card — pehle 5 naam, baaki "और देखें" click se
 function setupOffMore_() {
   const card = document.querySelector(".lg-off"), body = document.getElementById("homeRightContent"), btn = document.getElementById("offMoreBtn");
   if (!card || !body || !btn) return;
-  const LIM = 999, gps = Array.prototype.slice.call(body.querySelectorAll(".gp"));
+  const LIM = 5, gps = Array.prototype.slice.call(body.querySelectorAll(".gp"));
   let shown = 0, hidden = 0;
   gps.forEach(function (g) {
     const n = +g.dataset.n || 1;
