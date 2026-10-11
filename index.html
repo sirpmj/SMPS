@@ -8,6 +8,10 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.237  (login view mockup jaisa, purane bakaya+vada current year mein, View popup fix)
+   - Login: patli header band + logo, bank rows (copy icon), कार्यकारिणी role-boxes mein, heading icons
+   - Boli/Donation: vada-based filter (बाकी+वादा / निकले / आज / कल / 7 din) mein purane saal ke "vada + bakaya" wale records current year mein bhi dikhte hain
+   - Record View popup: member naam / value side se cut nahi hote (mobile par table popup ke andar fit)
   v1.236  (login window naya layout — desktop + mobile)
    - Desktop: [वरिष्ठ सलाहकार | कार्यकारिणी] + [Meeting | Announcements] left, [Login + Bank details] right (sticky)
    - Mobile: Login sabse upar, phir Meeting, Announcements, सलाहकार/कार्यकारिणी (tap se khulne wali), Bank
@@ -47,7 +51,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.236"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.237"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -940,6 +944,46 @@ td.act-cell { text-align: center; }
   .lg-adv.collapsed h3, .lg-off.collapsed h3 { margin-bottom: 0 !important; padding-bottom: 0 !important; border-bottom: none !important; }
   .login-grid .home-card { padding: 10px 12px !important; }
 }
+/* ===== 🆕 v1.237: header band, bank card, officials boxes, view popup fix ===== */
+header {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 12px 16px !important; border-radius: 14px !important; animation: none;
+}
+header .hdr-logo { width: 38px; height: 38px; object-fit: contain; border-radius: 8px; background: rgba(255,255,255,.18); flex: none; }
+header .hdr-txt { text-align: left; min-width: 0; }
+header h1 { font-size: 20px !important; letter-spacing: .3px; margin: 0 !important; line-height: 1.3 !important; }
+header .muted { font-size: 12.5px !important; line-height: 1.3; }
+
+#bankCardBody .bk-name { font-size: 13.5px; }
+#bankCardBody .bk-bank { color: #475569; margin-bottom: 4px; }
+#bankCardBody .bk-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid #eef2fb; }
+#bankCardBody .bk-row:last-child { border-bottom: none; }
+#bankCardBody .bk-l { color: #64748b; flex: none; font-size: 12.5px; }
+#bankCardBody .bk-v { display: flex; align-items: center; gap: 6px; min-width: 0; text-align: right; justify-content: flex-end; }
+#bankCardBody .bk-v b { overflow-wrap: anywhere; word-break: break-all; font-size: 13px; }
+#bankCardBody .bk-copy { flex: none; width: 28px; height: 28px; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; box-shadow: none !important; color: #0b63d6; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px !important; }
+#bankCardBody .bk-copy.ok { color: #128c3e; background: #e6fef0 !important; }
+
+.lg-off #homeRightContent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lg-off .official-block { border: 1px solid #e3ecfb; border-radius: 8px; padding: 7px 9px; margin: 0; min-width: 0; }
+.lg-off .official-title { font-size: 11.5px; color: #64748b; font-weight: 600; margin-bottom: 3px; }
+.lg-off .official-name { overflow-wrap: anywhere; }
+
+/* Record "View" popup: naam / value kabhi side se cut na ho */
+#receiptPopup .popup-content { max-height: 90vh; max-height: 90dvh; overflow-y: auto; box-sizing: border-box; }
+#receiptPopup table { min-width: 0 !important; width: 100% !important; }
+#receiptPopup td { overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+@media (max-width: 600px) {
+  header { padding: 8px 10px !important; }
+  header .hdr-logo { width: 30px; height: 30px; }
+  header h1 { font-size: 15.5px !important; }
+  header .muted { font-size: 11.5px !important; }
+  .lg-off #homeRightContent { grid-template-columns: minmax(0, 1fr); }
+  #receiptPopup .popup-content { padding: 14px 12px; width: 96%; }
+  #receiptPopup table { table-layout: fixed; }
+  #receiptPopup td { padding: 6px 7px; font-size: 13.5px; }
+  #receiptPopup td:first-child { width: 36% !important; }
+}
 </style>
 
 
@@ -972,8 +1016,11 @@ td.act-cell { text-align: center; }
 
 <div class="wrap">
   <header>
-    <h1>श्री मेवाड़ प्रजापत समाज-वापी</h1>
-    <div class="muted">Reg No: A/1221</div>
+    <img class="hdr-logo" src="Logo-192.png" alt="" onerror="this.style.display='none'">
+    <div class="hdr-txt">
+      <h1>श्री मेवाड़ प्रजापत समाज-वापी</h1>
+      <div class="muted">Reg No: A/1221</div>
+    </div>
   </header>
   <!-- Pre-login / Login View -->
   <div id="loginView">
@@ -982,11 +1029,11 @@ td.act-cell { text-align: center; }
       <div class="lg-left">
         <div class="lg-top">
       <div class="card home-card lg-adv">
-    <h3>वरिष्ठ सलाहकार</h3>
+    <h3>🎖️ वरिष्ठ सलाहकार</h3>
         <div id="homeLeftContent" class="muted">Loading...</div>
       </div>
       <div class="card home-card lg-off">
-        <h3>कार्यकारिणी </h3>
+        <h3>👥 कार्यकारिणी</h3>
         <div id="homeRightContent" class="muted">Loading...</div>
       </div>
         </div>
@@ -3876,6 +3923,16 @@ function getActiveFilterLabel_() {
 // Row is range ke andar aata hai ya nahi — Date column se check karo, warna
 // Year column se fallback (jin tabs mein poori Date nahi hai unke liye, jaise
 // Boli/Donation pledge saal)
+// 🆕 v1.237
+function rangeIncludesToday_(range) {
+  const now = new Date();
+  return (!range.start || now >= range.start) && (!range.end || now <= range.end);
+}
+function isPendingWithCommit_(row) {
+  if (!hasPendingInfo_(row)) return false;
+  const ci = commitInfo_(row);
+  return ci.pending > 0 && ci.list.length > 0;
+}
 function rowInDateRange_(row, range) {
   const d = parseRowDate_(row["Date"]);
   if (d) {
@@ -4049,7 +4106,12 @@ if(searchVal){
 {
   const range = getActiveDateFilterRange_();
   if (range) {
-    filteredData = filteredData.filter(r => rowInDateRange_(r, range));
+    // 🆕 v1.237: Boli/Donation mein vaada-based filter (बाकी+वादा / निकले / आज / कल / 7 दिन) ho aur
+    // chuna hua saal "abhi ka" ho to PURANE saal ke wo records bhi dikhao jinka वादा hai aur बकाया baaki hai
+    const carry = (currentTab === "Boli" || currentTab === "Donation") &&
+                  ["pending", "overdue", "today", "tomorrow", "week"].includes(commitFilter) &&
+                  rangeIncludesToday_(range);
+    filteredData = filteredData.filter(r => rowInDateRange_(r, range) || (carry && isPendingWithCommit_(r)));
   }
 }
 
@@ -4543,15 +4605,16 @@ function copyText_(t, btn) {
 function renderBankCard_() {
   const box = document.getElementById("bankCardBody");
   if (!box || typeof SOCIETY_BANK === "undefined") return;
-  const line = (lab, val) =>
-    `<div style="display:flex;gap:6px;align-items:center;justify-content:space-between;flex-wrap:wrap">
-       <span>${lab}: <b style="word-break:break-all">${val}</b></span>
-       <button type="button" data-c="${val}" style="width:auto;padding:2px 8px;font-size:12px;background:#eef2ff;color:#1e3a8a;border:1px solid #c7d2fe">कॉपी</button>
-     </div>`;
+  const copyIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>';
+  const row = (lab, val) =>
+    `<div class="bk-row"><span class="bk-l">${lab}</span><span class="bk-v"><b>${val}</b><button type="button" class="bk-copy" data-c="${val}" title="कॉपी" aria-label="${lab} कॉपी करें">${copyIcon}</button></span></div>`;
   box.innerHTML =
-    `<div><b>${SOCIETY_BANK.name}</b></div><div>${SOCIETY_BANK.bank}</div>` +
-    line("खाता संख्या", SOCIETY_BANK.acc) + line("IFSC", SOCIETY_BANK.ifsc) + line("UPI ID", SOCIETY_BANK.upi);
-  box.querySelectorAll("button[data-c]").forEach(b => b.onclick = () => copyText_(b.dataset.c, b));
+    `<div class="bk-name"><b>${SOCIETY_BANK.name}</b></div><div class="bk-bank">${SOCIETY_BANK.bank}</div>` +
+    row("खाता संख्या", SOCIETY_BANK.acc) + row("IFSC", SOCIETY_BANK.ifsc) + row("UPI ID", SOCIETY_BANK.upi);
+  box.querySelectorAll("button.bk-copy").forEach(b => b.onclick = () => {
+    copyText_(b.dataset.c);
+    b.classList.add("ok"); setTimeout(() => b.classList.remove("ok"), 1400);
+  });
   const pb = document.getElementById("payLinkBtn");
   if (pb) pb.onclick = openPayLinkDialog_;
 }
