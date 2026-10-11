@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.243  (कार्यकारिणी pad ke hisaab se group, bank "Account No" + UPI ek line, action buttons width ke hisaab se 1/2 line)
+   - कार्यकारिणी: ek pad ke log saath (अध्यक्ष / उपाध्यक्ष / कोषाध्यक्ष ...) — pad upar, uske neeche naam + number; pehle 5 naam, baaki "और देखें"
+   - Bank card: "Account No" label, UPI ID ek hi line mein
+   - Action buttons (sab tabs, desktop + mobile): baaki columns ki width ke hisaab se apne aap ek line ya do line mein fit hote hain
+  v1.242  (Meetings table: Attendance + Minutes default 2 line, click se poora khulta hai)
   v1.241  (login: 2 alag cards + narrow Login/Bank, bank proper, attendance list, minutes hide, action buttons ek line)
    - Login (desktop): वरिष्ठ सलाहकार (sab naam) | कार्यकारिणी (5 naam + "और देखें") — dono Meeting/Announcements ke upar; Login + Bank patle (300px) taaki page ek screen mein fit ho
    - Bank card: naam/bank upar, खाता + IFSC ek line, UPI alag line (copy button ke saath, kat nahi jaata)
@@ -1062,6 +1067,10 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 @media (max-width: 1100px) { .ppl-off #homeRightContent { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .ppl-off #homeRightContent { display: block; } }
 
+/* ===== 🆕 v1.242: Meetings Attendance/Minutes — 2 line, click se khulta hai ===== */
+.clamp2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; white-space: pre-line; overflow-wrap: anywhere; }
+.clamp2.open { display: block; -webkit-line-clamp: unset; }
+.clamp2:not(.open)::after { content: ""; }
 /* ===== 🆕 v1.241 ===== */
 /* Login layout: [सलाहकार | कार्यकारिणी] upar, [Meeting | Announcements] neeche; Login + Bank patle */
 .lg-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
@@ -1072,7 +1081,11 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 .lg-adv .ppl-row, .lg-off .ppl-row { font-size: 13px; padding: 4px 0; }
 .lg-adv .ppl-row:last-child, .lg-off .ppl-row:last-child { border-bottom: none; }
 .lg-off .ppl-x { display: none !important; }
-.lg-off.open .ppl-x { display: flex !important; }
+.lg-off.open .ppl-x { display: block !important; }
+.lg-off .gp { padding: 5px 0; border-bottom: 1px solid #e3ecfb; }
+.lg-off .gp:last-child { border-bottom: none; }
+.lg-off .pt { display: inline-block; font-size: 11.5px; font-weight: 700; color: #0b63d6; background: #eef4ff; border-radius: 6px; padding: 2px 8px; margin-bottom: 2px; }
+.lg-off .gp .ppl-row { border-bottom: none; padding: 2px 0; }
 .lg-off .ppl-more { margin-top: auto !important; }
 .lg-off #offMoreBtn { margin-top: 8px !important; }
 @media (min-width: 901px) {
@@ -1105,14 +1118,13 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 #bankCardBody .bk-v b { word-break: normal; overflow-wrap: anywhere; font-weight: 600; font-size: 13px; }
 #bankCardBody .bk-row.bk-stack { flex-direction: column; align-items: stretch; gap: 1px; }
 #bankCardBody .bk-row.bk-stack .bk-v { justify-content: space-between; text-align: left; }
-#bankCardBody .bk-row.bk-stack .bk-v b { font-size: 12px; }
+#bankCardBody .bk-row.bk-stack .bk-v b { font-size: 11.5px; white-space: nowrap; overflow-wrap: normal; word-break: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { #bankCardBody .bk-row.bk-stack .bk-v b { font-size: 10.5px; } }
 
-/* Action buttons: Members / Boli / Donation — desktop par ek line (Meetings ko chhod kar) */
-@media (min-width: 901px) {
-  .abtns.ab-one { flex-direction: row; flex-wrap: nowrap; align-items: center; }
-  .abtns.ab-one .ab-row { display: contents; }
-  .abtns.ab-one .ab-btn { flex: 0 0 auto; }
-}
+/* Action buttons (sab tabs, desktop + mobile): baaki columns ki width ke hisaab se ek line ya do line */
+.abtns.ab-flex { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; gap: 5px; }
+.abtns.ab-flex .ab-btn { flex: 1 1 auto; }
+@media (max-width: 700px) { .abtns.ab-flex { gap: 4px; } }
 </style>
 
 
@@ -2367,7 +2379,7 @@ async function renderLoginHomeStructure(){
       el("homeRightContent").textContent = "No data found.";
       return;
     }
-    let leftHtml = "", rightHtml = "";
+    let leftHtml = "", rightHtml = ""; const offG = [];
     data.forEach(row => {
 /* ===== Advisors ===== */
 if (row["Salakar"]) {
@@ -2404,11 +2416,14 @@ if (row["Padhadhikari"]) {
         .replace(/-\s*\d{10}$/, "")
         .replace(/\d{10}$/, "")
         .trim();
-      rightHtml += `<div class="ppl-row"><span class="ppl-n">• ${cleanName}<span class="ppl-sub"> · ${title}</span></span>${pplTel_(mobile)}</div>`;
+      // 🆕 v1.243: ek hi pad ke log ek saath — pad upar, naam + number neeche
+      let g = offG.find(x => x.t === title); if (!g) offG.push(g = { t: title, l: [] });
+      g.l.push(`<div class="ppl-row"><span class="ppl-n">• ${cleanName}</span>${pplTel_(mobile)}</div>`);
     });
   });
 }
     });
+    rightHtml = offG.map(g => `<div class="gp" data-n="${g.l.length}"><div class="pt">${g.t}</div>${g.l.join("")}</div>`).join("");
     el("homeLeftContent").innerHTML = leftHtml || "—";
     el("homeRightContent").innerHTML = rightHtml || "—";
     setupOffMore_();
@@ -4412,7 +4427,11 @@ const msg =
       const nm = displayMemberFromRow_(row);
       html += `<td class="${cellClass_(c)}">${nm}${nm !== row[c] ? ' <small style="color:#b45309">(' + ANON_MEMBER_LABEL + ')</small>' : ""}</td>`;
     } else {
-      html += `<td class="${cellClass_(c)}">${row[c] || ""}</td>`;
+      // 🆕 v1.242: Meetings tab — Attendance (member list) + Minutes default 2 line, click se khule/band
+      const _clamp = currentTab === "Meetings" && /^(attendance|minutes|meeting[\s_]*notes?|summary|कार्यवाही|चर्चा)$/i.test(String(c).trim()) && row[c];
+      html += _clamp
+        ? `<td class="${cellClass_(c)}"><div class="clamp2" title="क्लिक करें: खोलें / बंद करें" onclick="this.classList.toggle('open')">${row[c]}</div></td>`
+        : `<td class="${cellClass_(c)}">${row[c] || ""}</td>`;
     }
   }
 
@@ -4449,13 +4468,15 @@ const AB_ICON = {
 function abBtn_(cls, icon, label, text, attrs) {
   return `<a class="ab-btn ${cls}" ${attrs} title="${label}" aria-label="${label}" data-label="${label}">${AB_ICON[icon]}${text ? `<span>${text}</span>` : ""}</a>`;
 }
-// 🆕 v1.231: buttons ki rows — 1-3: ek line | 4: 2+2 | 5: 3+2 | 6: 3+3 (neeche wali row ke button chaude hokar barabar bhar dete hain)
+// 🆕 v1.243: buttons ek flex-wrap box mein — jagah ho to ek line, kam ho to do line (kabhi 2 se zyada nahi).
+// Cell ki min-width = aadhe buttons + 1 button, taaki table baaki columns ko jagah dete hue bhi 2 line mein fit rakhe.
 function layoutActionRows_(btns) {
-  const n = btns.length;
-  const rows = n <= 3 ? [btns] : [btns.slice(0, Math.ceil(n / 2)), btns.slice(Math.ceil(n / 2))];
-  // 🆕 v1.241: Members / Boli / Donation — desktop par saare button ek line mein (CSS), Meetings jaisa tha waisa
-  const one = ["Members", "Boli", "Donation"].includes(currentTab) ? " ab-one" : "";
-  return `<div class="abtns${one}">` + rows.map(r => `<div class="ab-row">${r.join("")}</div>`).join("") + `</div>`;
+  const mobile = window.matchMedia("(max-width: 700px)").matches;
+  const w = b => /<span>/.test(b) ? (mobile ? 58 : 64) : (mobile ? 34 : 36);
+  const gap = mobile ? 4 : 5;
+  const total = btns.reduce((t, b) => t + w(b) + gap, 0) - gap;
+  const minW = Math.min(total, Math.ceil(total / 2) + 66);
+  return `<div class="abtns ab-flex" style="min-width:${minW}px">${btns.join("")}</div>`;
 }
 function renderActionButtons(row, encId) {
   const btns = [];
@@ -4749,7 +4770,7 @@ function renderBankCard_() {
     `<div class="bk-row ${cls || ""}"><span class="bk-l">${lab}</span><span class="bk-v"><b>${val}</b><button type="button" class="bk-copy" data-c="${val}" title="कॉपी" aria-label="${lab} कॉपी करें">${copyIcon}</button></span></div>`;
   box.innerHTML =
     `<div class="bk-head"><b class="bk-name">${SOCIETY_BANK.name}</b><span class="bk-bank">🏦 ${SOCIETY_BANK.bank}</span></div>` +
-    row("खाता संख्या", SOCIETY_BANK.acc) + row("IFSC", SOCIETY_BANK.ifsc) + row("UPI ID", SOCIETY_BANK.upi, "bk-stack");
+    row("Account No", SOCIETY_BANK.acc) + row("IFSC", SOCIETY_BANK.ifsc) + row("UPI ID", SOCIETY_BANK.upi, "bk-stack");
   box.querySelectorAll("button.bk-copy").forEach(b => b.onclick = () => {
     copyText_(b.dataset.c);
     b.classList.add("ok"); setTimeout(() => b.classList.remove("ok"), 1400);
@@ -4807,12 +4828,15 @@ document.addEventListener("DOMContentLoaded", renderBankCard_);
 function setupOffMore_() {
   const card = document.querySelector(".lg-off"), body = document.getElementById("homeRightContent"), btn = document.getElementById("offMoreBtn");
   if (!card || !body || !btn) return;
-  const LIM = 5, rows = Array.prototype.slice.call(body.querySelectorAll(".ppl-row"));
-  rows.forEach(function (r, i) { r.classList.toggle("ppl-x", i >= LIM); });
-  const extra = rows.length - LIM;
-  if (extra <= 0) { btn.style.display = "none"; return; }
+  const LIM = 5, gps = Array.prototype.slice.call(body.querySelectorAll(".gp"));
+  let shown = 0, hidden = 0;
+  gps.forEach(function (g) {
+    const n = +g.dataset.n || 1;
+    if (shown >= LIM) { g.classList.add("ppl-x"); hidden += n; } else { g.classList.remove("ppl-x"); shown += n; }
+  });
+  if (hidden <= 0) { btn.style.display = "none"; return; }
   btn.style.display = "block";
-  const upd = function () { btn.textContent = card.classList.contains("open") ? "कम देखें ▴" : "और देखें (" + extra + ") ▾"; };
+  const upd = function () { btn.textContent = card.classList.contains("open") ? "कम देखें ▴" : "और देखें (" + hidden + ") ▾"; };
   btn.onclick = function () { card.classList.toggle("open"); upd(); };
   upd();
 }
