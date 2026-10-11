@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.241  (login: 2 alag cards + narrow Login/Bank, bank proper, attendance list, minutes hide, action buttons ek line)
+   - Login (desktop): वरिष्ठ सलाहकार (sab naam) | कार्यकारिणी (5 naam + "और देखें") — dono Meeting/Announcements ke upar; Login + Bank patle (300px) taaki page ek screen mein fit ho
+   - Bank card: naam/bank upar, खाता + IFSC ek line, UPI alag line (copy button ke saath, kat nahi jaata)
+   - Attendance popup: "मीटिंग में क्या हुआ (Minutes)" default band — heading par click se khulta hai; chune hue naam upar 1. 2. 3. list mein, poori member list click se
+   - Desktop par Members / Boli / Donation ke action buttons ek hi line mein (Meetings chhod kar)
   v1.240  (कार्यकारिणी = वरिष्ठ सलाहकार jaisi list: "• naam · pad" + number right)
   v1.239  (सलाहकार upar + कार्यकारिणी neeche, pay link amount edit, meeting notes + photo)
    - वरिष्ठ सलाहकार upar, कार्यकारिणी neeche (mobile par tap se khulti); naam + number ek line (number par tap = call)
@@ -1056,6 +1061,58 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
 .ppl-off #homeRightContent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; gap: 0 18px; }
 @media (max-width: 1100px) { .ppl-off #homeRightContent { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .ppl-off #homeRightContent { display: block; } }
+
+/* ===== 🆕 v1.241 ===== */
+/* Login layout: [सलाहकार | कार्यकारिणी] upar, [Meeting | Announcements] neeche; Login + Bank patle */
+.lg-top { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.lg-adv, .lg-off { display: flex; flex-direction: column; padding: 10px 12px !important; }
+.lg-adv h3, .lg-off h3 { cursor: default !important; }
+.lg-adv h3::after, .lg-off h3::after { content: none !important; }
+.lg-adv #homeLeftContent, .lg-off #homeRightContent { display: block !important; grid-template-columns: none !important; gap: 0 !important; }
+.lg-adv .ppl-row, .lg-off .ppl-row { font-size: 13px; padding: 4px 0; }
+.lg-adv .ppl-row:last-child, .lg-off .ppl-row:last-child { border-bottom: none; }
+.lg-off .ppl-x { display: none !important; }
+.lg-off.open .ppl-x { display: flex !important; }
+.lg-off .ppl-more { margin-top: auto !important; }
+.lg-off #offMoreBtn { margin-top: 8px !important; }
+@media (min-width: 901px) {
+  .login-grid { grid-template-columns: minmax(0, 1fr) 300px; gap: 12px; margin-top: 8px; }
+  .lg-left { gap: 12px; }
+  .lg-mid { gap: 12px; }
+  .lg-right { gap: 10px; top: 8px; }
+  .login-grid .login-card { padding: 12px 14px !important; }
+  .login-grid .login-card h2 { font-size: 18px !important; margin: 0 0 2px !important; }
+  .login-grid .login-card label { margin-top: 6px !important; }
+  .login-grid .login-card input { height: 40px; }
+  .login-grid .login-card button { height: 40px; margin: 8px 0 0 !important; font-size: 15px !important; }
+  .login-grid #newUserBtn { font-size: 14px !important; }
+  .login-grid .lg-bank { padding: 10px 12px !important; }
+  .login-grid .lg-bank h3 { margin-bottom: 6px !important; }
+  .login-grid #payLinkBtn { height: 38px; margin-top: 8px !important; }
+}
+/* OTP box chhupa ho to uska "OTP" label bhi chhupao */
+.login-grid .login-card label:has(+ #otpInput[style*="none"]) { display: none; }
+@media (min-width: 601px) and (max-width: 900px) {
+  .lg-right { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+
+/* Bank card — proper rows */
+#bankCardBody { font-size: 13px !important; line-height: 1.4 !important; }
+#bankCardBody .bk-head { background: #f3f8ff; border: 1px solid #e0ebfb; border-radius: 8px; padding: 6px 9px; margin-bottom: 4px; }
+#bankCardBody .bk-name { display: block; font-size: 12.5px; color: #0b3d66; line-height: 1.3; letter-spacing: .1px; }
+#bankCardBody .bk-bank { display: block; color: #475569; font-size: 12px; margin-top: 2px; }
+#bankCardBody .bk-row { padding: 5px 0; }
+#bankCardBody .bk-v b { word-break: normal; overflow-wrap: anywhere; font-weight: 600; font-size: 13px; }
+#bankCardBody .bk-row.bk-stack { flex-direction: column; align-items: stretch; gap: 1px; }
+#bankCardBody .bk-row.bk-stack .bk-v { justify-content: space-between; text-align: left; }
+#bankCardBody .bk-row.bk-stack .bk-v b { font-size: 12px; }
+
+/* Action buttons: Members / Boli / Donation — desktop par ek line (Meetings ko chhod kar) */
+@media (min-width: 901px) {
+  .abtns.ab-one { flex-direction: row; flex-wrap: nowrap; align-items: center; }
+  .abtns.ab-one .ab-row { display: contents; }
+  .abtns.ab-one .ab-btn { flex: 0 0 auto; }
+}
 </style>
 
 
@@ -1099,19 +1156,17 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
     <!-- 🆕 v1.236: naya login layout — desktop: [सलाहकार|कार्यकारिणी / Meeting|Announcements] + [Login / Bank]; mobile: Login pehle -->
     <div class="login-grid">
       <div class="lg-left">
-        <!-- 🆕 v1.238: वरिष्ठ सलाहकार + कार्यकारिणी ek hi card mein; jo na aaye wo "और देखें" mein -->
-        <div class="card home-card lg-people">
-          <div class="ppl-body" id="peopleBody">
-            <div class="ppl-col ppl-adv">
-              <div class="ppl-h">🎖️ वरिष्ठ सलाहकार</div>
-              <div id="homeLeftContent" class="muted">Loading...</div>
-            </div>
-            <div class="ppl-col ppl-off">
-              <div class="ppl-h">👥 कार्यकारिणी</div>
-              <div id="homeRightContent" class="muted">Loading...</div>
-            </div>
+        <!-- 🆕 v1.241: वरिष्ठ सलाहकार (sab naam) aur कार्यकारिणी (5 naam + और देखें) — alag-alag card, dono Meeting/Announcements ke upar -->
+        <div class="lg-top">
+          <div class="card home-card lg-adv">
+            <h3>🎖️ वरिष्ठ सलाहकार</h3>
+            <div id="homeLeftContent" class="muted">Loading...</div>
           </div>
-          <button type="button" id="peopleMoreBtn" class="ppl-more" style="display:none">और देखें ▾</button>
+          <div class="card home-card lg-off">
+            <h3>👥 कार्यकारिणी</h3>
+            <div id="homeRightContent" class="muted">Loading...</div>
+            <button type="button" id="offMoreBtn" class="ppl-more" style="display:none">और देखें ▾</button>
+          </div>
         </div>
         <div class="lg-mid">
       <div class="card home-card lg-meet">
@@ -2356,6 +2411,7 @@ if (row["Padhadhikari"]) {
     });
     el("homeLeftContent").innerHTML = leftHtml || "—";
     el("homeRightContent").innerHTML = rightHtml || "—";
+    setupOffMore_();
   }catch(e){
     console.error(e);
     el("homeLeftContent").textContent = "Error";
@@ -4397,7 +4453,9 @@ function abBtn_(cls, icon, label, text, attrs) {
 function layoutActionRows_(btns) {
   const n = btns.length;
   const rows = n <= 3 ? [btns] : [btns.slice(0, Math.ceil(n / 2)), btns.slice(Math.ceil(n / 2))];
-  return `<div class="abtns">` + rows.map(r => `<div class="ab-row">${r.join("")}</div>`).join("") + `</div>`;
+  // 🆕 v1.241: Members / Boli / Donation — desktop par saare button ek line mein (CSS), Meetings jaisa tha waisa
+  const one = ["Members", "Boli", "Donation"].includes(currentTab) ? " ab-one" : "";
+  return `<div class="abtns${one}">` + rows.map(r => `<div class="ab-row">${r.join("")}</div>`).join("") + `</div>`;
 }
 function renderActionButtons(row, encId) {
   const btns = [];
@@ -4687,11 +4745,11 @@ function renderBankCard_() {
   const box = document.getElementById("bankCardBody");
   if (!box || typeof SOCIETY_BANK === "undefined") return;
   const copyIcon = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>';
-  const row = (lab, val) =>
-    `<div class="bk-row"><span class="bk-l">${lab}</span><span class="bk-v"><b>${val}</b><button type="button" class="bk-copy" data-c="${val}" title="कॉपी" aria-label="${lab} कॉपी करें">${copyIcon}</button></span></div>`;
+  const row = (lab, val, cls) =>
+    `<div class="bk-row ${cls || ""}"><span class="bk-l">${lab}</span><span class="bk-v"><b>${val}</b><button type="button" class="bk-copy" data-c="${val}" title="कॉपी" aria-label="${lab} कॉपी करें">${copyIcon}</button></span></div>`;
   box.innerHTML =
-    `<div class="bk-name"><b>${SOCIETY_BANK.name}</b></div><div class="bk-bank">${SOCIETY_BANK.bank}</div>` +
-    row("खाता संख्या", SOCIETY_BANK.acc) + row("IFSC", SOCIETY_BANK.ifsc) + row("UPI ID", SOCIETY_BANK.upi);
+    `<div class="bk-head"><b class="bk-name">${SOCIETY_BANK.name}</b><span class="bk-bank">🏦 ${SOCIETY_BANK.bank}</span></div>` +
+    row("खाता संख्या", SOCIETY_BANK.acc) + row("IFSC", SOCIETY_BANK.ifsc) + row("UPI ID", SOCIETY_BANK.upi, "bk-stack");
   box.querySelectorAll("button.bk-copy").forEach(b => b.onclick = () => {
     copyText_(b.dataset.c);
     b.classList.add("ok"); setTimeout(() => b.classList.remove("ok"), 1400);
@@ -4745,33 +4803,19 @@ function openPayLinkDialog_() {
 }
 document.addEventListener("DOMContentLoaded", renderBankCard_);
 
-// 🆕 v1.238: सलाहकार + कार्यकारिणी card — jitna aaye utna dikhao, baaki "और देखें" mein
-function updatePeopleMore_() {
-  const body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
-  if (!body || !btn) return;
-  if (window.matchMedia("(max-width: 600px)").matches) { btn.style.display = "none"; body.classList.remove("clamped", "open"); return; }
-  if (body.classList.contains("open")) { btn.style.display = "block"; btn.textContent = "कम देखें ▴"; body.classList.remove("clamped"); return; }
-  const more = body.scrollHeight > body.clientHeight + 4;
-  body.classList.toggle("clamped", more);
-  btn.style.display = more ? "block" : "none";
-  btn.textContent = "और देखें ▾";
+// 🆕 v1.241: कार्यकारिणी card — pehle 5 naam, baaki "और देखें" click se
+function setupOffMore_() {
+  const card = document.querySelector(".lg-off"), body = document.getElementById("homeRightContent"), btn = document.getElementById("offMoreBtn");
+  if (!card || !body || !btn) return;
+  const LIM = 5, rows = Array.prototype.slice.call(body.querySelectorAll(".ppl-row"));
+  rows.forEach(function (r, i) { r.classList.toggle("ppl-x", i >= LIM); });
+  const extra = rows.length - LIM;
+  if (extra <= 0) { btn.style.display = "none"; return; }
+  btn.style.display = "block";
+  const upd = function () { btn.textContent = card.classList.contains("open") ? "कम देखें ▴" : "और देखें (" + extra + ") ▾"; };
+  btn.onclick = function () { card.classList.toggle("open"); upd(); };
+  upd();
 }
-document.addEventListener("DOMContentLoaded", function () {
-  var body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
-  if (!body || !btn) return;
-  btn.addEventListener("click", function () { body.classList.toggle("open"); updatePeopleMore_(); });
-  // 🆕 v1.239: Mobile par वरिष्ठ सलाहकार upar khula, कार्यकारिणी heading par tap karne se khulti hai
-  var off = document.querySelector(".ppl-off"), offH = off && off.querySelector(".ppl-h");
-  if (offH) offH.addEventListener("click", function () { if (window.matchMedia("(max-width: 600px)").matches) off.classList.toggle("collapsed"); });
-  if (off && window.matchMedia("(max-width: 600px)").matches) off.classList.add("collapsed");
-  ["homeLeftContent", "homeRightContent"].forEach(function (id) {
-    var n = document.getElementById(id);
-    if (n && window.MutationObserver) new MutationObserver(updatePeopleMore_).observe(n, { childList: true, subtree: true, characterData: true });
-  });
-  if (window.ResizeObserver) new ResizeObserver(updatePeopleMore_).observe(body);
-  window.addEventListener("resize", updatePeopleMore_);
-  updatePeopleMore_();
-});
 
 /* ===========================
    🧰 Common helpers (WhatsApp link, modal)
@@ -5148,12 +5192,23 @@ function openAttendance_(incomingEnc, e) {
   const m = openModal_("👥 उपस्थिति — " + (rec["Date"] || "Meeting"));
   const extra = document.createElement("div");
   extra.style.cssText = "border:1px solid #e3ecfb;border-radius:10px;padding:10px;margin-bottom:10px;background:#f8fbff;";
+  const hasPrev = origNotes.trim() || /^(data:image\/|https?:\/\/)/i.test(origPhoto);
   extra.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px">📝 मीटिंग में क्या हुआ</div>
-    <textarea id="mtNotes" rows="3" placeholder="चर्चा / निर्णय / कार्यवाही लिखें…" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:16px;resize:vertical"></textarea>
-    <div style="font-weight:700;margin:10px 0 6px">📷 मीटिंग की फोटो</div>
-    <div id="mtPhotoWrap"></div>
-    <input id="mtPhotoIn" type="file" accept="image/*" style="display:none">`;
+    <div id="mtHead" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;font-weight:700;user-select:none;-webkit-tap-highlight-color:transparent">
+      <span>📝 मीटिंग में क्या हुआ (Minutes)${hasPrev ? ' <span style="color:#128c3e;font-size:12px;font-weight:600">• भरा हुआ</span>' : ""}</span>
+      <span id="mtArrow" style="color:#64748b">▾</span>
+    </div>
+    <div id="mtBody" style="display:none;margin-top:8px">
+      <textarea id="mtNotes" rows="3" placeholder="चर्चा / निर्णय / कार्यवाही लिखें…" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:16px;resize:vertical"></textarea>
+      <div style="font-weight:700;margin:10px 0 6px">📷 मीटिंग की फोटो</div>
+      <div id="mtPhotoWrap"></div>
+      <input id="mtPhotoIn" type="file" accept="image/*" style="display:none">
+    </div>`;
+  extra.querySelector("#mtHead").onclick = () => {
+    const b = extra.querySelector("#mtBody"), open = b.style.display === "none";
+    b.style.display = open ? "block" : "none";
+    extra.querySelector("#mtArrow").textContent = open ? "▴" : "▾";
+  };
   const notesEl = extra.querySelector("#mtNotes"); notesEl.value = origNotes;
   const photoWrap = extra.querySelector("#mtPhotoWrap"), photoIn = extra.querySelector("#mtPhotoIn");
   const drawPhoto = () => {
@@ -5173,21 +5228,56 @@ function openAttendance_(incomingEnc, e) {
   drawPhoto();
   m.body.appendChild(extra);
 
+  // 🆕 v1.241: chune hue naam upar 1. 2. 3. list mein (chunne ke kram mein); poori member list click se khulti hai
+  const order = [...present];
+  const selectName = n => { if (!present.has(n)) { present.add(n); order.push(n); } };
+  const unselectName = n => { present.delete(n); const i = order.indexOf(n); if (i > -1) order.splice(i, 1); };
+
   const cnt = document.createElement("div");
-  cnt.style.cssText = "font-weight:700;margin-bottom:8px;";
-  const search = document.createElement("input");
-  search.type = "text"; search.placeholder = "🔍 नाम खोजें";
-  search.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-bottom:8px;box-sizing:border-box;";
+  cnt.style.cssText = "font-weight:700;margin-bottom:6px;";
+  const selBox = document.createElement("div");
+  selBox.style.cssText = "border:1px solid #d7e6fb;background:#f4f9ff;border-radius:10px;padding:4px 10px;margin-bottom:8px;max-height:230px;overflow-y:auto;";
   const guestRow = document.createElement("div");
   guestRow.style.cssText = "display:flex;gap:8px;margin-bottom:8px;";
   const guest = document.createElement("input");
   guest.type = "text"; guest.placeholder = "अतिथि / बाहर का नाम जोड़ें";
   guest.style.cssText = "flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;";
   guestRow.appendChild(guest);
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.style.cssText = "width:100%;padding:10px;border:1px solid #c9e0ff;background:#eef6ff;color:#03427a;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;";
+  const listWrap = document.createElement("div");
+  listWrap.style.display = "none";
+  const search = document.createElement("input");
+  search.type = "text"; search.placeholder = "🔍 नाम खोजें";
+  search.style.cssText = "width:100%;padding:8px;border:1px solid #ccc;border-radius:8px;margin-bottom:8px;box-sizing:border-box;";
   const list = document.createElement("div");
-  m.body.appendChild(cnt); m.body.appendChild(search); m.body.appendChild(guestRow); m.body.appendChild(list);
+  listWrap.appendChild(search); listWrap.appendChild(list);
+  m.body.appendChild(cnt); m.body.appendChild(selBox); m.body.appendChild(guestRow); m.body.appendChild(toggle); m.body.appendChild(listWrap);
+
+  const setToggle = () => { toggle.textContent = listWrap.style.display === "none" ? "👥 सभी सदस्यों की सूची खोलें ▾" : "सूची बंद करें ▴"; };
+  toggle.onclick = () => { listWrap.style.display = listWrap.style.display === "none" ? "block" : "none"; setToggle(); };
 
   const updCount = () => { cnt.textContent = "उपस्थित: " + present.size + " / " + allNames.length; };
+  const drawSel = () => {
+    selBox.innerHTML = "";
+    if (!order.length) {
+      const em = document.createElement("div");
+      em.style.cssText = "color:#94a3b8;font-size:13px;padding:6px 0;";
+      em.textContent = "अभी कोई नहीं चुना — नीचे सूची खोलकर नाम चुनें";
+      selBox.appendChild(em); return;
+    }
+    order.forEach((n, i) => {
+      const r = document.createElement("div");
+      r.style.cssText = "display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14px;" + (i < order.length - 1 ? "border-bottom:1px dashed #dbe7fb;" : "");
+      const no = document.createElement("b"); no.textContent = (i + 1) + "."; no.style.cssText = "min-width:26px;color:#0b63d6;";
+      const nm = document.createElement("span"); nm.textContent = n; nm.style.cssText = "flex:1;min-width:0;overflow-wrap:anywhere;";
+      const x = document.createElement("button"); x.type = "button"; x.textContent = "✕"; x.title = "हटाएं";
+      x.style.cssText = "border:none;background:#fff0f0;color:#9b1b1b;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px;padding:0;";
+      x.onclick = () => { unselectName(n); updCount(); drawSel(); draw(); };
+      r.appendChild(no); r.appendChild(nm); r.appendChild(x); selBox.appendChild(r);
+    });
+  };
   const draw = () => {
     const q = search.value.trim().toLowerCase();
     list.innerHTML = "";
@@ -5197,7 +5287,7 @@ function openAttendance_(incomingEnc, e) {
       const cb = document.createElement("input");
       cb.type = "checkbox"; cb.checked = present.has(n);
       cb.style.cssText = "width:18px;height:18px;margin:0;padding:0;";
-      cb.onchange = () => { cb.checked ? present.add(n) : present.delete(n); updCount(); };
+      cb.onchange = () => { cb.checked ? selectName(n) : unselectName(n); updCount(); drawSel(); };
       const sp = document.createElement("span"); sp.textContent = n;
       lab.appendChild(cb); lab.appendChild(sp); list.appendChild(lab);
     });
@@ -5207,14 +5297,14 @@ function openAttendance_(incomingEnc, e) {
     const g = guest.value.trim();
     if (!g) return;
     if (!allNames.includes(g)) allNames.push(g);
-    present.add(g); guest.value = ""; updCount(); draw();
+    selectName(g); guest.value = ""; updCount(); drawSel(); draw();
   }));
-  updCount(); draw();
+  setToggle(); updCount(); drawSel(); draw();
 
   m.foot.appendChild(modalBtn_("Save", "#1a9c4b", async function () {
     this.disabled = true; this.textContent = "Saving...";
     try {
-      const text = allNames.filter(n => present.has(n)).join(", ");
+      const text = order.filter(n => present.has(n)).join(", ");
       const res = await callCrudBackend_({
         action: "editRow", sheetName: currentTab, idColumn, id: recordId, data: { [key]: text }
       });
