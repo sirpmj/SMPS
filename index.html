@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.238  (सलाहकार+कार्यकारिणी ek card + और देखें, footer gap theek)
+   - वरिष्ठ सलाहकार aur कार्यकारिणी ek hi card mein; jo na aaye wo "और देखें" se; khaali jagah ka use
+   - Footer aur cards ke beech ki extra jagah hatai (login ke time khaali dashboard/tabs/table ke dibbe ab jagah nahi gherte)
   v1.237  (login view mockup jaisa, purane bakaya+vada current year mein, View popup fix)
    - Login: patli header band + logo, bank rows (copy icon), कार्यकारिणी role-boxes mein, heading icons
    - Boli/Donation: vada-based filter (बाकी+वादा / निकले / आज / कल / 7 din) mein purane saal ke "vada + bakaya" wale records current year mein bhi dikhte hain
@@ -51,7 +54,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.237"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.238"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -984,6 +987,36 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
   #receiptPopup td { padding: 6px 7px; font-size: 13.5px; }
   #receiptPopup td:first-child { width: 36% !important; }
 }
+/* ===== 🆕 v1.238: merged people card + footer gap ===== */
+.lg-people { padding: 12px 14px !important; }
+.ppl-body { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 14px; max-height: 300px; overflow: hidden; position: relative; }
+.ppl-body.open { max-height: none; overflow: visible; }
+.ppl-body.clamped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(to bottom, rgba(255,255,255,0), #fff); pointer-events: none; }
+.ppl-col { min-width: 0; }
+.ppl-h { font-size: 15px; font-weight: 600; color: #0b63d6; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 1px solid #e3ecfb; line-height: 1.25; }
+.ppl-more {
+  display: block; width: 100%; height: 34px; margin: 8px 0 0 !important; padding: 0 10px !important;
+  background: #eef4ff !important; color: #0b63d6 !important; border: 1px solid #cfe0fb !important;
+  border-radius: 8px !important; font-size: 13.5px !important; font-weight: 600 !important; box-shadow: none !important;
+}
+.ppl-off #homeRightContent { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ppl-off .official-block { border: 1px solid #e3ecfb; border-radius: 8px; padding: 7px 9px; margin: 0; min-width: 0; }
+.ppl-off .official-title { font-size: 11.5px; color: #64748b; font-weight: 600; margin-bottom: 3px; }
+.ppl-off .official-name { overflow-wrap: anywhere; }
+
+/* Login ke time dashboard / tabs / table ke khaali dibbe jagah na gherein (footer ke upar extra space ka karan) */
+#appView:not([style*="block"]) ~ #mainDashboard,
+#appView:not([style*="block"]) ~ #tabs,
+#appView:not([style*="block"]) ~ #searchWrapper,
+#appView:not([style*="block"]) ~ #contentArea,
+#appView:not([style*="block"]) ~ #pagination { display: none !important; }
+.site-footer { margin-top: 10px !important; }
+.wrap { padding-bottom: 4px !important; }
+@media (max-width: 600px) {
+  .lg-people { order: 4; padding: 10px 12px !important; }
+  .ppl-body { grid-template-columns: minmax(0, 1fr); gap: 10px; max-height: 200px; }
+  .site-footer { margin-top: 8px !important; }
+}
 </style>
 
 
@@ -1027,15 +1060,19 @@ header .muted { font-size: 12.5px !important; line-height: 1.3; }
     <!-- 🆕 v1.236: naya login layout — desktop: [सलाहकार|कार्यकारिणी / Meeting|Announcements] + [Login / Bank]; mobile: Login pehle -->
     <div class="login-grid">
       <div class="lg-left">
-        <div class="lg-top">
-      <div class="card home-card lg-adv">
-    <h3>🎖️ वरिष्ठ सलाहकार</h3>
-        <div id="homeLeftContent" class="muted">Loading...</div>
-      </div>
-      <div class="card home-card lg-off">
-        <h3>👥 कार्यकारिणी</h3>
-        <div id="homeRightContent" class="muted">Loading...</div>
-      </div>
+        <!-- 🆕 v1.238: वरिष्ठ सलाहकार + कार्यकारिणी ek hi card mein; jo na aaye wo "और देखें" mein -->
+        <div class="card home-card lg-people">
+          <div class="ppl-body" id="peopleBody">
+            <div class="ppl-col ppl-adv">
+              <div class="ppl-h">🎖️ वरिष्ठ सलाहकार</div>
+              <div id="homeLeftContent" class="muted">Loading...</div>
+            </div>
+            <div class="ppl-col ppl-off">
+              <div class="ppl-h">👥 कार्यकारिणी</div>
+              <div id="homeRightContent" class="muted">Loading...</div>
+            </div>
+          </div>
+          <button type="button" id="peopleMoreBtn" class="ppl-more" style="display:none">और देखें ▾</button>
         </div>
         <div class="lg-mid">
       <div class="card home-card lg-meet">
@@ -4664,15 +4701,27 @@ function openPayLinkDialog_() {
 }
 document.addEventListener("DOMContentLoaded", renderBankCard_);
 
-// 🆕 v1.236: Mobile par "वरिष्ठ सलाहकार" aur "कार्यकारिणी" band rehte hain, heading par tap karke khulte hain
+// 🆕 v1.238: सलाहकार + कार्यकारिणी card — jitna aaye utna dikhao, baaki "और देखें" mein
+function updatePeopleMore_() {
+  const body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
+  if (!body || !btn) return;
+  if (body.classList.contains("open")) { btn.style.display = "block"; btn.textContent = "कम देखें ▴"; body.classList.remove("clamped"); return; }
+  const more = body.scrollHeight > body.clientHeight + 4;
+  body.classList.toggle("clamped", more);
+  btn.style.display = more ? "block" : "none";
+  btn.textContent = "और देखें ▾";
+}
 document.addEventListener("DOMContentLoaded", function () {
-  [".lg-adv", ".lg-off"].forEach(function (sel) {
-    var c = document.querySelector(sel);
-    if (!c) return;
-    var h = c.querySelector("h3");
-    if (h) h.addEventListener("click", function () { c.classList.toggle("collapsed"); });
-    if (window.matchMedia("(max-width: 600px)").matches) c.classList.add("collapsed");
+  var body = document.getElementById("peopleBody"), btn = document.getElementById("peopleMoreBtn");
+  if (!body || !btn) return;
+  btn.addEventListener("click", function () { body.classList.toggle("open"); updatePeopleMore_(); });
+  ["homeLeftContent", "homeRightContent"].forEach(function (id) {
+    var n = document.getElementById(id);
+    if (n && window.MutationObserver) new MutationObserver(updatePeopleMore_).observe(n, { childList: true, subtree: true, characterData: true });
   });
+  if (window.ResizeObserver) new ResizeObserver(updatePeopleMore_).observe(body);
+  window.addEventListener("resize", updatePeopleMore_);
+  updatePeopleMore_();
 });
 
 /* ===========================
