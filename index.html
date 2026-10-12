@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.256  (Meetings photo: app ke andar hi khulti hai)
+   - Photo click = app ke andar badi photo (naya tab nahi); abhi upload hui photo Drive mein tayyar na ho to 3-4 baar apne aap dobara try — refresh ki zarurat nahi
+   - Table thumbnail: direct image link, na chale to thumbnail link; "Drive में खोलें" button alag se
+  v1.255  (Meetings photo click fix)
+   - Photo click par ab Drive ka pakka "file/d/ID/view" link khulta hai (uc?export=view / thumbnail link se id nikaalkar); popup mein "Drive में खोलें" link bhi
   v1.254  (Meetings table mein Photo thumbnail)
    - Meetings: "Photo" column ab table mein chhote thumbnail ke roop mein dikhta hai; click = badi photo (naye tab mein). Drive link aur chhoti base64 photo dono chalti hain
   v1.253  (Meetings width kam, login Meeting/Announcements font, Meetings "Notes" button)
@@ -1454,6 +1459,9 @@ table[data-tab="Meetings"] .mt-cell { max-width: 220px; }
 .mt-ph { display: inline-block; line-height: 0; }
 .mt-ph img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid #d6dfec; background: #f1f5f9; display: block; }
 table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-align: center; }
+/* ===== 🆕 v1.255 ===== */
+.mv-phl { margin-top: 6px; font-size: 13px; }
+.mv-phl a { color: #0b63d6; font-weight: 600; }
 </style>
 
 
@@ -4798,8 +4806,11 @@ const msg =
         // 🆕 v1.254: Meetings table mein Photo — chhota thumbnail, click = badi photo
         const _p = String(row[c] || "").trim();
         if (/^https?:\/\//i.test(_p)) {
-          const _u = _p.replace(/"/g, "&quot;"), _t = _u.replace(/sz=w\d+/, "sz=w200");
-          html += `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="${_u}" target="_blank" rel="noopener" title="फोटो खोलें"><img src="${_t}" loading="lazy" alt="📷"></a></td>`;
+          const _id = driveId_(_p);
+          const _u = (_id ? "https://drive.google.com/file/d/" + _id + "/view" : _p).replace(/"/g, "&quot;");
+          const _t = (_id ? "https://lh3.googleusercontent.com/d/" + _id + "=w200" : _p).replace(/"/g, "&quot;");
+          const _tAlt = (_id ? "https://drive.google.com/thumbnail?id=" + _id + "&sz=w200" : _p).replace(/"/g, "&quot;");
+          html += `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="${_u}" target="_blank" rel="noopener" data-p="${_p.replace(/"/g, "&quot;")}" onclick="return openPhotoBox_(this.dataset.p, event)" title="फोटो खोलें"><img src="${_t}" data-alt="${_tAlt}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.alt}" loading="lazy" alt="📷"></a></td>`;
         } else if (/^data:image\//i.test(_p)) {
           html += `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="#" onclick="openMeetingView_('${_enc}','min',event)" title="फोटो खोलें"><img src="${_p.replace(/"/g, "&quot;")}" alt="📷"></a></td>`;
         } else {
@@ -5584,6 +5595,52 @@ function compressImage_(file, dims, quals, maxChars) {
     img.src = url;
   });
 }
+// 🆕 v1.256: Photo app ke andar hi khulti hai (naya tab / Drive page ki zarurat nahi). Photo abhi-abhi upload hui ho aur
+//   Drive ko tayyar hone mein der lage to apne aap dobara try karti hai (refresh nahi karna padta).
+function openPhotoBox_(photo, e) {
+  if (e) { if (e.preventDefault) e.preventDefault(); if (e.stopPropagation) e.stopPropagation(); }
+  const p = String(photo || "").trim();
+  if (!p) return false;
+  const id = driveId_(p);
+  const cands = /^data:image\//i.test(p) ? [p] : id
+    ? ["https://lh3.googleusercontent.com/d/" + id + "=w1600", "https://drive.google.com/thumbnail?id=" + id + "&sz=w1600", "https://drive.google.com/uc?export=view&id=" + id]
+    : [p];
+  const openHref = id ? "https://drive.google.com/file/d/" + id + "/view" : (/^https?:/i.test(p) ? p : "");
+  const old = document.getElementById("photoBox"); if (old) old.remove();
+  const ov = document.createElement("div"); ov.id = "photoBox";
+  ov.style.cssText = "position:fixed;inset:0;z-index:2000;background:rgba(10,15,30,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;";
+  const img = document.createElement("img");
+  img.style.cssText = "max-width:96vw;max-height:80vh;border-radius:10px;background:#fff;object-fit:contain;display:none;";
+  const msg = document.createElement("div"); msg.style.cssText = "color:#fff;font-size:15px;padding:30px;text-align:center;"; msg.textContent = "⏳ फोटो लोड हो रही है…";
+  const bar = document.createElement("div"); bar.style.cssText = "margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;";
+  const btn = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:auto;border:none;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; return b; };
+  if (openHref) bar.appendChild(btn("🔗 Drive में खोलें", "#0b63d6", () => window.open(openHref, "_blank", "noopener")));
+  bar.appendChild(btn("बंद करें", "#64748b", () => ov.remove()));
+  ov.appendChild(msg); ov.appendChild(img); ov.appendChild(bar);
+  ov.addEventListener("click", ev => { if (ev.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+  let i = 0, round = 0;
+  const tryNext = () => {
+    if (!document.getElementById("photoBox")) return;
+    if (i >= cands.length) {
+      i = 0; round++;
+      if (round >= 4) { msg.textContent = "फोटो अभी लोड नहीं हो पा रही — 'Drive में खोलें' दबाएं।"; return; }
+      setTimeout(tryNext, 1500); return;
+    }
+    img.src = cands[i++];
+  };
+  img.onload = () => { msg.style.display = "none"; img.style.display = "block"; };
+  img.onerror = tryNext;
+  tryNext();
+  return false;
+}
+// 🆕 v1.255: Drive link (uc?export=view / thumbnail / file/d/..) se file id nikaalo
+function driveId_(u) {
+  const s = String(u || "");
+  if (!/drive\.google\.com|googleusercontent\.com/i.test(s)) return "";
+  const m = s.match(/[?&]id=([\w-]{15,})/) || s.match(/\/d\/([\w-]{15,})/);
+  return m ? m[1] : "";
+}
 // 🆕 v1.252: Meetings — उपस्थिति (क्र. + नाम) aur Minutes ka readable view
 function openMeetingView_(incomingEnc, start, e) {
   if (e && e.preventDefault) e.preventDefault();
@@ -5626,7 +5683,12 @@ function openMeetingView_(incomingEnc, start, e) {
     } else {
       if (!notes && !hasPhoto) { body.innerHTML = '<div class="mv-empty">इस मीटिंग के Minutes अभी नहीं लिखे गए।</div>'; return; }
       body.innerHTML = (notes ? `<div class="mv-notes">${esc(notes)}</div>` : "") +
-        (hasPhoto ? `<div class="mv-ph"><a href="${photo.replace(/"/g, "&quot;")}" target="_blank" rel="noopener"><img src="${photo.replace(/"/g, "&quot;")}" alt="मीटिंग की फोटो"></a></div>` : "");
+        (hasPhoto ? (() => {
+          const pid = driveId_(photo);
+          const big = (pid ? "https://drive.google.com/thumbnail?id=" + pid + "&sz=w1600" : photo).replace(/"/g, "&quot;");
+          const open = (pid ? "https://drive.google.com/file/d/" + pid + "/view" : photo).replace(/"/g, "&quot;");
+          return `<div class="mv-ph"><a href="${open}" target="_blank" rel="noopener" data-p="${photo.replace(/"/g, "&quot;")}" onclick="return openPhotoBox_(this.dataset.p, event)"><img src="${big}" alt="मीटिंग की फोटो"></a>${/^https?:/i.test(photo) ? `<div class="mv-phl"><a href="${open}" target="_blank" rel="noopener">🔗 Drive में खोलें</a></div>` : ""}</div>`;
+        })() : "");
     }
   };
   wrap.querySelectorAll(".mv-tabs button").forEach(b => b.onclick = () => { cur = b.dataset.t; draw(); });
