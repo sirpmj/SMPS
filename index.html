@@ -8,6 +8,23 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.262  (photo column / patti tolerant)
+   - Photo column ka naam "Photo / Photo URL / Photo Link / Meeting Photo / Image / फोटो" kuch bhi ho chalega
+   - फोटो पट्टी: chhoti base64 photo bhi, aur jo photo load na ho wo tile (ya poora block) chhup jata hai
+  v1.261  (login page final layout)
+   - "जुड़ें / संपर्क" block hataya
+   - Meeting Updates | Announcements phir se 2 card saath mein (jagah kam ho to ek ke neeche ek)
+   - Login + Bank card scroll par sticky; neeche ke blocks (event + stats / news / photos) flexible width; photos full width
+  v1.260  (login: Announcements ke neeche 5 blocks)
+   - आगामी कार्यक्रम countdown (Announcements ki date se / Settings: EventName, EventDate)
+   - समाज एक नज़र में (सदस्य / गांव / गोत्र ginti)
+   - समाज समाचार (News sheet: शुभ / शोक / रोज़गार chips)
+   - फोटो पट्टी (Meetings ki last 4 photos, click = badi photo)
+   - जुड़ें / संपर्क (WhatsApp ग्रुप: Settings WhatsAppGroup, Map: MapsLink, अध्यक्ष / महामंत्री call)
+  v1.259  (login: Meeting Updates / Announcements font same)
+   - Login page ka font Mukta (Hindi + English ek family) — digits / English ab Hindi se bade nahi dikhte; Meeting Updates aur Announcements ka font, size, line-height ek jaisa
+  v1.258  (Hindi ⇄ English search)
+   - Search ab dono bhasha mein: "Suresh" likho to सुरेश bhi, सुरेश likho to Suresh bhi milta hai (table search, Members directory, उपस्थिति list / picker)
   v1.257  (login: remember device / skeleton / UPI QR / next meeting + birthdays / install + dark mode; Meetings: tasks + WhatsApp minutes; Members directory; version in footer)
    - Login: "इस डिवाइस पर 30 दिन याद रखें" checkbox (remember wale device par idle logout nahi); loading par skeleton bars
    - Bank card: 📷 UPI QR कोड (amount optional) + UPI ऐप mein kholo
@@ -1480,7 +1497,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.257"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.262"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -1531,6 +1548,74 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
 .dir-t .dn, .dir-t th:first-child { width: 44px; text-align: center; color: #0b63d6; font-weight: 700; }
 .dir-e { text-align: center; color: #94a3b8; padding: 26px !important; }
 @media (max-width: 700px) { #dirBox { padding: 0; } .dir-card { border-radius: 0; } .dir-t { font-size: 13px; } .dir-t th, .dir-t td { padding: 7px 8px; } }
+/* ===== 🆕 v1.259: Latin (digits) aur Devanagari ek hi size mein dikhein ===== */
+#loginView, #loginView button, #loginView input, body:has(#loginView:not([style*="none"])) header, html.logged-out header {
+  font-family: 'Mukta', 'Noto Sans Devanagari', 'Inter', 'Segoe UI', sans-serif;
+  font-variant-numeric: lining-nums;
+}
+/* Meeting Updates aur Announcements: bilkul ek jaisa font / size / line-height / bold */
+#loginView #homeMeeting, #loginView #homeAnnouncement,
+#loginView #homeMeeting *, #loginView #homeAnnouncement * { font-family: inherit; font-size: clamp(12px, 0.92vw, 14.5px) !important; line-height: 1.5 !important; }
+#loginView #homeMeeting b, #loginView #homeAnnouncement b { font-weight: 700; font-size: inherit !important; }
+#loginView #homeMeeting li, #loginView #homeAnnouncement li { margin: 0 0 4px; padding: 0; }
+@media (max-width: 900px) {
+  #loginView #homeMeeting, #loginView #homeAnnouncement, #loginView #homeMeeting *, #loginView #homeAnnouncement * { font-size: 14.5px !important; }
+}
+/* ===== 🆕 v1.260: Announcements ke neeche 5 blocks ===== */
+#loginView .sp-gap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+#loginView .gp-wide { grid-column: 1 / -1; }
+#loginView .gp-card { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(11,60,140,.10); padding: 12px 16px; min-width: 0; font-family: 'Mukta','Noto Sans Devanagari','Inter',sans-serif; font-size: clamp(12px, 0.92vw, 14.5px); line-height: 1.5; }
+#loginView .gp-h { font-size: 15px; color: #0b63d6; border-bottom: 1px solid #e3ecfb; padding: 0 0 6px; margin: 0 0 8px; font-weight: 700; }
+#loginView .gp-h svg.ic { width: 1.1em; height: 1.1em; vertical-align: -0.18em; margin-right: 4px; }
+/* event */
+.ev { display: flex; align-items: center; gap: 14px; }
+.ev-n { flex: none; min-width: 64px; text-align: center; font-size: 34px; font-weight: 800; line-height: 1; color: #0b63d6; background: #eaf3ff; border-radius: 14px; padding: 12px 8px; }
+.ev-t { font-weight: 700; color: #0b2a4a; } .ev-d { color: #475569; margin-top: 2px; }
+/* stats */
+.sts { display: flex; gap: 8px; flex-wrap: wrap; }
+.st { flex: 1 1 70px; text-align: center; background: #f3f8ff; border-radius: 12px; padding: 8px 4px; }
+.st b { display: block; font-size: 24px; line-height: 1.1; color: #0b63d6; font-weight: 800; }
+.st span { font-size: 12.5px; color: #475569; }
+/* news */
+.gn-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.gn-chip { width: auto; padding: 3px 12px; border: 1px solid #cfe0f7; background: #f3f8ff; color: #0b3d91; border-radius: 14px; font-size: 13px; cursor: pointer; font-family: inherit; }
+.gn-chip.on { background: #0b63d6; border-color: #0b63d6; color: #fff; }
+.gn-it { display: flex; gap: 9px; padding: 6px 8px; border-radius: 10px; margin-bottom: 5px; border-left: 4px solid #94a3b8; background: #f8fafc; }
+.gn-it.gn-h { border-left-color: #f59e0b; background: #fffaf0; } .gn-it.gn-s { border-left-color: #64748b; background: #f4f5f7; }
+.gn-it.gn-j { border-left-color: #16a34a; background: #f2fbf5; } .gn-ic { flex: none; }
+.gn-tx { min-width: 0; overflow-wrap: anywhere; } .gn-dt { color: #64748b; font-size: .9em; }
+/* photos */
+.gph { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gph a { position: relative; display: block; line-height: 0; border-radius: 10px; overflow: hidden; background: #eef2f8; }
+.gph img { width: 100%; height: 78px; object-fit: cover; display: block; }
+.gph span { position: absolute; left: 4px; bottom: 3px; padding: 0 6px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 11px; line-height: 1.5; }
+/* contact */
+.gcs { display: flex; flex-wrap: wrap; gap: 8px; }
+.gc-b { flex: 1 1 140px; text-align: center; text-decoration: none; padding: 8px 10px; border-radius: 10px; font-size: 13.5px; font-weight: 600; border: 1.5px solid #0b63d6; color: #0b63d6; background: #fff; }
+.gc-wa { background: #25a244; border-color: #25a244; color: #fff; } .gc-map { color: #0b63d6; } .gc-call { color: #0a7a2f; border-color: #0a7a2f; }
+@media (max-width: 900px) {
+  #loginView .sp-gap { display: contents; }
+  #loginView .sp-gap > .gp-card { order: 4; }
+  #loginView .sp-R > .sp-bank { order: 5; }
+  #loginView .sp-top > #spAdv { order: 6; }
+  #loginView .sp-top > #spOff { order: 7; }
+  #loginView .gp-card { font-size: 14.5px; }
+}
+/* ===== 🆕 v1.261: LOGIN PAGE — final layout =====
+   Desktop : [सलाहकार | कार्यकारिणी] / [Meeting | Announcements] (jagah kam ho to ek ke neeche ek) / event + stats / news / photos   |   right: Login + Bank (sticky)
+   Mobile  : Login, Meeting, Announcements, event..photos, Bank, सलाहकार, कार्यकारिणी */
+@media (min-width: 901px) {
+  #loginView .sp-wrap { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
+  #loginView .sp-L { min-width: 0; }
+  #loginView .sp-R { position: sticky; top: 10px; align-self: start; }
+  #loginView .sp-mid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: stretch; }
+  #loginView .sp-gap { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+  #loginView .sp-gap > .gp-card { flex: 1 1 300px; min-width: 0; }
+  #loginView .sp-gap > .gp-wide { flex: 1 1 100%; }
+  #loginView .sp-gap:not(:has(.gp-card:not([style*="none"]))) { display: none; }
+}
+#loginView .gph { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+#loginView .gph img { height: 92px; }
 </style>
 
 
@@ -1593,6 +1678,13 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
         <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Meeting Updates</h3><div id="homeMeeting"><div class="sk"><i></i><i></i><i></i></div></div></div>
         <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h3l8 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M19 8a5 5 0 010 8"/></svg> Announcements</h3><div id="homeAnnouncement"><div class="sk"><i></i><i></i><i></i></div></div></div>
         </div>
+          <div class="sp-gap" id="spGap">
+          <div class="gp-card" id="gpEvent" style="display:none"></div>
+          <div class="gp-card" id="gpStats" style="display:none"></div>
+          <div class="gp-card gp-wide" id="gpNews" style="display:none"></div>
+          <div class="gp-card gp-wide" id="gpPhotos" style="display:none"></div>
+        </div>
+      
       </div>
       <div class="sp-R">
         <div class="sp-login">
@@ -1963,7 +2055,7 @@ function parseDDMMYYYY(dateStr){
   const [dd, mm, yyyy] = parts.map(Number);
   return new Date(yyyy, mm - 1, dd);
 }
-function isMeetingPhotoCol_(c) { return currentTab === "Meetings" && /^(meeting[\s_]*)?(photo|image|फोटो)s?$/i.test(String(c || "").trim()); }
+function isMeetingPhotoCol_(c) { return currentTab === "Meetings" && /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(String(c || "").trim()); }
 function getHiddenColumnsForTab(tabName){
   if(!SETTINGS || !tabName) return new Set();
 
@@ -2726,6 +2818,7 @@ if (savedUser) {
   ]);
   applyLoginTexts();
   renderLoginExtras_();
+  renderGapBlocks_();
 
 document.body.style.visibility = "visible";
 
@@ -2849,6 +2942,7 @@ if (row["Padhadhikari"]) {
     });
     // 🆕 v1.246: pad (post) sirf ek baar — baaki log uske neeche
     rightHtml = offG.map(g => g.l.map((p, i) => `<div class="sp-row"><b class="sp-rl">${i === 0 ? g.t : ""}</b><span class="sp-nm">• ${p.n} ${pplTel_(p.m)}</span></div>`).join("")).join("");
+    window.__offG = offG;
     el("homeLeftContent").innerHTML = leftHtml || "—";
     el("homeRightContent").innerHTML = rightHtml || "—";
     spCounts_();
@@ -3586,7 +3680,7 @@ async function openMembersDirectory_() {
   ov.innerHTML = `<div class="dir-card">
     <div class="dir-top"><b>📇 सदस्य निर्देशिका</b><span id="dirCnt"></span><button type="button" class="dir-x" id="dirClose">✕</button></div>
     <div class="dir-f">
-      <input id="dirQ" type="text" placeholder="🔍 नाम / मोबाइल / गांव खोजें">
+      <input id="dirQ" type="text" placeholder="🔍 नाम / मोबाइल / गांव (Hindi या English)">
       ${kGotra ? `<select id="dirG"><option value="">सभी गोत्र</option>${uniq(kGotra).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
       ${kVil ? `<select id="dirV"><option value="">सभी गांव</option>${uniq(kVil).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
       <button type="button" id="dirP">🖨️ Print / PDF</button>
@@ -3599,7 +3693,7 @@ async function openMembersDirectory_() {
   const draw = () => {
     const s = q.value.trim().toLowerCase();
     cur = list.filter(r => (!g || !g.value || String(r[kGotra] || "").trim() === g.value) && (!v || !v.value || String(r[kVil] || "").trim() === v.value) &&
-      (!s || cols.some(c => String(r[c[1]] || "").toLowerCase().includes(s))));
+      (!s || cols.some(c => smatch_(r[c[1]], s))));
     ov.querySelector("tbody").innerHTML = cur.map((r, i) => `<tr><td class="dn">${i + 1}</td>` + cols.map(c => c[1] === kMob && r[c[1]] ? `<td><a href="tel:${esc(r[c[1]])}">${esc(r[c[1]])}</a></td>` : `<td>${esc(r[c[1]])}</td>`).join("") + "</tr>").join("") || `<tr><td colspan="${cols.length + 1}" class="dir-e">कोई member नहीं मिला</td></tr>`;
     ov.querySelector("#dirCnt").textContent = cur.length + " / " + list.length;
   };
@@ -3619,6 +3713,142 @@ async function openMembersDirectory_() {
     w.document.close(); setTimeout(() => w.print(), 400);
   };
   draw(); q.focus();
+}
+/* ===== 🆕 v1.258: Hindi ⇄ English search — "Suresh" likho to सुरेश bhi mile, सुरेश likho to Suresh bhi ===== */
+const _DV = {"अ":"a","आ":"a","इ":"i","ई":"i","उ":"u","ऊ":"u","ऋ":"ri","ए":"e","ऐ":"ai","ओ":"o","औ":"au","ऑ":"o","ऍ":"e",
+ "ा":"a","ि":"i","ी":"i","ु":"u","ू":"u","ृ":"ri","े":"e","ै":"ai","ो":"o","ौ":"au","ॉ":"o","ॅ":"e",
+ "ं":"n","ँ":"n","ः":"h","्":"","़":"",
+ "क":"k","ख":"kh","ग":"g","घ":"gh","ङ":"n","च":"ch","छ":"ch","ज":"j","झ":"jh","ञ":"n","ट":"t","ठ":"th","ड":"d","ढ":"dh","ण":"n","त":"t","थ":"th","द":"d","ध":"dh","न":"n","प":"p","फ":"ph","ब":"b","भ":"bh","म":"m","य":"y","र":"r","ल":"l","ळ":"l","व":"v","श":"sh","ष":"sh","स":"s","ह":"h",
+ "\u095c":"d","\u095d":"dh","\u095e":"ph","\u095f":"y","\u0958":"k","\u0959":"kh","\u095a":"g","\u095b":"j",
+ "०":"0","१":"1","२":"2","३":"3","४":"4","५":"5","६":"6","७":"7","८":"8","९":"9"};
+const _skc = new Map();
+function skel_(s) {
+  s = String(s == null ? "" : s);
+  let r = _skc.get(s); if (r !== undefined) return r;
+  let t = s.normalize("NFC").replace(/ज्ञ/g, "gy").toLowerCase(), o = "";
+  for (const ch of t) o += (_DV[ch] !== undefined ? _DV[ch] : ch);
+  o = o.replace(/ee/g, "i").replace(/oo/g, "u").replace(/w/g, "v").replace(/z/g, "j").replace(/f/g, "ph").replace(/q/g, "k").replace(/x/g, "ksh").replace(/c(?!h)/g, "k").replace(/(.)\1+/g, "$1").replace(/a/g, "").replace(/n(?=[pb])/g, "m");
+  if (_skc.size > 20000) _skc.clear();
+  _skc.set(s, o); return o;
+}
+function smatch_(v, q) {
+  q = String(q == null ? "" : q).toLowerCase();
+  if (!q) return true;
+  const t = String(v == null ? "" : v).toLowerCase();
+  if (t.includes(q)) return true;
+  if (/[0-9०-९]/.test(q)) return false;
+  const k = skel_(q);
+  if (k.length < 2) return false;
+  return skel_(t).includes(k);
+}
+/* ===== 🆕 v1.260: login page ke neeche ke 5 blocks (event countdown, समाज एक नज़र में, समाचार, फोटो पट्टी, संपर्क) ===== */
+const _GP_ESC = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const _GP_SVG = {
+  hour: '<path d="M6 2h12M6 22h12M7 2v4a5 5 0 002.5 4.3L12 12l-2.5 1.7A5 5 0 007 18v4M17 2v4a5 5 0 01-2.5 4.3L12 12l2.5 1.7A5 5 0 0117 18v4"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a5.5 5.5 0 015.5-5.5h3A5.5 5.5 0 0116 20v1"/><path d="M16 4.6a3.5 3.5 0 010 6.8M19 14.8a5.5 5.5 0 013 5.2v1"/>',
+  news: '<path d="M4 4h13a1 1 0 011 1v14a2 2 0 002 2H6a2 2 0 01-2-2z"/><path d="M18 8h2a1 1 0 011 1v10a2 2 0 01-2 2M8 8h6M8 12h6M8 16h4"/>',
+  img: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/>',
+  phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 005 5L15 12l5 2v4a2 2 0 01-2 2A16 16 0 013 5a2 2 0 012-2z"/>'
+};
+function _gpH(icon, title) { return `<h3 class="gp-h"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${_GP_SVG[icon]}</svg> ${title}</h3>`; }
+function _gpFindDate(txt) {
+  const M = { "जनवरी": 0, "फरवरी": 1, "फ़रवरी": 1, "मार्च": 2, "अप्रैल": 3, "मई": 4, "जून": 5, "जुलाई": 6, "अगस्त": 7, "सितंबर": 8, "सितम्बर": 8, "अक्टूबर": 9, "अक्तूबर": 9, "नवंबर": 10, "नवम्बर": 10, "दिसंबर": 11, "दिसम्बर": 11,
+    "january": 0, "february": 1, "march": 2, "april": 3, "may": 4, "june": 5, "july": 6, "august": 7, "september": 8, "october": 9, "november": 10, "december": 11 };
+  const t = String(txt || "");
+  const re = new RegExp("(\\d{1,2})\\s*(" + Object.keys(M).join("|") + ")\\s*,?\\s*(\\d{4})", "i");
+  let m = t.match(re);
+  if (m) return new Date(+m[3], M[m[2].toLowerCase()] !== undefined ? M[m[2].toLowerCase()] : M[m[2]], +m[1]);
+  m = t.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+}
+function gpPhotoFail_(img) {
+  const a = img.closest("a"); if (a) a.style.display = "none";
+  const box = document.getElementById("gpPhotos");
+  if (box && ![...box.querySelectorAll(".gph a")].some(x => x.style.display !== "none")) box.style.display = "none";
+}
+async function renderGapBlocks_() {
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const S = (typeof SETTINGS !== "undefined" && SETTINGS) || {};
+  // 1) event countdown
+  try {
+    const ann = (await fetchSheet("Announcements")) || [];
+    const vis = ann.filter(r => String(r["ShowOnHome"]).toUpperCase() === "TRUE");
+    let best = null;
+    if (S.EventDate) { const d = parseRowDate_(S.EventDate) || _gpFindDate(S.EventDate); if (d && d >= t0) best = { d, n: S.EventName || "आगामी कार्यक्रम" }; }
+    if (!best) vis.forEach(r => { const d = _gpFindDate(r["Message"]) || _gpFindDate(r["Title"]); if (d && d >= t0 && (!best || d < best.d)) best = { d, n: r["Title"] || "आगामी कार्यक्रम" }; });
+    const box = document.getElementById("gpEvent");
+    if (best && box) {
+      const days = Math.round((best.d - t0) / 86400000);
+      const ds = best.d.toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" });
+      box.innerHTML = _gpH("hour", "आगामी कार्यक्रम") + `<div class="ev"><div class="ev-n">${days === 0 ? "आज" : days}</div><div class="ev-r"><div class="ev-t">${days === 0 ? "कार्यक्रम आज है! 🎉" : days === 1 ? "दिन बाकी — कल!" : "दिन बाकी"}</div><div class="ev-d"><b>${_GP_ESC(best.n)}</b><br>${_GP_ESC(ds)}</div></div></div>`;
+      box.style.display = "";
+    }
+  } catch (e) { console.error("event:", e); }
+  // 2) samaj ek nazar mein
+  try {
+    const rows = (await fetchSheet("Members")) || [];
+    const keys = rows.length ? Object.keys(rows[0]) : [];
+    const K = re => keys.find(k => re.test(String(k).trim()));
+    const kName = K(/^(member|name|नाम|member name)$/i) || K(/name|नाम/i), kVil = K(/origin|village|native|गांव|गाँव|मूल/i), kGotra = K(/gotra|गोत्र/i), kStat = K(/^status$/i);
+    const ok = rows.filter(r => String(r[kName] || "").trim() && !(kStat && /pending|inactive|reject/i.test(String(r[kStat] || ""))));
+    const cnt = k => k ? new Set(ok.map(r => String(r[k] || "").trim().toLowerCase()).filter(Boolean)).size : 0;
+    const box = document.getElementById("gpStats");
+    if (ok.length && box) {
+      const chip = (n, l) => n ? `<div class="st"><b>${n}</b><span>${l}</span></div>` : "";
+      box.innerHTML = _gpH("users", "समाज एक नज़र में") + `<div class="sts">${chip(ok.length, "सदस्य")}${chip(cnt(kVil), "गांव")}${chip(cnt(kGotra), "गोत्र")}</div>`;
+      box.style.display = "";
+    }
+  } catch (e) { console.error("stats:", e); }
+  // 3) samaj samachar
+  try {
+    const rows = (await fetchSheet("News")) || [];
+    const keys = rows.length ? Object.keys(rows[0]) : [];
+    const K = re => keys.find(k => re.test(String(k).trim()));
+    const kCat = K(/category|type|श्रेणी|प्रकार/i), kTitle = K(/^title|शीर्षक/i), kMsg = K(/message|detail|विवरण|समाचार|text/i), kDate = K(/date|तारीख|दिनांक/i), kShow = K(/showonhome|show/i);
+    const limit = parseInt(S.NewsLimit || "6", 10) || 6;
+    let list = rows.filter(r => (r[kTitle] || r[kMsg]) && (!kShow || String(r[kShow]).toUpperCase() === "TRUE"));
+    list = list.map((r, i) => ({ r, i, d: kDate ? parseRowDate_(r[kDate]) : null }))
+      .sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i)).slice(0, limit);
+    const box = document.getElementById("gpNews");
+    if (list.length && box) {
+      const catOf = c => /शोक|श्रद्धांजलि|निधन/.test(c) ? ["शोक", "🕊️", "gn-s"] : /शुभ|बधाई|विवाह|जन्म|सगाई/.test(c) ? ["शुभ", "🎉", "gn-h"] : /रोज़गार|रोजगार|व्यापार|job|नौकरी|business/i.test(c) ? ["रोज़गार", "💼", "gn-j"] : ["समाचार", "📰", "gn-n"];
+      const items = list.map(x => { const c = String(x.r[kCat] || ""); const cc = catOf(c + " " + (x.r[kTitle] || "")); return { cc, t: x.r[kTitle] || "", m: x.r[kMsg] || "", d: x.d }; });
+      const cats = [...new Set(items.map(i => i.cc[0]))];
+      const draw = f => {
+        box.querySelector(".gn-list").innerHTML = items.filter(i => !f || i.cc[0] === f).map(i =>
+          `<div class="gn-it ${i.cc[2]}"><span class="gn-ic">${i.cc[1]}</span><div class="gn-tx">${i.t ? `<b>${_GP_ESC(i.t)}</b>` : ""}${i.t && i.m ? " – " : ""}${_GP_ESC(i.m)}${i.d ? `<span class="gn-dt"> · ${String(i.d.getDate()).padStart(2, "0")}/${String(i.d.getMonth() + 1).padStart(2, "0")}/${i.d.getFullYear()}</span>` : ""}</div></div>`).join("");
+        box.querySelectorAll(".gn-chip").forEach(b => b.classList.toggle("on", (b.dataset.f || "") === (f || "")));
+      };
+      box.innerHTML = _gpH("news", "समाज समाचार") +
+        (cats.length > 1 ? `<div class="gn-chips"><button type="button" class="gn-chip on" data-f="">सभी</button>${cats.map(c => `<button type="button" class="gn-chip" data-f="${c}">${c}</button>`).join("")}</div>` : "") +
+        `<div class="gn-list"></div>`;
+      box.querySelectorAll(".gn-chip").forEach(b => b.onclick = () => draw(b.dataset.f));
+      draw("");
+      box.style.display = "";
+    }
+  } catch (e) { console.error("news:", e); }
+  // 4) photo patti
+  try {
+    const rows = (await fetchSheet("Meetings")) || [];
+    const keys = rows.length ? Object.keys(rows[0]) : [];
+    const kPh = keys.find(k => /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(String(k).trim()));
+    const box = document.getElementById("gpPhotos");
+    if (kPh && box) {
+      const ph = rows.map((r, i) => ({ r, i, d: parseRowDate_(r["Date"]), p: String(r[kPh] || "").trim() }))
+        .filter(x => /^https?:\/\//i.test(x.p) || (/^data:image\//i.test(x.p) && x.p.length < 150000)).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i)).slice(0, 4);
+      if (ph.length) {
+        box.innerHTML = _gpH("img", "फोटो पट्टी") + `<div class="gph">` + ph.map(x => {
+          const id = driveId_(x.p);
+          const src = id ? "https://lh3.googleusercontent.com/d/" + id + "=w300" : x.p;
+          const alt = id ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w300" : x.p;
+          const cap = x.d ? String(x.d.getDate()).padStart(2, "0") + "/" + String(x.d.getMonth() + 1).padStart(2, "0") : "";
+          return `<a href="#" data-p="${_GP_ESC(x.p)}" onclick="return openPhotoBox_(this.dataset.p, event)"><img src="${_GP_ESC(src)}" data-alt="${_GP_ESC(alt)}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.alt}else{gpPhotoFail_(this)}" loading="lazy" alt="फोटो"><span>${cap}</span></a>`;
+        }).join("") + `</div>`;
+        box.style.display = "";
+      }
+    }
+  } catch (e) { console.error("photos:", e); }
+
 }
 function updateAddNewButton(sheetName) {
   { const _d = document.getElementById("dirBtn"); if (_d) _d.style.display = (sheetName === "Members" && ROLE_ACCESS?.[currentUser?.role]?.Members?.canView) ? "inline-block" : "none"; }
@@ -4791,7 +5021,7 @@ function renderTable(){
 if(searchVal){
   filteredData = filteredData.filter(r =>
     Object.values(r).some(v =>
-      String(v || "").toLowerCase().includes(searchVal)
+      smatch_(v, searchVal)
     )
   );
 }
@@ -4811,7 +5041,7 @@ if(searchVal){
         if (!k) return false;
         const key = k.toLowerCase();
         if (key === "password" || key === "role") return false;
-        return String(v ?? "").toLowerCase().includes(searchVal);
+        return smatch_(v, searchVal);
       })
     );
   }
@@ -5859,7 +6089,7 @@ function openMeetingView_(incomingEnc, start, e) {
   if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
   const kOf = re => Object.keys(rec).find(k => re.test(k.trim()));
   const attKey = kOf(/^attendance$/i), notesKey = kOf(/^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i);
-  const photoKey = kOf(/^(meeting[\s_]*)?(photo|image|फोटो)s?$/i), dtlKey = kOf(/detail|agenda|description|विवरण|subject|topic/i);
+  const photoKey = kOf(/^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i), dtlKey = kOf(/detail|agenda|description|विवरण|subject|topic/i);
   const names = String(attKey ? rec[attKey] || "" : "").split(/[,\n]/).map(x => x.trim()).filter(Boolean);
   const notes = String(notesKey ? rec[notesKey] || "" : "").trim();
   const photo = String(photoKey ? rec[photoKey] || "" : "").trim();
@@ -5882,7 +6112,7 @@ function openMeetingView_(incomingEnc, start, e) {
     wrap.querySelectorAll(".mv-tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === cur));
     if (cur === "att") {
       if (!names.length) { body.innerHTML = '<div class="mv-empty">अभी कोई उपस्थिति दर्ज नहीं है।</div>'; return; }
-      const rows = names.map((n, i) => [i + 1, n]).filter(r => !q || r[1].toLowerCase().includes(q));
+      const rows = names.map((n, i) => [i + 1, n]).filter(r => !q || smatch_(r[1], q));
       body.innerHTML = `
         <div class="mv-sum">कुल उपस्थित: <b>${names.length}</b></div>
         ${names.length > 12 ? '<input class="mv-search" type="text" placeholder="🔍 नाम खोजें">' : ""}
@@ -6082,7 +6312,7 @@ function openAttendance_(incomingEnc, e) {
 
   // 🆕 v1.239: "मीटिंग में क्या हुआ" (text) + photo — column ke naam sheet se pehchane, na mile to Minutes / Photo
   const notesKey = Object.keys(rec).find(k => /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i.test(k.trim())) || "Minutes";
-  const photoKey = Object.keys(rec).find(k => /^(meeting[\s_]*)?(photo|image|फोटो)s?$/i.test(k.trim())) || "Photo";
+  const photoKey = Object.keys(rec).find(k => /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(k.trim())) || "Photo";
   const origNotes = String(rec[notesKey] || ""), origPhoto = String(rec[photoKey] || "");
   let photoFile = null, photoRemoved = false;
 
@@ -6178,7 +6408,7 @@ function openAttendance_(incomingEnc, e) {
   const draw = () => {
     const q = search.value.trim().toLowerCase();
     list.innerHTML = "";
-    allNames.filter(n => !q || n.toLowerCase().includes(q)).forEach(n => {
+    allNames.filter(n => !q || smatch_(n, q)).forEach(n => {
       const lab = document.createElement("label");
       lab.style.cssText = "display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid #f0f0f0;font-size:14px;cursor:pointer;margin:0;font-weight:400;";
       const cb = document.createElement("input");
