@@ -8,6 +8,19 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.266  (फोटो पट्टी: Apps Script se photo — private Drive file bhi dikhe)
+   - Photo Drive se load na ho to Code.gs ke doGet "photoThumb" se (sirf SMPS_Photos folder ki) photo aati hai — login page par bina Drive sharing ke bhi
+   - Badi photo (click) bhi isi raaste se fallback
+   - NOTE: Code.gs naya deploy karna hoga (Deploy > Manage deployments > Edit > New version)
+  v1.265  (फोटो पट्टी: photo load ke 3 raste)
+   - Photo tile ab 3 link try karta hai (lh3 -> thumbnail -> uc?export=view) aur no-referrer ke saath; phir bhi load na ho to 📷 tile
+   - NOTE: Drive photo login page par tabhi dikhegi jab file "Anyone with the link" par shared ho (Code.gs uploadImage mein setSharing)
+  v1.264  (फोटो पट्टी hamesha dikhe + debug)
+   - Block ab hamesha login page par aata hai; photo na ho to "अभी कोई मीटिंग फोटो नहीं है।"
+   - Page ke link ke aakhir mein ?debug lagao (jaise .../index.html?debug) to block mein wajah dikhti hai (rows nahi aaye / Photo column nahi mila / link nahi mila)
+  v1.263  (फोटो पट्टी block hamesha dikhe)
+   - Photo load na ho (Drive sharing / network) to bhi block chhupta nahi — 📷 tile dikhta hai, click par badi photo / Drive khulta hai
+   - Photo column ka naam kuch bhi ho (jisme photo / image / फोटो aaye) chalega; ek cell mein ek se zyada link ho to pehla liya jata hai
   v1.262  (photo column / patti tolerant)
    - Photo column ka naam "Photo / Photo URL / Photo Link / Meeting Photo / Image / फोटो" kuch bhi ho chalega
    - फोटो पट्टी: chhoti base64 photo bhi, aur jo photo load na ho wo tile (ya poora block) chhup jata hai
@@ -1614,6 +1627,9 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
   #loginView .sp-gap > .gp-wide { flex: 1 1 100%; }
   #loginView .sp-gap:not(:has(.gp-card:not([style*="none"]))) { display: none; }
 }
+.gph-empty { color: #64748b; font-size: 13.5px; padding: 4px 2px; overflow-wrap: anywhere; }
+.gph a.gph-x { display: flex !important; align-items: center; justify-content: center; min-height: 92px; background: #eef4ff; border: 1px dashed #b9d3f7; }
+.gph a.gph-x .gph-i { font-size: 28px; line-height: 1; }
 #loginView .gph { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
 #loginView .gph img { height: 92px; }
 </style>
@@ -3762,9 +3778,25 @@ function _gpFindDate(txt) {
   return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
 }
 function gpPhotoFail_(img) {
-  const a = img.closest("a"); if (a) a.style.display = "none";
-  const box = document.getElementById("gpPhotos");
-  if (box && ![...box.querySelectorAll(".gph a")].some(x => x.style.display !== "none")) box.style.display = "none";
+  // v1.266: pehle Apps Script (photoThumb) se try karo — Drive private ho tab bhi chalta hai; phir bhi na ho to 📷 tile
+  const id = img.dataset.id;
+  if (id && !img.dataset.s) {
+    img.dataset.s = 1;
+    fetch(WEB_APP_URL + "?action=photoThumb&id=" + encodeURIComponent(id))
+      .then(r => r.json())
+      .then(j => { if (j && j.success && j.data) img.src = j.data; else gpPhotoFail_(img); })
+      .catch(() => gpPhotoFail_(img));
+    return;
+  }
+  const a = img.closest("a"); if (!a) return;
+  img.style.display = "none"; a.classList.add("gph-x");
+  if (!a.querySelector(".gph-i")) { const b = document.createElement("b"); b.className = "gph-i"; b.textContent = "📷"; a.insertBefore(b, a.firstChild); }
+}
+function _gpPickPhoto(v) {
+  const t = String(v == null ? "" : v).trim();
+  if (/^data:image\//i.test(t)) return t.length < 150000 ? t : "";
+  const m = t.match(/https?:\/\/[^\s,;"'<>]+/i);
+  return m ? m[0] : "";
 }
 async function renderGapBlocks_() {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -3831,23 +3863,41 @@ async function renderGapBlocks_() {
   try {
     const rows = (await fetchSheet("Meetings")) || [];
     const keys = rows.length ? Object.keys(rows[0]) : [];
-    const kPh = keys.find(k => /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(String(k).trim()));
+    const kPh = keys.find(k => /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(String(k).trim())) || keys.find(k => /photo|image|picture|फोटो|चित्र/i.test(String(k)));
     const box = document.getElementById("gpPhotos");
     if (kPh && box) {
-      const ph = rows.map((r, i) => ({ r, i, d: parseRowDate_(r["Date"]), p: String(r[kPh] || "").trim() }))
-        .filter(x => /^https?:\/\//i.test(x.p) || (/^data:image\//i.test(x.p) && x.p.length < 150000)).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i)).slice(0, 4);
+      const ph = rows.map((r, i) => ({ r, i, d: parseRowDate_(r["Date"]), p: _gpPickPhoto(r[kPh]) }))
+        .filter(x => x.p).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i)).slice(0, 4);
       if (ph.length) {
         box.innerHTML = _gpH("img", "फोटो पट्टी") + `<div class="gph">` + ph.map(x => {
           const id = driveId_(x.p);
           const src = id ? "https://lh3.googleusercontent.com/d/" + id + "=w300" : x.p;
           const alt = id ? "https://drive.google.com/thumbnail?id=" + id + "&sz=w300" : x.p;
+          const alt2 = id ? "https://drive.google.com/uc?export=view&id=" + id : "";
           const cap = x.d ? String(x.d.getDate()).padStart(2, "0") + "/" + String(x.d.getMonth() + 1).padStart(2, "0") : "";
-          return `<a href="#" data-p="${_GP_ESC(x.p)}" onclick="return openPhotoBox_(this.dataset.p, event)"><img src="${_GP_ESC(src)}" data-alt="${_GP_ESC(alt)}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.alt}else{gpPhotoFail_(this)}" loading="lazy" alt="फोटो"><span>${cap}</span></a>`;
+          return `<a href="#" data-p="${_GP_ESC(x.p)}" onclick="return openPhotoBox_(this.dataset.p, event)"><img src="${_GP_ESC(src)}" data-alt="${_GP_ESC(alt)}" data-alt2="${_GP_ESC(alt2)}" data-id="${_GP_ESC(id)}" referrerpolicy="no-referrer" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.alt}else if(this.dataset.f==1&&this.dataset.alt2){this.dataset.f=2;this.src=this.dataset.alt2}else{gpPhotoFail_(this)}" loading="lazy" alt="फोटो"><span>${cap}</span></a>`;
         }).join("") + `</div>`;
         box.style.display = "";
       }
     }
-  } catch (e) { console.error("photos:", e); }
+    // 🆕 v1.264: photo na mile tab bhi block dikhao (wajah ?debug par)
+    if (box && box.style.display === "none") {
+      const dbg = /[?&]debug\b/i.test(location.search);
+      const why = !rows.length ? "Meetings sheet ke rows nahi aaye (sheet public hai? opensheet chal raha hai?)"
+        : !kPh ? "Photo column nahi mila. Columns: " + keys.join(", ")
+        : "Column '" + kPh + "' mila, par " + rows.length + " rows mein kisi mein photo link nahi hai";
+      console.warn("photos:", why);
+      box.innerHTML = _gpH("img", "फोटो पट्टी") + `<div class="gph-empty">${dbg ? _GP_ESC(why) : "अभी कोई मीटिंग फोटो नहीं है।"}</div>`;
+      box.style.display = "";
+    }
+  } catch (e) {
+    console.error("photos:", e);
+    const b = document.getElementById("gpPhotos");
+    if (b && b.style.display === "none") {
+      b.innerHTML = _gpH("img", "फोटो पट्टी") + `<div class="gph-empty">${/[?&]debug\b/i.test(location.search) ? _GP_ESC("Error: " + (e && e.message)) : "अभी कोई मीटिंग फोटो नहीं है।"}</div>`;
+      b.style.display = "";
+    }
+  }
 
 }
 function updateAddNewButton(sheetName) {
@@ -6063,6 +6113,7 @@ function openPhotoBox_(photo, e) {
     if (!document.getElementById("photoBox")) return;
     if (i >= cands.length) {
       i = 0; round++;
+      if (round === 1 && id && !ov._s) { ov._s = 1; fetch(WEB_APP_URL + "?action=photoThumb&big=1&id=" + encodeURIComponent(id)).then(r => r.json()).then(j => { if (j && j.success && j.data && document.getElementById("photoBox")) img.src = j.data; }).catch(() => {}); }
       if (round >= 4) { msg.textContent = "फोटो अभी लोड नहीं हो पा रही — 'Drive में खोलें' दबाएं।"; return; }
       setTimeout(tryNext, 1500); return;
     }
