@@ -8,6 +8,16 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.253  (Meetings width kam, login Meeting/Announcements font, Meetings "Notes" button)
+   - Meetings table: lamba text wrap hota hai, row bahut chauda nahi (details max 300px, baaki cell max 240px)
+   - Login: Meeting Updates / Announcements ka font सलाहकार / कार्यकारिणी jaisa
+   - Meetings: naya "Notes" button — ek-ek point likho (Enter = naya point), Minutes column mein 1. 2. 3. ke roop mein save
+  v1.252  (dashboard click, Meetings readable view, action buttons fix, login icons + font)
+   - Dashboard cards clickable: Members / Fund Ledger / Cash Book / Bank Book / Boli / Donation / Receipts / Expenses (jis tab ka access ho)
+   - Meetings: Attendance par click = क्र. + नाम ki saaf list (search + copy); Minutes par click = padhne layak text + photo; Edit button usi se
+   - Meetings: Details column chauda
+   - Action buttons: rows ek ke neeche ek, har row ek barabar chaudi (bahar nikalna band)
+   - Login: कार्यकारिणी card chauda; image wale line icons (SVG) + font Inter / Mukta
   v1.251  (login: horizontal scroll band, pad aur naam ke beech gap kam)
    - सलाहकार / कार्यकारिणी list mein side scroll nahi (lambe naam zarurat par agli line mein); font screen ke hisaab se thoda chhota-bada
    - कार्यकारिणी: pad column sirf sabse lambe pad jitna chauda — pad aur naam ke beech gap kam
@@ -1365,12 +1375,86 @@ body:has(#loginView:not([style*="none"])) header .muted, html.logged-out header 
 @media (min-width: 901px) {
   #loginView .sp-row, #loginView #homeRightContent .sp-rl { font-size: clamp(12px, 0.92vw, 14.5px); }
 }
+/* ===== 🆕 v1.252 ===== */
+/* -- login: icons + font (image jaisa) -- */
+#loginView, body:has(#loginView:not([style*="none"])) header { font-family: 'Inter','Mukta','Noto Sans Devanagari','Segoe UI',sans-serif; }
+#loginView button, #loginView input { font-family: inherit; }
+#loginView svg.ic { width: 1.15em; height: 1.15em; flex: none; vertical-align: -0.2em; margin-right: 4px; }
+#loginView button svg.ic { margin-right: 6px; }
+#loginView .sp-sm svg.ic, #loginView .sp-info h3 svg.ic, #loginView .sp-bank h3 svg.ic { width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
+#loginView .sp-login .sp-wel { display: flex; align-items: center; justify-content: center; gap: 4px; }
+#loginView #newUserBtn, #loginView #payLinkBtn, #loginView #sendOtpBtn, #loginView #verifyOtpBtn { display: flex; align-items: center; justify-content: center; }
+/* -- login: कार्यकारिणी chauda -- */
+@media (min-width: 901px) {
+  #loginView .sp-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); }
+}
+/* -- dashboard cards clickable -- */
+#mainDashboard .dash-card.dash-click { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+#mainDashboard .dash-card.dash-click:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.14); }
+#mainDashboard .dash-card.dash-click:active { transform: scale(.98); }
+#mainDashboard .dash-card.dash-click:focus-visible { outline: 2px solid #0b63d6; outline-offset: 2px; }
+/* -- Meetings: details chauda, attendance / minutes cell -- */
+td.dtl { min-width: 260px; width: 32%; }
+@media (max-width: 700px) { td.dtl { min-width: 200px; } }
+.mt-cell { cursor: pointer; }
+.mt-cell .clamp2 { cursor: pointer; }
+.mt-n { display: inline-block; background: #e8f1ff; color: #0b3d91; border-radius: 10px; padding: 1px 8px; font-size: 12px; margin-bottom: 3px; }
+.mt-more { display: block; color: #0b63d6; font-size: 12px; font-weight: 600; margin-top: 2px; }
+/* -- Meetings viewer modal -- */
+.mv-dtl { font-size: 14px; color: #334155; background: #f8fafc; border-left: 3px solid #0b63d6; padding: 6px 10px; border-radius: 6px; margin-bottom: 10px; white-space: pre-line; overflow-wrap: anywhere; }
+.mv-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.mv-tabs button { flex: 1; width: auto; padding: 9px 8px; border: 1px solid #cfe0f7; background: #f3f8ff; color: #0b3d91; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.mv-tabs button.on { background: #0b63d6; border-color: #0b63d6; color: #fff; }
+.mv-c { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: rgba(255,255,255,.28); font-size: 12px; }
+.mv-tabs button:not(.on) .mv-c { background: #dbeafe; }
+.mv-sum { font-size: 14px; margin-bottom: 6px; color: #334155; }
+.mv-search { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+.mv-scroll { max-height: 52vh; overflow: auto; border: 1px solid #e3ecfb; border-radius: 10px; }
+.mv-tbl { width: 100%; border-collapse: collapse; font-size: 15px; }
+.mv-tbl th { position: sticky; top: 0; background: #eef5ff; color: #0b3d91; text-align: left; padding: 8px 10px; font-size: 13px; z-index: 1; }
+.mv-tbl td { padding: 8px 10px; border-top: 1px solid #eef2f8; overflow-wrap: anywhere; }
+.mv-tbl tbody tr:nth-child(even) { background: #fafcff; }
+.mv-tbl .mv-no, .mv-tbl th:first-child { width: 48px; text-align: center; font-weight: 700; color: #0b63d6; }
+.mv-notes { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15.5px; line-height: 1.7; color: #1e293b; background: #f8fbff; border: 1px solid #e3ecfb; border-radius: 10px; padding: 12px 14px; max-height: 46vh; overflow: auto; }
+.mv-ph { margin-top: 10px; text-align: center; }
+.mv-ph img { max-width: 100%; max-height: 40vh; border-radius: 10px; border: 1px solid #ddd; }
+.mv-empty { text-align: center; color: #94a3b8; padding: 22px 8px; font-size: 14px; }
+/* -- Action buttons: rows upar-neeche, har row ek barabar chaudi — koi button bahar nahi nikalta -- */
+td.act-cell { white-space: nowrap !important; text-align: center; width: 1%; }
+.abtns.ab-flex { display: inline-flex !important; flex-direction: column !important; flex-wrap: nowrap !important; align-items: stretch !important; justify-content: center; gap: 5px; vertical-align: middle; max-width: none; }
+.abtns.ab-flex .ab-row { display: flex; flex: none; width: 100%; box-sizing: border-box; justify-content: center; gap: 5px; }
+.abtns.ab-flex .ab-btn { flex: 1 1 auto; min-width: 34px; }
+@media (max-width: 700px) { .abtns.ab-flex, .abtns.ab-flex .ab-row { gap: 4px; } }
+/* ===== 🆕 v1.253 ===== */
+/* Meetings table: row bahut chauda na ho — lamba text wrap hota hai */
+table[data-tab="Meetings"] td { max-width: 240px; }
+table[data-tab="Meetings"] td.dtl { min-width: 170px; max-width: 300px; width: auto; }
+table[data-tab="Meetings"] td.act-cell { max-width: none; }
+table[data-tab="Meetings"] .mt-cell { max-width: 220px; }
+@media (max-width: 700px) {
+  table[data-tab="Meetings"] td { max-width: 200px; }
+  table[data-tab="Meetings"] td.dtl { min-width: 150px; max-width: 220px; }
+}
+/* login: Meeting Updates / Announcements ka font = सलाहकार / कार्यकारिणी jaisa */
+#loginView #homeMeeting, #loginView #homeMeeting *, #loginView #homeAnnouncement, #loginView #homeAnnouncement * { font-size: clamp(12px, 0.92vw, 14.5px) !important; line-height: 1.45 !important; }
+#loginView #homeMeeting ul, #loginView #homeAnnouncement ul { margin: 0; padding-left: 18px !important; }
+#loginView #homeMeeting li, #loginView #homeAnnouncement li { margin-bottom: 3px; }
+@media (max-width: 900px) { #loginView #homeMeeting, #loginView #homeMeeting *, #loginView #homeAnnouncement, #loginView #homeAnnouncement * { font-size: 14.5px !important; } }
+/* Notes / Points editor */
+.mn-hint { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+.mn-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.mn-no { flex: none; width: 28px; padding-top: 9px; text-align: right; color: #0b63d6; }
+.mn-row textarea { flex: 1; min-width: 0; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; line-height: 1.45; resize: none; overflow: hidden; font-family: inherit; }
+.mn-row textarea:focus { outline: 2px solid #93c5fd; border-color: #3b82f6; }
+.mn-x { flex: none; width: 32px; height: 36px; padding: 0; border: none; border-radius: 8px; background: #fff0f0; color: #9b1b1b; cursor: pointer; }
+.mn-add { width: 100%; padding: 10px; border: 1.5px dashed #93c5fd; background: #f3f8ff; color: #0b63d6; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; }
 </style>
 
 
 <!-- ===== PDFMAKE (Hindi Supported) ===== -->
 <!-- Hindi Font -->
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- HTML to PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -1411,39 +1495,39 @@ body:has(#loginView:not([style*="none"])) header .muted, html.logged-out header 
       <div class="sp-L">
         <div class="sp-top">
           <div class="sp-gc sp-acc" id="spAdv">
-            <div class="sp-sm" role="button" tabindex="0"><span>वरिष्ठ सलाहकार <span class="sp-badge" id="spAdvN"></span></span></div>
+            <div class="sp-sm" role="button" tabindex="0"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M2 21v-1a6 6 0 016-6h2"/><circle cx="18" cy="17" r="2.2"/><path d="M18 12.6v1.2M18 20.2v1.2M13.6 17h1.2M21.2 17h1.2"/></svg> वरिष्ठ सलाहकार <span class="sp-badge" id="spAdvN"></span></span></div>
             <div class="sp-bd"><div id="homeLeftContent" class="muted">Loading...</div></div>
           </div>
           <div class="sp-gc sp-acc" id="spOff">
-            <div class="sp-sm" role="button" tabindex="0"><span>कार्यकारिणी <span class="sp-badge" id="spOffN"></span></span></div>
+            <div class="sp-sm" role="button" tabindex="0"><span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2 21v-1a5.5 5.5 0 015.5-5.5h3A5.5 5.5 0 0116 20v1"/><path d="M16 4.6a3.5 3.5 0 010 6.8M19 14.8a5.5 5.5 0 013 5.2v1"/></svg> कार्यकारिणी <span class="sp-badge" id="spOffN"></span></span></div>
             <div class="sp-bd"><div id="homeRightContent" class="muted">Loading...</div></div>
             <button type="button" id="offExpandBtn" class="sp-more" style="display:none" aria-label="और देखें">+</button>
           </div>
         </div>
         <div class="sp-mid">
-        <div class="sp-info"><h3>🗓️ Meeting Updates</h3><div id="homeMeeting" class="muted">Loading...</div></div>
-        <div class="sp-info"><h3>📢 Announcements</h3><div id="homeAnnouncement" class="muted">Loading...</div></div>
+        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Meeting Updates</h3><div id="homeMeeting" class="muted">Loading...</div></div>
+        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h3l8 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M19 8a5 5 0 010 8"/></svg> Announcements</h3><div id="homeAnnouncement" class="muted">Loading...</div></div>
         </div>
       </div>
       <div class="sp-R">
         <div class="sp-login">
-<h2 class="sp-wel">🔐 समाज पोर्टल में आपका स्वागत है</h2>
+<h2 class="sp-wel"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg> समाज पोर्टल में आपका स्वागत है</h2>
 <div class="sp-sub">अपने मोबाइल नंबर से WhatsApp OTP द्वारा login करें</div>
 <span id="loginTitle" style="display:none"></span>
 <label id="labelMobile" style="display:none">User Name</label>
 <input id="username" type="text" inputmode="tel" autocomplete="tel" placeholder="10 अंको का मोबाइल नंबर डालें">
 <label class="sp-otpl">OTP</label>
 <input id="otpInput" type="text" placeholder="WhatsApp पर आया OTP डालें" style="display:none">
-<button id="sendOtpBtn" type="button" style="background:#0b63d6;color:#fff">📲 Send OTP</button>
-<button id="verifyOtpBtn" type="button" style="background:#008000;color:#fff;display:none">✅ Verify & Login</button>
+<button id="sendOtpBtn" type="button" style="background:#0b63d6;color:#fff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg> Send OTP</button>
+<button id="verifyOtpBtn" type="button" style="background:#008000;color:#fff;display:none"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg> Verify & Login</button>
 <div id="loginInfoMsg" style="display:none;margin:6px 0;padding:4px 6px;background:#fff8e1;border:1px solid #ffe0a3;color:#856404;border-radius:4px;font-size:12.5px;text-align:center;line-height:1.25"></div>
-<button id="newUserBtn" type="button" style="background:#fff;color:#0a7a2f">New / Update Member</button>
+<button id="newUserBtn" type="button" style="background:#fff;color:#0a7a2f"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 016-6h2a6 6 0 016 6v1"/><path d="M19 8v6M16 11h6"/></svg> New / Update Member</button>
 <div id="loginMsg" class="muted" style="margin-top:10px"></div>
         </div>
         <div class="sp-bank" id="bankCard">
-          <h3>🏦 बैंक विवरण / भुगतान</h3>
+          <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M9.5 21V10M14.5 21V10M19 21V10"/><path d="M12 3L3 8h18z"/></svg> बैंक विवरण / भुगतान</h3>
           <div id="bankCardBody"></div>
-          <button type="button" id="payLinkBtn" style="background:#1a9c4b;color:#fff">📤 पेमेंट लिंक भेजें</button>
+          <button type="button" id="payLinkBtn" style="background:#1a9c4b;color:#fff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg> पेमेंट लिंक भेजें</button>
         </div>
       </div>
     </div>
@@ -3083,6 +3167,10 @@ const DASH_ORDER_ = [
   [/total members/i, 1], [/fund balance/i, 2], [/cash balance/i, 3], [/bank balance/i, 4],
   [/total income/i, 5], [/total expense/i, 6], [/pending boli/i, 7], [/pending donation/i, 8], [/आज के वादे/, 99]
 ];
+const DASH_TAB_ = [
+  [/total members/i, "Members"], [/fund balance/i, "Fund Ledger"], [/cash balance/i, "Cash Book"], [/bank balance/i, "Bank Book"],
+  [/boli/i, "Boli"], [/donation/i, "Donation"], [/total income/i, "Receipts"], [/total expense/i, "Expenses"]
+];
 function fixDashboardRows_() {
   const d = document.getElementById("mainDashboard");
   if (!d) return;
@@ -3095,6 +3183,16 @@ function fixDashboardRows_() {
     if (o === 99) k.classList.add("dash-commit");
     k.style.setProperty("--o", o);
     k._o = o;
+    // 🆕 v1.252: dashboard card click = us tab par jao (jis tab ka access ho)
+    const tab = DASH_TAB_.reduce((r, x) => r || (x[0].test(t) ? x[1] : ""), "");
+    const okTab = tab && currentUser && ROLE_ACCESS && ROLE_ACCESS[currentUser.role] && ROLE_ACCESS[currentUser.role][tab] && ROLE_ACCESS[currentUser.role][tab].canView;
+    if (okTab && !k.getAttribute("onclick")) {
+      k.classList.add("dash-click");
+      k.setAttribute("role", "button"); k.tabIndex = 0; k.title = tab + " खोलें";
+      const go = () => { setActiveTab(tab); const tb = document.getElementById("tabs"); if (tb && tb.scrollIntoView) tb.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      k.onclick = go;
+      k.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } };
+    }
   });
   // 3-per-row: jo cards bach jayein unhe row bharne ke liye failaao
   let run = [];
@@ -4453,6 +4551,7 @@ function cellClass_(colName) {
   // 🆕 v1.232: "MemberID" / "Member ID" naam wala column NAHI hai — usse "nm" (naam + freeze) na mano
   const isIdCol = /^(member|सदस्य|समाज)?[\s_\-]*(id|आईडी|no\.?|number|code|कोड)$/i.test(c);
   if (!isIdCol && /^(member|name|firm|नाम|सदस्य)/i.test(c)) return "txt nm";
+  if (currentTab === "Meetings" && /detail|agenda|description|विवरण|subject|topic/i.test(c)) return "txt lg dtl";   // 🆕 v1.252: Meetings details chauda
   if (/detail|note|remark|address|agenda|description|commitment|attendance|place|venue|message|purpose|for$/i.test(c)) return "txt lg";
   return "txt";
 }
@@ -4590,7 +4689,7 @@ if (currentTab === "Meetings") {
     if (!columns.some(c => re.test(String(c).trim()))) columns.push(nm);
   });
 }
-  let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + "><thead><tr>";
+  let html = "<table" + (useLatestFirst ? ' data-latest-first="1"' : "") + (currentTab === "Meetings" ? ' data-tab="Meetings"' : "") + "><thead><tr>";
   columns.forEach(c => html += `<th onclick="sortBy('${c.replace(/'/g,"\\'")}')">${c}</th>`);
   html += "<th>Actions</th></tr></thead><tbody>";
   pageData.forEach(row => {
@@ -4685,10 +4784,16 @@ const msg =
       html += `<td class="${cellClass_(c)}">${nm}${nm !== row[c] ? ' <small style="color:#b45309">(' + ANON_MEMBER_LABEL + ')</small>' : ""}</td>`;
     } else {
       // 🆕 v1.242: Meetings tab — Attendance (member list) + Minutes default 2 line, click se khule/band
-      const _clamp = currentTab === "Meetings" && /^(attendance|minutes|meeting[\s_]*notes?|summary|कार्यवाही|चर्चा)$/i.test(String(c).trim()) && row[c];
-      html += _clamp
-        ? `<td class="${cellClass_(c)}"><div class="clamp2" title="क्लिक करें: खोलें / बंद करें" onclick="this.classList.toggle('open')">${row[c]}</div></td>`
-        : `<td class="${cellClass_(c)}">${row[c] || ""}</td>`;
+      const _isAtt = currentTab === "Meetings" && /^attendance$/i.test(String(c).trim());
+      const _isMin = currentTab === "Meetings" && /^(minutes|meeting[\s_]*notes?|summary|कार्यवाही|चर्चा)$/i.test(String(c).trim());
+      const _enc = (_isAtt || _isMin) ? encodeURIComponent(resolveRecordId_(row).recordId || "") : "";
+      if ((_isAtt || _isMin) && row[c]) {
+        // 🆕 v1.252: click = poora readable view (उपस्थिति: क्र. + नाम | Minutes: padhne layak text + photo)
+        const _n = _isAtt ? String(row[c]).split(/[,\n]/).map(x => x.trim()).filter(Boolean).length : 0;
+        html += `<td class="${cellClass_(c)}"><div class="mt-cell" onclick="openMeetingView_('${_enc}','${_isAtt ? "att" : "min"}',event)" title="क्लिक करें: पूरा देखें">${_isAtt ? `<b class="mt-n">${_n} उपस्थित</b>` : ""}<div class="clamp2">${row[c]}</div><span class="mt-more">${_isAtt ? "सूची देखें ›" : "पूरा पढ़ें ›"}</span></div></td>`;
+      } else {
+        html += `<td class="${cellClass_(c)}">${row[c] || ""}</td>`;
+      }
     }
   }
 
@@ -4713,6 +4818,7 @@ const msg =
    =========================== */
 // 🆕 v1.231: SVG icons (sab device par ek jaisa dikhta hai)
 const AB_ICON = {
+  note:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
   view:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
   edit:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
   del:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
@@ -4753,6 +4859,7 @@ function renderActionButtons(row, encId) {
     btns.push(abBtn_("ab-edit", "vada", "📅 वादा", "वादा", `href="#" onclick="openCommitments('${encId}', event)"`));
   }
   if (currentTab === "Meetings" && actions.includes("EDIT")) {
+    btns.push(abBtn_("ab-edit", "note", "📝 Notes / Points", "Notes", `href="#" onclick="openMeetingNotes_('${encId}', event)"`));
     btns.push(abBtn_("ab-edit", "attn", "👥 उपस्थिति", "Attn", `href="#" onclick="openAttendance_('${encId}', event)"`));
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
@@ -5458,6 +5565,129 @@ function compressImage_(file, dims, quals, maxChars) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("फोटो पढ़ नहीं पाया")); };
     img.src = url;
   });
+}
+// 🆕 v1.252: Meetings — उपस्थिति (क्र. + नाम) aur Minutes ka readable view
+function openMeetingView_(incomingEnc, start, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (e && e.stopPropagation) e.stopPropagation();
+  const incoming = decodeURIComponent(incomingEnc || "");
+  const rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === incoming);
+  if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const kOf = re => Object.keys(rec).find(k => re.test(k.trim()));
+  const attKey = kOf(/^attendance$/i), notesKey = kOf(/^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i);
+  const photoKey = kOf(/^(meeting[\s_]*)?(photo|image|फोटो)s?$/i), dtlKey = kOf(/detail|agenda|description|विवरण|subject|topic/i);
+  const names = String(attKey ? rec[attKey] || "" : "").split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+  const notes = String(notesKey ? rec[notesKey] || "" : "").trim();
+  const photo = String(photoKey ? rec[photoKey] || "" : "").trim();
+  const hasPhoto = /^(data:image\/|https?:\/\/)/i.test(photo);
+  const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const m = openModal_("📋 Meeting — " + (rec["Date"] || ""));
+  const dtl = dtlKey && rec[dtlKey] ? String(rec[dtlKey]).trim() : "";
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    ${dtl ? `<div class="mv-dtl">${esc(dtl)}</div>` : ""}
+    <div class="mv-tabs">
+      <button type="button" data-t="att">👥 उपस्थिति <span class="mv-c">${names.length}</span></button>
+      <button type="button" data-t="min">📝 Minutes${notes || hasPhoto ? "" : ' <span class="mv-c mv-c0">खाली</span>'}</button>
+    </div>
+    <div class="mv-body"></div>`;
+  m.body.appendChild(wrap);
+  const body = wrap.querySelector(".mv-body");
+  let cur = "att", q = "";
+  const draw = () => {
+    wrap.querySelectorAll(".mv-tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === cur));
+    if (cur === "att") {
+      if (!names.length) { body.innerHTML = '<div class="mv-empty">अभी कोई उपस्थिति दर्ज नहीं है।</div>'; return; }
+      const rows = names.map((n, i) => [i + 1, n]).filter(r => !q || r[1].toLowerCase().includes(q));
+      body.innerHTML = `
+        <div class="mv-sum">कुल उपस्थित: <b>${names.length}</b></div>
+        ${names.length > 12 ? '<input class="mv-search" type="text" placeholder="🔍 नाम खोजें">' : ""}
+        <div class="mv-scroll"><table class="mv-tbl"><thead><tr><th>क्र.</th><th>नाम</th></tr></thead><tbody>${rows.map(r => `<tr><td class="mv-no">${r[0]}</td><td>${esc(r[1])}</td></tr>`).join("") || '<tr><td colspan="2" class="mv-empty">कोई नाम नहीं मिला</td></tr>'}</tbody></table></div>`;
+      const s = body.querySelector(".mv-search");
+      if (s) { s.value = q; s.oninput = () => { q = s.value.trim().toLowerCase(); const pos = s.selectionStart; draw(); const s2 = body.querySelector(".mv-search"); if (s2) { s2.focus(); s2.setSelectionRange(pos, pos); } }; }
+    } else {
+      if (!notes && !hasPhoto) { body.innerHTML = '<div class="mv-empty">इस मीटिंग के Minutes अभी नहीं लिखे गए।</div>'; return; }
+      body.innerHTML = (notes ? `<div class="mv-notes">${esc(notes)}</div>` : "") +
+        (hasPhoto ? `<div class="mv-ph"><a href="${photo.replace(/"/g, "&quot;")}" target="_blank" rel="noopener"><img src="${photo.replace(/"/g, "&quot;")}" alt="मीटिंग की फोटो"></a></div>` : "");
+    }
+  };
+  wrap.querySelectorAll(".mv-tabs button").forEach(b => b.onclick = () => { cur = b.dataset.t; draw(); });
+  cur = start === "min" ? "min" : "att";
+  draw();
+  const actions = (ROLE_ACCESS[currentUser.role] || {})[currentTab]; const canEdit = actions && (actions.canAction || []).includes("EDIT");
+  m.foot.appendChild(modalBtn_("📋 कॉपी", "#0b63d6", ev => {
+    const txt = cur === "att" ? names.map((n, i) => (i + 1) + ". " + n).join("\n") : notes;
+    copyText_(txt, ev.currentTarget);
+  }));
+  if (canEdit) {
+    m.foot.appendChild(modalBtn_("📝 Notes लिखें", "#d97706", () => { m.close(); openMeetingNotes_(incomingEnc); }));
+    m.foot.appendChild(modalBtn_("👥 उपस्थिति बदलें", "#d97706", () => { m.close(); openAttendance_(incomingEnc); }));
+  }
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => m.close()));
+}
+// 🆕 v1.253: Meeting Notes / Points — meeting ke dauran ek-ek point likhne ke liye (Minutes column mein 1. 2. 3. ke roop mein save)
+function openMeetingNotes_(incomingEnc, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const incoming = decodeURIComponent(incomingEnc || "");
+  const rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === incoming);
+  if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const { idColumn, recordId } = resolveRecordId_(rec);
+  if (!idColumn) { alert("इस sheet में 'ID' column नहीं मिला।"); return; }
+  const notesKey = Object.keys(rec).find(k => /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i.test(k.trim()))
+    || tableData.map(r => Object.keys(r).find(k => /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i.test(k.trim()))).find(Boolean) || "Minutes";
+  const orig = String(rec[notesKey] || "").trim();
+  const points = orig ? orig.split(/\n+/).map(x => x.replace(/^\s*(\d+[.)]|[•\-*])\s*/, "").trim()).filter(Boolean) : [];
+  if (!points.length) points.push("");
+  const m = openModal_("📝 Notes / Points — " + (rec["Date"] || "Meeting"));
+  const hint = document.createElement("div");
+  hint.className = "mn-hint"; hint.textContent = "हर बात अलग पॉइंट में लिखें। Enter दबाने पर नया पॉइंट बनता है।";
+  const list = document.createElement("div"); list.className = "mn-list";
+  const addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.className = "mn-add"; addBtn.textContent = "+ नया पॉइंट जोड़ें";
+  m.body.appendChild(hint); m.body.appendChild(list); m.body.appendChild(addBtn);
+  const grow = t => { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+  const renum = () => { [...list.children].forEach((r, i) => { r.firstChild.textContent = (i + 1) + "."; }); };
+  const addRow = (val, focus, after) => {
+    const r = document.createElement("div"); r.className = "mn-row";
+    const no = document.createElement("b"); no.className = "mn-no";
+    const t = document.createElement("textarea"); t.rows = 1; t.value = val || ""; t.placeholder = "पॉइंट लिखें…";
+    const x = document.createElement("button"); x.type = "button"; x.className = "mn-x"; x.textContent = "✕"; x.title = "हटाएं";
+    r.appendChild(no); r.appendChild(t); r.appendChild(x);
+    if (after && after.nextSibling) list.insertBefore(r, after.nextSibling); else list.appendChild(r);
+    t.oninput = () => grow(t);
+    t.onkeydown = ev => {
+      if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); addRow("", true, r); }
+      else if (ev.key === "Backspace" && !t.value && list.children.length > 1) { ev.preventDefault(); const p = r.previousSibling || r.nextSibling; r.remove(); renum(); if (p) p.querySelector("textarea").focus(); }
+    };
+    x.onclick = () => { if (list.children.length > 1) { r.remove(); } else { t.value = ""; grow(t); } renum(); };
+    renum(); grow(t);
+    if (focus) t.focus();
+  };
+  points.forEach(p => addRow(p, false));
+  setTimeout(() => list.querySelectorAll("textarea").forEach(grow), 0);
+  addBtn.onclick = () => addRow("", true, list.lastChild);
+  m.foot.appendChild(modalBtn_("Save", "#1a9c4b", async function () {
+    const pts = [...list.querySelectorAll("textarea")].map(t => t.value.trim()).filter(Boolean);
+    const text = pts.map((p, i) => (i + 1) + ". " + p).join("\n");
+    if (text === orig) { m.close(); return; }
+    this.disabled = true; this.textContent = "Saving...";
+    try {
+      const res = await callCrudBackend_({ action: "editRow", sheetName: currentTab, idColumn, id: recordId, data: { [notesKey]: text } });
+      if (res.success) {
+        rec[notesKey] = text; delete CACHE[currentTab];
+        m.close();
+        try { renderTable(); } catch (x) { console.error(x); }
+        alert("नोट्स save हो गए (" + pts.length + " पॉइंट)।");
+      } else {
+        alert("❌ Save नहीं हुआ: " + (res.msg || "error") + "\n\n(Meetings sheet में '" + notesKey + "' नाम का column होना चाहिए)");
+        this.disabled = false; this.textContent = "Save";
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ " + (err.message || "Network error"));
+      this.disabled = false; this.textContent = "Save";
+    }
+  }));
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => m.close()));
 }
 function openAttendance_(incomingEnc, e) {
   if (e && e.preventDefault) e.preventDefault();
