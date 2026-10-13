@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.274  (कार्यकारिणी chhoti — font size SAME)
+   - Font size pehle jaisa; sirf rows ke beech ki jagah (line-height / padding) aur card ki upar-neeche padding kam
+  v1.273  (mobile: समाज एक नज़र में ek line; desktop: कार्यकारिणी chhoti)
+   - समाज एक नज़र में ke 5 chips ab mobile par bhi ek hi line mein (chhota font, nowrap)
+   - Desktop: कार्यकारिणी ki rows ka font / gap kam — card ~25% chhota; khaali jagah na bache isliye बैठक ki nayi jaankari beech wale column mein
   v1.272  (login desktop >=1200px: SIRF cards ki jagah — icon / font / rows pehle jaise)
    - 3 column: [वरिष्ठ सलाहकार, बैठक, आगामी कार्यक्रम, समाज एक नज़र में] [कार्यकारिणी (poori, scroll / + nahi), महत्वपूर्ण सूचनाएँ] [Login, Bank]; neeche समाचार + फोटो
    - Cards JS se (layoutLogin3_) 3 column mein rakhe jaate hain; 1200px se chhoti screen / mobile par pehle wala layout wapas
@@ -1661,6 +1666,19 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
 #loginView .sp3 #gpStats .st { flex: 1 1 0; min-width: 0; padding: 8px 2px; }
 #loginView .sp3 #gpStats .st span { font-size: 11.5px; line-height: 1.2; display: block; }
 #loginView .sp3 .sp-sm::after { content: none !important; }
+/* ===== 🆕 v1.273 ===== */
+/* समाज एक नज़र में — 5 chips hamesha ek line mein (mobile bhi) */
+#loginView #gpStats .sts { flex-wrap: nowrap; gap: 5px; }
+#loginView #gpStats .st { flex: 1 1 0; min-width: 0; padding: 6px 1px; }
+#loginView #gpStats .st b { font-size: 20px; }
+#loginView #gpStats .st span { font-size: 11px; line-height: 1.2; white-space: nowrap; display: block; }
+@media (max-width: 400px) { #loginView #gpStats .st b { font-size: 18px; } #loginView #gpStats .st span { font-size: 10px; } }
+/* desktop: कार्यकारिणी chhoti */
+@media (min-width: 1200px) {
+  #loginView .sp3 #homeRightContent .sp-rl, #loginView .sp3 #homeRightContent .sp-nm { line-height: 1.35; padding: 1px 0; }   /* font-size same */
+  #loginView .sp3 #spOff { padding-top: 10px; padding-bottom: 8px; }
+  #loginView .sp3 #spOff .sp-sm { padding-bottom: 4px; margin-bottom: 4px; }
+}
 .bd-strip div + div { margin-top: 3px; }
 .gph-all { display: block; width: 100%; margin-top: 8px; height: 34px; border: 1px solid #cfe0fb; background: #eef4ff; color: #0b63d6; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
 .gph-empty { color: #64748b; font-size: 13.5px; padding: 4px 2px; overflow-wrap: anywhere; }
@@ -3665,8 +3683,8 @@ function layoutLogin3_() {
   if (wide && !on) {
     const mk = c => { const d = document.createElement("div"); d.className = c; return d; };
     const cols = mk("sp-cols"), c1 = mk("sp-c1"), c2 = mk("sp-c2"), c3 = mk("sp-c3"), bot = mk("sp-bot");
-    [O.adv, O.info[0], O.ev, O.st].forEach(x => x && c1.appendChild(x));
-    [O.off, O.info[1]].forEach(x => x && c2.appendChild(x));
+    [O.adv, O.ev, O.st].forEach(x => x && c1.appendChild(x));
+    [O.off, O.info[0], O.info[1]].forEach(x => x && c2.appendChild(x));
     [O.login, O.bank].forEach(x => x && c3.appendChild(x));
     [O.news, O.ph].forEach(x => x && bot.appendChild(x));
     cols.appendChild(c1); cols.appendChild(c2); cols.appendChild(c3);
