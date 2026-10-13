@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.270  (समाज एक नज़र में: Current City + District)
+   - Chips: सदस्य | गांव | गोत्र | वर्तमान शहर (Members ka Current City column ke alag-alag shehar) | जिला (District column ke alag-alag jile)
+  v1.269  (login: janmdin 3 din pehle se + headings Hindi mein)
+   - Login page par janmdin: aaj + agle 3 din tak ke (aaj / kal / 2 din baad / 3 din baad) — sirf naam, mobile nahi
+   - Headings Hindi: "Meeting Updates" -> "बैठक की नवीनतम जानकारी", "Announcements" -> "महत्वपूर्ण सूचनाएँ"
   v1.268  (फोटो gallery: next / previous / swipe)
    - Photo kholne par ‹ › button, left-right swipe aur keyboard (← → Esc) se Meetings ki SAARI photos ek ke baad ek dekh sakte hain
    - Upar "2 / 7 • meeting ka naam • tareekh"; "सभी N फोटो देखें ›" button; agli/pichhli photo pehle se load hoti hai
@@ -1634,6 +1639,7 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
   #loginView .sp-gap > .gp-wide { flex: 1 1 100%; }
   #loginView .sp-gap:not(:has(.gp-card:not([style*="none"]))) { display: none; }
 }
+.bd-strip div + div { margin-top: 3px; }
 .gph-all { display: block; width: 100%; margin-top: 8px; height: 34px; border: 1px solid #cfe0fb; background: #eef4ff; color: #0b63d6; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
 .gph-empty { color: #64748b; font-size: 13.5px; padding: 4px 2px; overflow-wrap: anywhere; }
 .gph a.gph-x { display: flex !important; align-items: center; justify-content: center; min-height: 92px; background: #eef4ff; border: 1px dashed #b9d3f7; }
@@ -1699,8 +1705,8 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
           </div>
         </div>
         <div class="sp-mid">
-        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Meeting Updates</h3><div id="homeMeeting"><div class="sk"><i></i><i></i><i></i></div></div></div>
-        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h3l8 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M19 8a5 5 0 010 8"/></svg> Announcements</h3><div id="homeAnnouncement"><div class="sk"><i></i><i></i><i></i></div></div></div>
+        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> बैठक की नवीनतम जानकारी</h3><div id="homeMeeting"><div class="sk"><i></i><i></i><i></i></div></div></div>
+        <div class="sp-info"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 001 1h3l8 4V6L7 10H4a1 1 0 00-1 1z"/><path d="M19 8a5 5 0 010 8"/></svg> महत्वपूर्ण सूचनाएँ</h3><div id="homeAnnouncement"><div class="sk"><i></i><i></i><i></i></div></div></div>
         </div>
           <div class="sp-gap" id="spGap">
           <div class="gp-card" id="gpEvent" style="display:none"></div>
@@ -3609,6 +3615,19 @@ async function loadTab(sheetName, forceFresh) {
    =========================== */
 /* ===== 🆕 v1.257 ===== */
 // ---- Login page: agli meeting countdown + aaj ke janmdin ----
+// v1.269: janmdin kitne din baad hai (0 = aaj). Formats: dd/mm/yyyy, yyyy-mm-dd, ISO (T). Galat/khaali = 999
+function bdOffset_(b) {
+  const t = String(b == null ? "" : b).trim(); if (!t) return 999;
+  let d, m;
+  if (t.includes("T")) { const dt = new Date(t); if (isNaN(dt)) return 999; d = dt.getDate(); m = dt.getMonth(); }
+  else if (t.includes("/")) { const p = t.split("/"); d = parseInt(p[0], 10); m = parseInt(p[1], 10) - 1; }
+  else if (/^\d{4}-\d{1,2}-\d{1,2}/.test(t)) { const p = t.split("-"); d = parseInt(p[2], 10); m = parseInt(p[1], 10) - 1; }
+  else return 999;
+  if (!(d >= 1 && d <= 31 && m >= 0 && m <= 11)) return 999;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  let n = new Date(now.getFullYear(), m, d); if (n < now) n = new Date(now.getFullYear() + 1, m, d);
+  return Math.round((n - now) / 86400000);
+}
 async function renderLoginExtras_() {
   try {
     const rows = (await fetchSheet("Meetings")) || [];
@@ -3626,13 +3645,27 @@ async function renderLoginExtras_() {
     }
   } catch (e) { console.error("next meeting:", e); }
   try {
-    const names = Object.values(MEMBERS || {}).filter(m => { try { return isTodayBirthday(m.Birthday); } catch (e) { return false; } })
-      .map(m => String(m.Member || m.Name || "").trim()).filter(Boolean);
+    // v1.269: janmdin aaj + agle 3 din tak (sirf naam)
+    const DAYS_AHEAD = 3, groups = {};
+    Object.values(MEMBERS || {}).forEach(m => {
+      try {
+        const off = bdOffset_(m.Birthday), nm = String(m.Member || m.Name || "").trim();
+        if (nm && off >= 0 && off <= DAYS_AHEAD) (groups[off] = groups[off] || []).push(nm);
+      } catch (e) {}
+    });
     const card = document.getElementById("homeAnnouncement") && document.getElementById("homeAnnouncement").parentNode;
-    if (names.length && card && !document.getElementById("bdToday")) {
-      const show = names.slice(0, 6).join(", ") + (names.length > 6 ? " +" + (names.length - 6) + " और" : "");
+    const keys = Object.keys(groups).map(Number).sort((x, y) => x - y);
+    if (keys.length && card && !document.getElementById("bdToday")) {
+      const base = new Date(); base.setHours(0, 0, 0, 0);
+      const line = off => {
+        const list = groups[off], shown = list.slice(0, 6).map(_GP_ESC).join(", ") + (list.length > 6 ? " +" + (list.length - 6) + " और" : "");
+        if (off === 0) return "<div>🎂 आज के जन्मदिन: <b>" + shown + "</b> — बधाई! 🎉</div>";
+        const d = new Date(base); d.setDate(d.getDate() + off);
+        const ds = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+        return "<div>🎁 " + (off === 1 ? "कल" : off + " दिन बाद") + " (" + ds + "): <b>" + shown + "</b></div>";
+      };
       const bd = document.createElement("div"); bd.id = "bdToday"; bd.className = "bd-strip";
-      bd.textContent = "🎂 आज के जन्मदिन: " + show + " — बधाई! 🎉";
+      bd.innerHTML = keys.map(line).join("");
       card.insertBefore(bd, document.getElementById("homeAnnouncement"));
     }
   } catch (e) { console.error("birthdays:", e); }
@@ -3829,13 +3862,14 @@ async function renderGapBlocks_() {
     const rows = (await fetchSheet("Members")) || [];
     const keys = rows.length ? Object.keys(rows[0]) : [];
     const K = re => keys.find(k => re.test(String(k).trim()));
-    const kName = K(/^(member|name|नाम|member name)$/i) || K(/name|नाम/i), kVil = K(/origin|village|native|गांव|गाँव|मूल/i), kGotra = K(/gotra|गोत्र/i), kStat = K(/^status$/i);
+    const kName = K(/^(member|name|नाम|member name)$/i) || K(/name|नाम/i), kVil = K(/origin|village|native|गांव|गाँव|मूल/i), kGotra = K(/gotra|गोत्र/i), kStat = K(/^status$/i),
+      kCity = K(/^current[\s_]*city$/i) || K(/current[\s_]*city|वर्तमान/i) || K(/^city$|^शहर$/i), kDist = K(/^district$|^जिला$|^ज़िला$/i) || K(/district|जिला|ज़िला/i);
     const ok = rows.filter(r => String(r[kName] || "").trim() && !(kStat && /pending|inactive|reject/i.test(String(r[kStat] || ""))));
     const cnt = k => k ? new Set(ok.map(r => String(r[k] || "").trim().toLowerCase()).filter(Boolean)).size : 0;
     const box = document.getElementById("gpStats");
     if (ok.length && box) {
       const chip = (n, l) => n ? `<div class="st"><b>${n}</b><span>${l}</span></div>` : "";
-      box.innerHTML = _gpH("users", "समाज एक नज़र में") + `<div class="sts">${chip(ok.length, "सदस्य")}${chip(cnt(kVil), "गांव")}${chip(cnt(kGotra), "गोत्र")}</div>`;
+      box.innerHTML = _gpH("users", "समाज एक नज़र में") + `<div class="sts">${chip(ok.length, "सदस्य")}${chip(cnt(kVil), "गांव")}${chip(cnt(kGotra), "गोत्र")}${chip(cnt(kCity), "वर्तमान शहर")}${chip(cnt(kDist), "जिला")}</div>`;
       box.style.display = "";
     }
   } catch (e) { console.error("stats:", e); }
