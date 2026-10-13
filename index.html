@@ -8,6 +8,8 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.271  (login: agla janmdin hamesha dikhe)
+   - Aaj + agle 3 din ke janmdin ke saath "अगला जन्मदिन" bhi hamesha — chahe kitne bhi din baaki hon (agar 3 din mein koi nahi to sirf yahi)
   v1.270  (समाज एक नज़र में: Current City + District)
    - Chips: सदस्य | गांव | गोत्र | वर्तमान शहर (Members ka Current City column ke alag-alag shehar) | जिला (District column ke alag-alag jile)
   v1.269  (login: janmdin 3 din pehle se + headings Hindi mein)
@@ -3650,22 +3652,27 @@ async function renderLoginExtras_() {
     Object.values(MEMBERS || {}).forEach(m => {
       try {
         const off = bdOffset_(m.Birthday), nm = String(m.Member || m.Name || "").trim();
-        if (nm && off >= 0 && off <= DAYS_AHEAD) (groups[off] = groups[off] || []).push(nm);
+        if (nm && off >= 0 && off < 999) (groups[off] = groups[off] || []).push(nm);
       } catch (e) {}
     });
     const card = document.getElementById("homeAnnouncement") && document.getElementById("homeAnnouncement").parentNode;
-    const keys = Object.keys(groups).map(Number).sort((x, y) => x - y);
-    if (keys.length && card && !document.getElementById("bdToday")) {
+    const allKeys = Object.keys(groups).map(Number).sort((x, y) => x - y);
+    const keys = allKeys.filter(k => k <= DAYS_AHEAD), nextFar = allKeys.find(k => k > DAYS_AHEAD);
+    if ((keys.length || nextFar !== undefined) && card && !document.getElementById("bdToday")) {
       const base = new Date(); base.setHours(0, 0, 0, 0);
       const line = off => {
         const list = groups[off], shown = list.slice(0, 6).map(_GP_ESC).join(", ") + (list.length > 6 ? " +" + (list.length - 6) + " और" : "");
+        if (off > DAYS_AHEAD) {
+          const d2 = new Date(base); d2.setDate(d2.getDate() + off);
+          return "<div>🗓️ अगला जन्मदिन: <b>" + shown + "</b> — " + String(d2.getDate()).padStart(2, "0") + "/" + String(d2.getMonth() + 1).padStart(2, "0") + " (" + off + " दिन बाद)</div>";
+        }
         if (off === 0) return "<div>🎂 आज के जन्मदिन: <b>" + shown + "</b> — बधाई! 🎉</div>";
         const d = new Date(base); d.setDate(d.getDate() + off);
         const ds = String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
         return "<div>🎁 " + (off === 1 ? "कल" : off + " दिन बाद") + " (" + ds + "): <b>" + shown + "</b></div>";
       };
       const bd = document.createElement("div"); bd.id = "bdToday"; bd.className = "bd-strip";
-      bd.innerHTML = keys.map(line).join("");
+      bd.innerHTML = keys.concat(nextFar !== undefined ? [nextFar] : []).map(line).join("");
       card.insertBefore(bd, document.getElementById("homeAnnouncement"));
     }
   } catch (e) { console.error("birthdays:", e); }
