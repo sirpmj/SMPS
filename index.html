@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.272  (login desktop >=1200px: SIRF cards ki jagah — icon / font / rows pehle jaise)
+   - 3 column: [वरिष्ठ सलाहकार, बैठक, आगामी कार्यक्रम, समाज एक नज़र में] [कार्यकारिणी (poori, scroll / + nahi), महत्वपूर्ण सूचनाएँ] [Login, Bank]; neeche समाचार + फोटो
+   - Cards JS se (layoutLogin3_) 3 column mein rakhe jaate hain; 1200px se chhoti screen / mobile par pehle wala layout wapas
   v1.271  (login: agla janmdin hamesha dikhe)
    - Aaj + agle 3 din ke janmdin ke saath "अगला जन्मदिन" bhi hamesha — chahe kitne bhi din baaki hon (agar 3 din mein koi nahi to sirf yahi)
   v1.270  (समाज एक नज़र में: Current City + District)
@@ -1641,6 +1644,23 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
   #loginView .sp-gap > .gp-wide { flex: 1 1 100%; }
   #loginView .sp-gap:not(:has(.gp-card:not([style*="none"]))) { display: none; }
 }
+/* ===== 🆕 v1.272: login 3 column (>=1200px) ===== */
+#loginView .sp-wrap.sp3 { display: block !important; }
+#loginView .sp3 > .sp-L, #loginView .sp3 > .sp-R { display: none !important; }
+#loginView .sp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(300px, .95fr); gap: 14px; align-items: stretch; }
+#loginView .sp-c1, #loginView .sp-c2, #loginView .sp-c3 { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#loginView .sp-cols > div > * { flex: 1 1 auto; }
+#loginView .sp-bot { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+#loginView .sp-bot > .gp-card { flex: 1 1 300px; min-width: 0; }
+#loginView .sp-bot > .gp-wide { flex: 1 1 100%; }
+#loginView .sp-bot:not(:has(.gp-card:not([style*="none"]))) { display: none; }
+#loginView .sp3 #spOff { contain: none !important; }
+#loginView .sp3 #spOff .sp-bd, #loginView .sp3 #spAdv .sp-bd { overflow: visible !important; max-height: none !important; flex: none !important; -webkit-mask-image: none !important; mask-image: none !important; }
+#loginView .sp3 .sp-more { display: none !important; }
+#loginView .sp3 #gpStats .sts { flex-wrap: nowrap; gap: 6px; }
+#loginView .sp3 #gpStats .st { flex: 1 1 0; min-width: 0; padding: 8px 2px; }
+#loginView .sp3 #gpStats .st span { font-size: 11.5px; line-height: 1.2; display: block; }
+#loginView .sp3 .sp-sm::after { content: none !important; }
 .bd-strip div + div { margin-top: 3px; }
 .gph-all { display: block; width: 100%; margin-top: 8px; height: 34px; border: 1px solid #cfe0fb; background: #eef4ff; color: #0b63d6; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; }
 .gph-empty { color: #64748b; font-size: 13.5px; padding: 4px 2px; overflow-wrap: anywhere; }
@@ -3630,6 +3650,41 @@ function bdOffset_(b) {
   let n = new Date(now.getFullYear(), m, d); if (n < now) n = new Date(now.getFullYear() + 1, m, d);
   return Math.round((n - now) / 86400000);
 }
+// 🆕 v1.272: desktop (>=1200px) par cards 3 column mein — sirf jagah badalti hai, card ka andar ka code / icon / font wahi
+function layoutLogin3_() {
+  const wrap = document.querySelector("#loginView .sp-wrap"); if (!wrap) return;
+  const g = id => document.getElementById(id);
+  const O = layoutLogin3_.o || (layoutLogin3_.o = {
+    top: wrap.querySelector(".sp-top"), mid: wrap.querySelector(".sp-mid"), gap: wrap.querySelector(".sp-gap"), R: wrap.querySelector(".sp-R"),
+    adv: g("spAdv"), off: g("spOff"), info: Array.prototype.slice.call(wrap.querySelectorAll(".sp-mid > .sp-info")),
+    ev: g("gpEvent"), st: g("gpStats"), news: g("gpNews"), ph: g("gpPhotos"),
+    login: wrap.querySelector(".sp-login"), bank: wrap.querySelector(".sp-bank")
+  });
+  if (!O.top || !O.mid || !O.gap || !O.R || !O.adv || !O.off || O.info.length < 2) return;
+  const wide = window.matchMedia("(min-width: 1200px)").matches, on = wrap.classList.contains("sp3");
+  if (wide && !on) {
+    const mk = c => { const d = document.createElement("div"); d.className = c; return d; };
+    const cols = mk("sp-cols"), c1 = mk("sp-c1"), c2 = mk("sp-c2"), c3 = mk("sp-c3"), bot = mk("sp-bot");
+    [O.adv, O.info[0], O.ev, O.st].forEach(x => x && c1.appendChild(x));
+    [O.off, O.info[1]].forEach(x => x && c2.appendChild(x));
+    [O.login, O.bank].forEach(x => x && c3.appendChild(x));
+    [O.news, O.ph].forEach(x => x && bot.appendChild(x));
+    cols.appendChild(c1); cols.appendChild(c2); cols.appendChild(c3);
+    wrap.classList.add("sp3"); wrap.appendChild(cols); wrap.appendChild(bot);
+  } else if (!wide && on) {
+    [O.adv, O.off].forEach(x => x && O.top.appendChild(x));
+    O.info.forEach(x => O.mid.appendChild(x));
+    [O.ev, O.st, O.news, O.ph].forEach(x => x && O.gap.appendChild(x));
+    [O.login, O.bank].forEach(x => x && O.R.appendChild(x));
+    wrap.querySelectorAll(".sp-cols, .sp-bot").forEach(x => x.remove());
+    wrap.classList.remove("sp3");
+  }
+}
+(function () {
+  let t; const run = () => { try { layoutLogin3_(); } catch (e) { console.error("layoutLogin3_", e); } };
+  window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(run, 120); });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run); else run();
+})();
 async function renderLoginExtras_() {
   try {
     const rows = (await fetchSheet("Meetings")) || [];
