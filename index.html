@@ -8,6 +8,10 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.279  (login page: shubh jaankari ek card mein + poora page theme ke hisaab se)
+   - 🎂 janmdin + 💍 varshganth + naye sadasya + शोक/शुभ soochna AB EK HI card "शोक / शुभ सूचना" mein (pehle Announcements card mein bhi janmdin tha); महत्वपूर्ण सूचनाएँ mein sirf sooch na
+   - Desktop 3 column: [संगठन: वरिष्ठ सलाहकार + कार्यकारिणी] [कार्यक्रम: आगामी कार्यक्रम + बैठक + सूचनाएँ + समाज एक नज़र में] [Login + Bank]; neeche शोक/शुभ | समाचार, फोटो
+   - Mobile order: Login, बैठक, सूचनाएँ, शोक/शुभ, समाचार, आगामी कार्यक्रम, फोटो, समाज एक नज़र में, सलाहकार, कार्यकारिणी, बैंक
   v1.278  (login: शोक/शुभ + समाचार side-by-side; login ke baad Tabs ek line mein fit)
    - Login (desktop >=901px): बायाँ = शोक / शुभ सूचना, दायाँ = समाज समाचार (ek hi ho to poori chaudai); mobile par pehle jaisa
    - Tabs (601px+): sab tabs ek line mein — font / padding apne aap chhote hote hain taaki scroll na aaye; bahut zyada tabs hon to scroll ki jagah 2nd line
@@ -1666,7 +1670,7 @@ html[data-theme="dark"] img, html[data-theme="dark"] video, html[data-theme="dar
 /* ===== 🆕 v1.272: login 3 column (>=1200px) ===== */
 #loginView .sp-wrap.sp3 { display: block !important; }
 #loginView .sp3 > .sp-L, #loginView .sp3 > .sp-R { display: none !important; }
-#loginView .sp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(300px, .95fr); gap: 14px; align-items: stretch; }
+#loginView .sp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(330px, .95fr); gap: 14px; align-items: stretch; }
 #loginView .sp-c1, #loginView .sp-c2, #loginView .sp-c3 { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 #loginView .sp-cols > div > * { flex: 1 1 auto; }
 #loginView .sp-bot { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
@@ -1704,6 +1708,12 @@ table[data-tab="News"] td.act-cell, table[data-tab="Notices"] td.act-cell { whit
   #tabs.tabs { overflow-x: hidden; justify-content: space-between; }
   #tabs .tab { font-size: var(--tabfs, clamp(11.5px, 1.6cqw, 15px)); padding: clamp(5px, .7cqw, 9px) var(--tabpx, clamp(8px, 1.4cqw, 16px)); }
   #tabs.tabs.tabs-wrap { flex-wrap: wrap; justify-content: center; overflow: visible; }
+}
+#bdToday { display: none !important; }   /* janmdin ab "शोक / शुभ सूचना" card mein */
+@media (max-width: 900px) {   /* mobile order */
+  #loginView .sp-gap > #gpNotices { order: 4; } #loginView .sp-gap > #gpNews { order: 5; }
+  #loginView .sp-gap > #gpEvent { order: 6; } #loginView .sp-gap > #gpPhotos { order: 7; } #loginView .sp-gap > #gpStats { order: 8; }
+  #loginView .sp-top > #spAdv { order: 9; } #loginView .sp-top > #spOff { order: 10; } #loginView .sp-R > .sp-bank { order: 11; }
 }
 .rsvp-note { font-size: 12.5px; color: #64748b; margin-top: 8px; }
 .rsvp-c { font-size: 13px; color: #166534; font-weight: 600; }
@@ -3748,8 +3758,8 @@ function layoutLogin3_() {
   if (wide && !on) {
     const mk = c => { const d = document.createElement("div"); d.className = c; return d; };
     const cols = mk("sp-cols"), c1 = mk("sp-c1"), c2 = mk("sp-c2"), c3 = mk("sp-c3"), bot = mk("sp-bot");
-    [O.adv, O.ev, O.st].forEach(x => x && c1.appendChild(x));
-    [O.off, O.info[0], O.info[1]].forEach(x => x && c2.appendChild(x));
+    [O.adv, O.off].forEach(x => x && c1.appendChild(x));
+    [O.ev, O.info[0], O.info[1], O.st].forEach(x => x && c2.appendChild(x));
     [O.login, O.bank].forEach(x => x && c3.appendChild(x));
     [O.nt, O.news, O.ph].forEach(x => x && bot.appendChild(x));
     cols.appendChild(c1); cols.appendChild(c2); cols.appendChild(c3);
@@ -7725,23 +7735,26 @@ if ('serviceWorker' in navigator) {
       });
     } catch (e) {}
     try {
-      const mem = (await fetchSheet("Members")) || [];
-      if (mem.length) {
-        const kN = keyOf(mem, /^(member|name|नाम|member name)$/i) || keyOf(mem, /name|नाम/i), kS = keyOf(mem, /^status$/i);
-        const kJ = keyOf(mem, /^(joined|joining|join(ing)?[\s_]*date|date[\s_]*of[\s_]*joining|registered|registration|created|timestamp)/i);
-        const kA = keyOf(mem, /anniversary|वर्षगांठ|marriage|विवाह|शादी/i);
-        const clean = n => String(n || "").replace(/\s*\(.*$/, "").trim();
-        if (kJ && kN) {
-          const nw = mem.filter(r => isActive(r, kS) && (() => { const d = dt_(r[kJ]); return d && (t0 - d) / 86400000 >= 0 && (t0 - d) / 86400000 <= 30; })()).map(r => clean(r[kN])).filter(Boolean);
-          if (nw.length) parts.push(`<div class="nt-row nt-shubh"><span class="nt-i">🎉</span><div><b>नए सदस्य</b> — स्वागत है! ${nw.slice(0, 5).map(esc).join(", ")}${nw.length > 5 ? " +" + (nw.length - 5) + " और" : ""}</div></div>`);
-        }
-        if (kA && kN) {
-          const g = {};
-          mem.forEach(r => { if (!isActive(r, kS)) return; const o = bdOffset_(r[kA]); if (o >= 0 && o <= 3 && clean(r[kN])) (g[o] = g[o] || []).push(clean(r[kN])); });
-          const ks = Object.keys(g).map(Number).sort((a, b) => a - b);
-          if (ks.length) parts.push(`<div class="nt-row nt-shubh"><span class="nt-i">💍</span><div><b>वैवाहिक वर्षगांठ</b> — ${ks.map(o => (o === 0 ? "आज" : o === 1 ? "कल" : o + " दिन बाद") + ": " + g[o].slice(0, 4).map(esc).join(", ") + (g[o].length > 4 ? " +" + (g[o].length - 4) + " और" : "")).join(" · ")}</div></div>`);
-        }
-      }
+      const mem = (await fetchSheet("Members")) || [], clean = n => String(n || "").replace(/\s*\(.*$/, "").trim();
+      const kN = keyOf(mem, /^(member|name|नाम|member name)$/i) || keyOf(mem, /name|नाम/i), kS = keyOf(mem, /^status$/i);
+      const kB = keyOf(mem, /^(birthday|dob|date[\s_]*of[\s_]*birth)/i) || keyOf(mem, /birth|जन्म/i), kA = keyOf(mem, /anniversary|वर्षगांठ|marriage|विवाह|शादी/i);
+      const kJ = keyOf(mem, /^(joined|joining|join(ing)?[\s_]*date|date[\s_]*of[\s_]*joining|registered|registration|created|timestamp)/i);
+      let people = kN ? mem.filter(r => isActive(r, kS)).map(r => ({ n: clean(r[kN]), b: kB ? r[kB] : "", a: kA ? r[kA] : "", j: kJ ? r[kJ] : "" })) : [];
+      if (!people.some(p => p.b) && typeof MEMBERS === "object" && MEMBERS) people = Object.values(MEMBERS).map(m => ({ n: clean(m.Member || m.Name), b: m.Birthday, a: "", j: "" }));
+      const base = today0(), lbl = o => o === 0 ? "आज" : o === 1 ? "कल" : o + " दिन बाद";
+      const show = arr => arr.slice(0, 4).map(esc).join(", ") + (arr.length > 4 ? " +" + (arr.length - 4) + " और" : "");
+      const dayRow = (field, icon, title, nextTxt) => {   // aaj + agle 3 din, aur hamesha agla
+        const g = {}; people.forEach(p => { if (!p.n) return; const o = bdOffset_(p[field]); if (o >= 0 && o < 999) (g[o] = g[o] || []).push(p.n); });
+        const ks = Object.keys(g).map(Number).sort((x, y) => x - y), near = ks.filter(k => k <= 3), nxt = ks.find(k => k > 3);
+        const nearTxt = near.map(o => lbl(o) + ": " + show(g[o])).join(" · ");
+        let sub = ""; if (nxt !== undefined) { const d = new Date(base); d.setDate(d.getDate() + nxt); sub = nextTxt + ": " + show(g[nxt]) + " — " + dmy(d) + " (" + nxt + " दिन बाद)"; }
+        if (!nearTxt && !sub) return;
+        parts.push(`<div class="nt-row nt-shubh"><span class="nt-i">${icon}</span><div><b>${title}</b>${nearTxt ? " — " + nearTxt : ""}${sub ? `<div class="nt-m">${sub}</div>` : ""}</div></div>`);
+      };
+      dayRow("b", "🎂", "जन्मदिन", "अगला जन्मदिन");
+      if (people.some(p => p.a)) dayRow("a", "💍", "वैवाहिक वर्षगांठ", "अगली वर्षगांठ");
+      const nw = people.filter(p => p.n && p.j && (() => { const d = dt_(p.j); const x = d ? (t0 - d) / 86400000 : -1; return x >= 0 && x <= 30; })()).map(p => p.n);
+      if (nw.length) parts.push(`<div class="nt-row nt-shubh"><span class="nt-i">🎉</span><div><b>नए सदस्य</b> — स्वागत है! ${show(nw)}</div></div>`);
     } catch (e) {}
     if (!parts.length) { box.style.display = "none"; box.innerHTML = ""; return; }
     box.innerHTML = _gpH("users", "शोक / शुभ सूचना") + parts.join("");
