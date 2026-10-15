@@ -8,6 +8,9 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.280  (login desktop: Sample B — sections layout)
+   - Desktop (>=1200px): baayein 2 section — "🏛️ संगठन एवं समाज" [कार्यकारिणी | वरिष्ठ सलाहकार + समाज एक नज़र में], "📅 कार्यक्रम, सूचनाएँ एवं समाचार" [बैठक + आगामी कार्यक्रम | महत्वपूर्ण सूचनाएँ + समाज समाचार], neeche फोटो; daayein [Login, Bank, शोक / शुभ सूचना]
+   - Mobile / chhoti screen: pehle jaisa (v1.279 ka kram)
   v1.279  (login page: shubh jaankari ek card mein + poora page theme ke hisaab se)
    - 🎂 janmdin + 💍 varshganth + naye sadasya + शोक/शुभ soochna AB EK HI card "शोक / शुभ सूचना" mein (pehle Announcements card mein bhi janmdin tha); महत्वपूर्ण सूचनाएँ mein sirf sooch na
    - Desktop 3 column: [संगठन: वरिष्ठ सलाहकार + कार्यकारिणी] [कार्यक्रम: आगामी कार्यक्रम + बैठक + सूचनाएँ + समाज एक नज़र में] [Login + Bank]; neeche शोक/शुभ | समाचार, फोटो
@@ -1738,6 +1741,17 @@ table[data-tab="News"] td.act-cell, table[data-tab="Notices"] td.act-cell { whit
 [data-theme="dark"] .nt-row.nt-shubh { background: #3b2f12; border-color: #6b5420; color: #fde8b0; }
 [data-theme="dark"] .xc { background: #1e293b; color: #e2e8f0; } [data-theme="dark"] .xc input { background: #0f172a; color: #e2e8f0; border-color: #334155; }
 [data-theme="dark"] .rsvp-b { background: transparent; color: #4ade80; border-color: #4ade80; }
+/* ===== 🆕 v1.280: Sample B — sections layout (>=1200px) ===== */
+#loginView .sp-vtop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(330px, 340px); gap: 14px; align-items: stretch; }
+#loginView .sp-vL, #loginView .sp-vR { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#loginView .sp-sec { display: flex; flex-direction: column; flex: 1 1 auto; }
+#loginView .sp-sh { font-weight: 700; font-size: 15px; color: #0b3d66; border-left: 4px solid #0b63d6; padding: 2px 0 2px 9px; margin: 0 0 8px; }
+#loginView .sp-sg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; flex: 1 1 auto; }
+#loginView .sp-sa, #loginView .sp-sb { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+#loginView .sp-sa > *, #loginView .sp-sb > *, #loginView .sp-vR > *, #loginView .sp-vph > * { flex: 1 1 auto; }
+#loginView .sp-vph { display: flex; flex-direction: column; }
+#loginView .sp-vph:not(:has(.gp-card:not([style*="none"]))) { display: none; }
+[data-theme="dark"] #loginView .sp-sh { color: #e2e8f0; }
 /* ===== 🆕 v1.273 ===== */
 /* समाज एक नज़र में — 5 chips hamesha ek line mein (mobile bhi) */
 #loginView #gpStats .sts { flex-wrap: nowrap; gap: 5px; }
@@ -3756,20 +3770,25 @@ function layoutLogin3_() {
   if (!O.top || !O.mid || !O.gap || !O.R || !O.adv || !O.off || O.info.length < 2) return;
   const wide = (window.innerWidth / (parseFloat(document.body.style.zoom) || 1)) >= 1200, on = wrap.classList.contains("sp3");
   if (wide && !on) {
-    const mk = c => { const d = document.createElement("div"); d.className = c; return d; };
-    const cols = mk("sp-cols"), c1 = mk("sp-c1"), c2 = mk("sp-c2"), c3 = mk("sp-c3"), bot = mk("sp-bot");
-    [O.adv, O.off].forEach(x => x && c1.appendChild(x));
-    [O.ev, O.info[0], O.info[1], O.st].forEach(x => x && c2.appendChild(x));
-    [O.login, O.bank].forEach(x => x && c3.appendChild(x));
-    [O.nt, O.news, O.ph].forEach(x => x && bot.appendChild(x));
-    cols.appendChild(c1); cols.appendChild(c2); cols.appendChild(c3);
-    wrap.classList.add("sp3"); wrap.appendChild(cols); wrap.appendChild(bot);
+    const mk = (c, css) => { const d = document.createElement("div"); d.className = c; if (css) d.style.cssText = css; return d; };
+    const sec = (title, a, b) => {
+      const S = mk("sp-sec"), H = mk("sp-sh"), G = mk("sp-sg"), A = mk("sp-sa"), B = mk("sp-sb");
+      H.textContent = title; a.forEach(x => x && A.appendChild(x)); b.forEach(x => x && B.appendChild(x));
+      G.appendChild(A); G.appendChild(B); S.appendChild(H); S.appendChild(G); return S;
+    };
+    const L = mk("sp-vL"), R = mk("sp-vR"), top = mk("sp-vtop"), phw = mk("sp-vph");
+    L.appendChild(sec("🏛️ संगठन एवं समाज", [O.off], [O.adv, O.st]));
+    L.appendChild(sec("📅 कार्यक्रम, सूचनाएँ एवं समाचार", [O.info[0], O.ev], [O.info[1], O.news]));
+    if (O.ph) phw.appendChild(O.ph); L.appendChild(phw);
+    [O.login, O.bank, O.nt].forEach(x => x && R.appendChild(x));
+    top.appendChild(L); top.appendChild(R);
+    wrap.classList.add("sp3"); wrap.appendChild(top);
   } else if (!wide && on) {
     [O.adv, O.off].forEach(x => x && O.top.appendChild(x));
     O.info.forEach(x => O.mid.appendChild(x));
     [O.ev, O.st, O.nt, O.news, O.ph].forEach(x => x && O.gap.appendChild(x));
     [O.login, O.bank].forEach(x => x && O.R.appendChild(x));
-    wrap.querySelectorAll(".sp-cols, .sp-bot").forEach(x => x.remove());
+    wrap.querySelectorAll(".sp-vtop, .sp-cols, .sp-bot").forEach(x => x.remove());
     wrap.classList.remove("sp3");
   }
 }
