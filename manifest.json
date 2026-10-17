@@ -1,11 +1,9 @@
 {
+  "id": "./index.html",
   "name": "श्री मेवाड़ प्रजापत समाज-वापी",
   "short_name": "SMPsApp",
-  "start_url": "./index.html",
+  "start_url": "./app.html",
   "display": "standalone",
-  "background_color": "#f0f4f8",
-  "theme_color": "#4a90e2",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
@@ -17,5 +15,6 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "theme_color": "#4a90e2"
 }
