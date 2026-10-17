@@ -469,6 +469,13 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pp .r{grid-column:1;grid-row:1}
 .pp .n{grid-column:2;grid-row:1}
 .pp .pl2{grid-column:2;grid-row:2;margin-top:3px;min-width:0}
+/* gap fix + number/icons kabhi na kate */
+.pp{row-gap:0;gap:0 8px;padding-block:9px}
+.pp .n{line-height:1.25}
+.pp .pl2{margin-top:1px;flex-wrap:wrap;white-space:normal;gap:2px 8px;align-items:center;overflow:visible}
+.pp .pl2 > span{flex:none;max-width:100%;overflow:visible;text-overflow:clip;white-space:nowrap}
+.pp .pl2 > span:first-child:not(:last-child){white-space:normal;flex:0 1 auto}
+.pp .pl2 .ic-b{flex:none}
 </style>
 
 </head>
