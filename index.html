@@ -368,6 +368,14 @@ details.acc .people { padding: 14px; margin: 0; }
   .cr .ck + .cv { flex: 1 1 calc(100% - 82px); }
 }
 @media (max-width: 360px) { .brand b { display: none; } .tabbar a { font-size: 10px; } }
+
+/* hero card: har baithak ka heading */
+.hc-it { text-align: center; }
+.hc-it + .hc-it { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.2); }
+.hc-it .hc-t { font-size: 19px; margin: 2px 0 2px; }
+.hc-d { font-weight: 700; font-size: 15.5px; }
+.hc-it .cd { margin-top: 8px; }
+.mt-t { font-size: 18px; }
 </style>
 
 </head>
@@ -400,9 +408,7 @@ details.acc .people { padding: 14px; margin: 0; }
       <aside class="hero-card" aria-label="अगली बैठक">
         <div class="logo" role="img" aria-label="समाज का लोगो"></div>
         <div class="hc-lab">अगली बैठक</div>
-        <div class="hc-t" id="hcTitle"></div>
-        <div class="hc-m" id="hcMeta"></div>
-        <div class="cd num" id="cd" aria-live="off"></div>
+        <div id="hcList"></div>
       </aside>
     </div>
   </section>
@@ -610,14 +616,11 @@ function cdHtml(at) {
 function tickAll() { document.querySelectorAll("[data-at]").forEach(e => { e.innerHTML = cdHtml(new Date(+e.dataset.at)); }); }
 setInterval(tickAll, 30000);
 function drawMeetings(list, past) {
-  const first = list[0];
-  if (first) {
-    $("hcTitle").textContent = DAY[first.d.getDay()] + ", " + first.d.getDate() + " " + MON[first.d.getMonth()];
-    $("hcMeta").textContent = [first.time, first.place].filter(Boolean).join(" · ") || first.t;
-    $("cd").dataset.at = +first.at;
-  } else {
-    $("hcTitle").textContent = "जल्द घोषित होगी"; $("hcMeta").textContent = "तारीख तय होने पर यहाँ दिखेगी"; $("cd").innerHTML = ""; delete $("cd").dataset.at;
-  }
+  const dl = x => DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()];
+  $("hcList").innerHTML = list.length ? list.slice(0, 2).map(x => '<div class="hc-it"><div class="hc-t">' + esc(x.t) + '</div><div class="hc-d">' + dl(x) + "</div>" +
+    ([x.time, x.place].filter(Boolean).length ? '<div class="hc-m">' + esc([x.time, x.place].filter(Boolean).join(" · ")) + "</div>" : "") +
+    '<div class="cd num" data-at="' + (+x.at) + '"></div></div>').join("")
+    : '<div class="hc-it"><div class="hc-t">जल्द घोषित होगी</div><div class="hc-m">तारीख तय होने पर यहाँ दिखेगी</div></div>';
   const t0 = today0();
   $("mts").innerHTML = (list.map(x => {
     const left = Math.round((x.d - t0) / 86400000);
@@ -625,7 +628,7 @@ function drawMeetings(list, past) {
     return '<article class="mt"><div class="mt-top"><span class="mt-lab">' + (x.meeting ? "अगली बैठक" : "आगामी कार्यक्रम") + '</span><span class="pill' + (left <= 2 ? " hot" : "") + '">' + pill + "</span></div>" +
       '<h3 class="mt-t">' + esc(x.t) + '</h3><div class="mt-d">' + DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()] + (x.d.getFullYear() !== t0.getFullYear() ? " " + x.d.getFullYear() : "") + "</div>" +
       ([x.time, x.place].filter(Boolean).length ? '<div class="mt-m">' + esc([x.time, x.place].filter(Boolean).join(" · ")) + "</div>" : "") +
-      '<div class="cd2 num" data-at="' + (+x.at) + '"></div>' + (x.ag.length ? '<ul class="mt-ag">' + x.ag.slice(0, 3).map(a => "<li>" + esc(a) + "</li>").join("") + "</ul>" : "") + "</article>";
+      '<div class="cd2 num" data-at="' + (+x.at) + '"></div>' + (x.ag.length ? '<ul class="mt-ag">' + x.ag.map(a => "<li>" + esc(a) + "</li>").join("") + "</ul>" : "") + "</article>";
   }).join("") || '<article class="mt">' + EMPTY("अगली बैठक की तारीख जल्द घोषित होगी।") + "</article>") +
   (past.length ? '<article class="mt past"><div class="mt-top"><span class="mt-lab">पिछली बैठकें</span></div>' + past.map(p =>
     '<div class="pastR"><b class="num">' + esc(p.r.Date || dmy(p.d)) + "</b><span>" + esc(p.r.Subject || "बैठक") + "</span></div>").join("") + "</article>" : "");
@@ -844,7 +847,7 @@ async function load() {
 }
 
 /* shuru ki halat + data */
-drawMeetings([], []); $("mts").innerHTML = EMPTY("लोड हो रहा है…"); $("hcTitle").textContent = "लोड हो रहा है…"; $("hcMeta").textContent = "";
+drawMeetings([], []); $("mts").innerHTML = EMPTY("लोड हो रहा है…"); $("hcList").innerHTML = '<div class="hc-it"><div class="hc-m">लोड हो रहा है…</div></div>';
 $("news").innerHTML = EMPTY("लोड हो रहा है…");
 $("offList").innerHTML = EMPTY("लोड हो रहा है…"); $("advList").innerHTML = ""; $("gal").innerHTML = EMPTY("लोड हो रहा है…");
 drawStats([]); drawContact({}); $("galMore").hidden = true;
