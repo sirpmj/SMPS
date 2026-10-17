@@ -2011,6 +2011,17 @@ html.logged-out #loginView .sp-R, html.logged-out #loginView .sp-vR { display: f
 html.logged-out #loginView .lg-back { display: block; margin-top: 18px; text-align: center; color: var(--lg-blue); font-weight: 600; font-size: 14.5px; text-decoration: none; }
 html.logged-out #loginView .lg-back:hover { text-decoration: underline; }
 @media (max-width: 700px) { html.logged-out #loginView .sp-wrap, html.logged-out #loginView .sp-wrap.sp3 { margin-top: 18px; } }
+/* ===== v1.284: login page footer = website footer jaisa ===== */
+html.logged-out .site-footer {
+  display: block; max-width: none; margin: 18px 0 0 !important; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)) !important; border-radius: 0 !important; box-shadow: none; text-align: center; color: #cfe0fb; font-size: 14px; line-height: 1.5;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'><g fill='none' stroke='white' stroke-opacity='.07' stroke-width='1.2'><path d='M36 4 L68 36 L36 68 L4 36 Z'/><circle cx='36' cy='36' r='11'/></g></svg>"), #0a2a5e;
+  font-family: 'Mukta','Noto Sans Devanagari','Inter',sans-serif;
+}
+html.logged-out .site-footer .line:first-child { color: #fff; font-size: 19px; font-weight: 700; margin-bottom: 2px; }
+html.logged-out .site-footer a { color: #fff; text-decoration: none; font-weight: 600; }
+html.logged-out .site-footer::after { opacity: .7; margin-top: 6px; }
+html.logged-out .wrap { padding-bottom: 0 !important; }
+@media (max-width: 700px) { html.logged-out .site-footer { margin: 14px 0 0 !important; } }
 
 </style>
 
