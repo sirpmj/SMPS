@@ -1,43 +1,21 @@
-const CACHE_NAME = "smps-app-v10";
-
-const urlsToCache = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
-];
-
-// INSTALL
-self.addEventListener("install", event => {
+// SMPS service worker — v11: HTML/manifest network-first (naya version turant dikhe), baaki cache-first
+const CACHE = "smps-app-v11";
+const PRE = ["./", "./index.html", "./app.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+self.addEventListener("install", e => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-  );
+  e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(PRE.map(u => c.add(u)))));
 });
-
-// ACTIVATE
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+self.addEventListener("activate", e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-
-// FETCH
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-      .catch(() => caches.match("./index.html"))
-  );
+self.addEventListener("fetch", e => {
+  const r = e.request;
+  if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
+  const isDoc = r.mode === "navigate" || /\.(html|json|webmanifest)$/.test(new URL(r.url).pathname);
+  if (isDoc) {
+    e.respondWith(fetch(r).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)); return res; })
+      .catch(() => caches.match(r).then(m => m || caches.match("./index.html"))));
+  } else {
+    e.respondWith(caches.match(r).then(m => m || fetch(r).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)); return res; })));
+  }
 });

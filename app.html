@@ -1556,7 +1556,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.262"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.290"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -5866,7 +5866,12 @@ function renderActionButtons(row, encId) {
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
   }
-  if (actions.includes("WHATSAPP")) {
+  if (currentTab === "News" && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
+    const _k = Object.keys(row), _f = re => _k.find(k => re.test(String(k).trim()));
+    const _t = String(row[_f(/^title|शीर्षक/i)] || "").trim(), _m = String(row[_f(/message|detail|विवरण|समाचार|text/i)] || "").trim();
+    const _msg = "📰 *" + (_t || "समाज की खबर") + "*\n" + _m + "\n\n🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
+    btns.push(abBtn_("ab-wa", "wa", "WhatsApp भेजें", "", `target="_blank" href="https://api.whatsapp.com/send?text=${encodeURIComponent(_msg)}"`));
+  } else if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
     mobile = mobile.replace(/\D/g, ""); // remove any non-digit characters
     // Auto prepend country code if missing (optional)
@@ -8214,6 +8219,38 @@ if ('serviceWorker' in navigator) {
   if (typeof renderMeetingUpdates === "function") { const _m = renderMeetingUpdates; renderMeetingUpdates = async function () { const r = await _m.apply(this, arguments); try { await decorateMeetingRsvp_(); } catch (e) {} return r; }; }
   // safety: agar login render hamare wrap se pehle chal chuka ho
   [2500, 6000].forEach(ms => setTimeout(() => { try { const b = document.getElementById("gpNotices"); if (b && !b.innerHTML) renderNotices_(); decorateMeetingRsvp_(); } catch (e) {} }, ms));
+})();
+</script>
+<script>
+/* सदस्य बनें deep-link: app.html?new=1 या #new → New/Update Member form */
+(function(){var go=function(){var b=document.getElementById("regModal");if(b)b.style.display="flex";};
+if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.readyState==="complete")setTimeout(go,300);else addEventListener("load",function(){setTimeout(go,300);});}})();
+</script>
+<script>
+/* 📲 Install popup — sirf jab app install na ho; 24 ghante mein max ek baar */
+(function(){
+  var KEY="smps_install_popup_ts", DAY=24*3600*1000, dp=null, shown=false;
+  var standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
+  if(standalone) return;
+  var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  function recent(){try{var t=+localStorage.getItem(KEY)||0;return Date.now()-t<DAY;}catch(e){return false;}}
+  function stamp(){try{localStorage.setItem(KEY,String(Date.now()));}catch(e){}}
+  var st=document.createElement("style");
+  st.textContent=".ip-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center}.ip-box{background:#fff;color:#1a2233;width:100%;max-width:440px;border-radius:18px 18px 0 0;padding:20px 18px 22px;box-shadow:0 -8px 30px rgba(0,0,0,.25);font-family:inherit;text-align:center}@media(min-width:600px){.ip-bg{align-items:center}.ip-box{border-radius:18px}}.ip-box img{width:60px;height:60px;border-radius:14px}.ip-box h3{margin:8px 0 4px;font-size:18px}.ip-box p{margin:0 0 14px;font-size:14px;color:#51607a;line-height:1.5}.ip-box button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:11px 18px;cursor:pointer;margin:0 4px}.ip-y{background:#0a2a5e;color:#fff}.ip-n{background:#eef1f6;color:#334}";
+  document.head.appendChild(st);
+  function show(){
+    if(shown||recent()||document.getElementById("ipBg")) return; shown=true; stamp();
+    var d=document.createElement("div"); d.className="ip-bg"; d.id="ipBg";
+    d.innerHTML='<div class="ip-box"><img src="icon-192.png" alt=""><h3>ऐप इंस्टॉल करें</h3><p>'+(dp?'समाज की ऐप अपने फोन/कंप्यूटर में जोड़ें — एक टैप में खुलेगी।':'iPhone/iPad: नीचे Share (⬆️) दबाएँ → “Add to Home Screen” चुनें।')+'</p>'+(dp?'<button class="ip-y" id="ipYes">इंस्टॉल करें</button>':'')+'<button class="ip-n" id="ipNo">'+(dp?'बाद में':'ठीक है')+'</button></div>';
+    document.body.appendChild(d);
+    function close(){d.remove();}
+    d.onclick=function(e){if(e.target===d)close();};
+    d.querySelector("#ipNo").onclick=close;
+    var y=d.querySelector("#ipYes"); if(y) y.onclick=async function(){close();try{dp.prompt();await dp.userChoice;}catch(e){} dp=null;};
+  }
+  addEventListener("beforeinstallprompt",function(e){e.preventDefault();dp=e;setTimeout(show,4000);});
+  addEventListener("appinstalled",function(){shown=true;var b=document.getElementById("ipBg");if(b)b.remove();});
+  if(ios) setTimeout(show,6000);
 })();
 </script>
 </body>
