@@ -462,6 +462,13 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pp .r{font-size:13px}
 .pp .pl2{display:flex;margin-top:3px}
 @media (max-width:760px){.pp .n{font-size:18px}.pp .r{font-size:12.5px}}
+
+/* second line: naam ke pehle akshar ke theek niche se shuru */
+.pp{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:8px;align-items:baseline}
+.pp .pl1{display:contents}
+.pp .r{grid-column:1;grid-row:1}
+.pp .n{grid-column:2;grid-row:1}
+.pp .pl2{grid-column:2;grid-row:2;margin-top:3px;min-width:0}
 </style>
 
 </head>
@@ -1017,7 +1024,7 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
 <script>
 /* 📲 Install popup — sirf jab app install na ho; 24 ghante mein max ek baar */
 (function(){
-  var KEY="smps_install_popup_ts", DAY=24*3600*1000, dp=window.__dp, shown=false;
+  var KEY="smps_install_popup_v2", DAY=24*3600*1000, dp=window.__dp, shown=false;
   var standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone;
   if(standalone) return;
   var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -1029,8 +1036,9 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
   function show(){
     if(shown||recent()||document.getElementById("ipBg")) return; shown=true;
     var d=document.createElement("div"); d.className="ip-bg"; d.id="ipBg";
-    d.innerHTML='<div class="ip-box"><img src="icon-192.png" alt=""><h3>ऐप इंस्टॉल करें</h3><p>'+(dp?'समाज की ऐप अपने फोन/कंप्यूटर में जोड़ें — एक टैप में खुलेगी।':'iPhone/iPad: नीचे Share (⬆️) दबाएँ → “Add to Home Screen” चुनें।')+'</p>'+(dp?'<button class="ip-y" id="ipYes">इंस्टॉल करें</button>':'')+'<button class="ip-n" id="ipNo">'+(dp?'बाद में':'ठीक है')+'</button></div>';
+    d.innerHTML='<div class="ip-box"><img src="Logo-192.png" alt=""><h3>ऐप इंस्टॉल करें</h3><p>'+(dp?'समाज की ऐप अपने फोन/कंप्यूटर में जोड़ें — एक टैप में खुलेगी।':(ios?'iPhone/iPad: नीचे Share (⬆️) दबाएँ → “Add to Home Screen” चुनें।':'ब्राउज़र मेन्यू (⋮) खोलें → “Install app” या “Add to Home screen” चुनें।'))+'</p>'+(dp?'<button class="ip-y" id="ipYes">इंस्टॉल करें</button>':'')+'<button class="ip-n" id="ipNo">'+(dp?'बाद में':'ठीक है')+'</button></div>';
     document.body.appendChild(d);
+    var im=d.querySelector("img"); im.onerror=function(){ im.onerror=function(){im.style.display="none";}; im.src="Logo-192.png"; };
     function close(){stamp();d.remove();}
     d.onclick=function(e){if(e.target===d)close();};
     d.querySelector("#ipNo").onclick=close;
@@ -1040,6 +1048,7 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
   addEventListener("smps-installable",function(){dp=window.__dp;setTimeout(show,2500);});
   addEventListener("appinstalled",function(){shown=true;var b=document.getElementById("ipBg");if(b)b.remove();});
   if(ios) setTimeout(show,6000);
+  else setTimeout(function(){ if(!window.__dp) show(); },6000);
 })();
 </script>
 </body>

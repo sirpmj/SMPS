@@ -1,6 +1,6 @@
-// SMPS service worker — v11: HTML/manifest network-first (naya version turant dikhe), baaki cache-first
-const CACHE = "smps-app-v11";
-const PRE = ["./", "./index.html", "./app.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+// SMPS service worker — v12: HTML/manifest network-first (naya version turant dikhe), baaki cache-first
+const CACHE = "smps-app-v12";
+const PRE = ["./", "./index.html", "./app.html", "./manifest.json", "./Logo-192.png", "./Logo-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(PRE.map(u => c.add(u)))));

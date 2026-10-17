@@ -209,8 +209,8 @@ document.addEventListener("DOMContentLoaded", function () {
 <link rel="icon" type="image/png" href="favicon.png" />
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
 <link rel="apple-touch-icon" sizes="180x180" href="favicon.png" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="Logo-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="Logo-512.png" />
 
 <!-- ✅ STEP 1: hide body -->
 <style>
@@ -8241,7 +8241,7 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   function show(){
     if(shown||recent()||document.getElementById("ipBg")) return; shown=true; stamp();
     var d=document.createElement("div"); d.className="ip-bg"; d.id="ipBg";
-    d.innerHTML='<div class="ip-box"><img src="icon-192.png" alt=""><h3>ऐप इंस्टॉल करें</h3><p>'+(dp?'समाज की ऐप अपने फोन/कंप्यूटर में जोड़ें — एक टैप में खुलेगी।':'iPhone/iPad: नीचे Share (⬆️) दबाएँ → “Add to Home Screen” चुनें।')+'</p>'+(dp?'<button class="ip-y" id="ipYes">इंस्टॉल करें</button>':'')+'<button class="ip-n" id="ipNo">'+(dp?'बाद में':'ठीक है')+'</button></div>';
+    d.innerHTML='<div class="ip-box"><img src="Logo-192.png" alt=""><h3>ऐप इंस्टॉल करें</h3><p>'+(dp?'समाज की ऐप अपने फोन/कंप्यूटर में जोड़ें — एक टैप में खुलेगी।':'iPhone/iPad: नीचे Share (⬆️) दबाएँ → “Add to Home Screen” चुनें।')+'</p>'+(dp?'<button class="ip-y" id="ipYes">इंस्टॉल करें</button>':'')+'<button class="ip-n" id="ipNo">'+(dp?'बाद में':'ठीक है')+'</button></div>';
     document.body.appendChild(d);
     function close(){d.remove();}
     d.onclick=function(e){if(e.target===d)close();};
