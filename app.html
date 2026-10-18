@@ -2422,7 +2422,7 @@ const CRUD_ALLOWED_TABS = {
   "Assets":        { idPrefix: null,  allowEditDelete: true },
   "News":          { idPrefix: "NEWS", allowEditDelete: true },   // 🆕 v1.277 (sheet mein "ID" column chahiye)
   "Notices":       { idPrefix: "NTC",  allowEditDelete: true },    // 🆕 v1.277
-  "Photos":        { idPrefix: null,  allowEditDelete: true }     // 🆕 v1.292: kai photo ek saath
+  "Photos":        { idPrefix: "PHO", allowEditDelete: true }     // 🆕 v1.292: kai photo ek saath
 };
 
 // 🆕 Yeh columns webapp KHUD compute karke table mein dikhata hai (Cash Book,
@@ -4355,7 +4355,7 @@ async function renderGapBlocks_() {
         const prs = (await fetchSheet("Photos")) || [];
         const gv = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? r[k] : ""; };
         prs.forEach(r => {
-          if ("ShowOnHome" in r && String(r.ShowOnHome).trim().toUpperCase() !== "TRUE") return;
+          if (String(r.ShowOnHome == null ? "" : r.ShowOnHome).trim().toUpperCase() === "FALSE") return;
           const d = parseRowDate_(gv(r, /^(date|तारीख|दिनांक)$/i)), ev = String(gv(r, /^(event|subject|function|program|कार्यक्रम|बैठक)$/i) || "").trim(), c0 = String(gv(r, /^(caption|विवरण|details)$/i) || "").trim();
           _parse(gv(r, /(photo|image|link|फोटो)/i)).forEach(q => ph.push({ r: {}, i: 0, j: 0, d, p: q.p, c: q.c || c0, s: ev }));
         });
@@ -4408,7 +4408,7 @@ async function openMultiPhotoAdd_(sheetName) {
   const cols = tableData.length ? Array.from(new Set(tableData.flatMap(r => Object.keys(r)))) : [];
   const kk = (re, d) => cols.find(k => re.test(String(k).trim())) || d;
   const kDate = kk(/^(date|तारीख|दिनांक)$/i, "Date"), kEv = kk(/^(event|subject|function|program|कार्यक्रम|बैठक)$/i, "Event"),
-        kPh = kk(/(photo|image|link|फोटो)/i, "Photo"), kCap = kk(/^(caption|विवरण|details)$/i, "Caption");
+        kPh = kk(/(photo|image|link|फोटो)/i, "Photo"), kCap = kk(/^(caption|विवरण|details)$/i, "Caption"), kShow = cols.find(k => /^showonhome$/i.test(String(k).trim()));
   const events = Array.from(new Set(tableData.map(r => String(r[kEv] || "").trim()).filter(Boolean)));
   const m = openModal_("📷 कई फोटो जोड़ें");
   const t = new Date(), iso = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
@@ -4453,8 +4453,8 @@ async function openMultiPhotoAdd_(sheetName) {
         } catch (ue) { console.warn("uploadImage:", ue); }
         if (!val) val = await compressImage_(files[i].file, [900, 720, 600, 520, 440, 380], [0.6, 0.5, 0.4], 48000) || "";
         if (!val) { fails.push(i + 1); continue; }
-        const data = { [kDate]: dIso ? isoToDDMMYYYY_(dIso) : "", [kEv]: ev, [kPh]: val, [kCap]: files[i].cap.trim() };
-        const res = await callCrudBackend_({ action: "addRow", sheetName, idDigits: 4, data });
+        const data = { [kDate]: dIso ? isoToDDMMYYYY_(dIso) : "", [kEv]: ev, [kPh]: val, [kCap]: files[i].cap.trim() }; if (kShow) data[kShow] = "TRUE";
+        const res = await callCrudBackend_({ action: "addRow", sheetName, idPrefix: "PHO", idDigits: 4, data });
         if (res && res.success) { ok++; if (currentTab === sheetName) { const nr = { ...data }; if (res.id) nr["ID"] = res.id; tableData.push(nr); } }
         else fails.push(i + 1);
       } catch (e) { console.error(e); fails.push(i + 1); }

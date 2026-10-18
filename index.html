@@ -1015,7 +1015,7 @@ async function load() {
   /* alag "Photos" sheet: Date | Event | Photo | Caption — har row ek (ya kai) photo, kisi bhi function ki */
   const gv = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? r[k] : ""; };
   (Array.isArray(phSheet) ? phSheet : []).forEach(r => {
-    if ("ShowOnHome" in r && !isTrue(r.ShowOnHome)) return;
+    if (String(r.ShowOnHome == null ? "" : r.ShowOnHome).trim().toUpperCase() === "FALSE") return;
     const d = parseDate(gv(r, /^(date|तारीख|दिनांक)$/i)), ev = String(gv(r, /^(event|subject|function|program|कार्यक्रम|बैठक)$/i) || "").trim(), c0 = String(gv(r, /^(caption|विवरण|details)$/i) || "").trim();
     parsePhotos(gv(r, /(photo|image|link|फोटो)/i)).forEach(q => { const c = q.c || c0; ph.push({ d, p: q.p, s: ev, y: d ? d.getFullYear() : 0, cap: [c, ev, d ? dmy(d) : ""].filter(Boolean).join("  •  ") }); });
   });
