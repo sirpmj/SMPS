@@ -4342,8 +4342,24 @@ async function renderGapBlocks_() {
     const kPh = keys.find(k => /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i.test(String(k).trim())) || keys.find(k => /photo|image|picture|फोटो|चित्र/i.test(String(k)));
     const box = document.getElementById("gpPhotos");
     if (box) {
-      let ph = !kPh ? [] : rows.map((r, i) => ({ r, i, d: parseRowDate_(r["Date"]), p: _gpPickPhoto(r[kPh]), s: String(r["Subject"] || "").trim() }))
-        .filter(x => x.p).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i));
+      // ek cell mein kai photo: har line "link | caption"
+      const _parse = v => { const t = String(v == null ? "" : v).trim(); if (!t) return []; if (/^data:image\//i.test(t)) return t.length < 150000 ? [{ p: t, c: "" }] : []; const out = [];
+        t.split(/\r?\n+/).forEach(line => line.split(/[,;]\s*(?=https?:\/\/)/).forEach(seg => { let url = "", cap = [];
+          seg.split("|").map(x => x.trim()).forEach(x => { const m = !url && x.match(/^https?:\/\/[^\s,;"'<>]+/i); if (m) { url = m[0]; const rest = x.slice(m[0].length).replace(/^[\s,;:\-–]+/, ""); if (rest) cap.push(rest); } else if (x && !/^https?:\/\//i.test(x)) cap.push(x); });
+          if (url) out.push({ p: url, c: cap.join(" ").trim() }); })); return out; };
+      let ph = !kPh ? [] : rows.flatMap((r, i) => _parse(r[kPh]).map((q, j) => ({ r, i, j, d: parseRowDate_(r["Date"]), p: q.p, c: q.c, s: String(r["Subject"] || "").trim() })))
+        .sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i) || (a.j - b.j));
+      // alag "Photos" sheet (Date | Event | Photo | Caption)
+      try {
+        const prs = (await fetchSheet("Photos")) || [];
+        const gv = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? r[k] : ""; };
+        prs.forEach(r => {
+          if ("ShowOnHome" in r && String(r.ShowOnHome).trim().toUpperCase() !== "TRUE") return;
+          const d = parseRowDate_(gv(r, /^(date|तारीख|दिनांक)$/i)), ev = String(gv(r, /^(event|subject|function|program|कार्यक्रम|बैठक)$/i) || "").trim(), c0 = String(gv(r, /^(caption|विवरण|details)$/i) || "").trim();
+          _parse(gv(r, /(photo|image|link|फोटो)/i)).forEach(q => ph.push({ r: {}, i: 0, j: 0, d, p: q.p, c: q.c || c0, s: ev }));
+        });
+        ph.sort((a, b) => (b.d ? +b.d : 0) - (a.d ? +a.d : 0));
+      } catch (pe) { console.warn("Photos sheet:", pe); }
       if (!ph.length) {   // v1.267: opensheet se photo na mile to Apps Script se lo
         try {
           const rr = await fetch(WEB_APP_URL + "?action=meetingPhotos&all=1"), jj = await rr.json();
@@ -4352,7 +4368,7 @@ async function renderGapBlocks_() {
       }
       const allPh = ph;   // v1.268: gallery mein SAARI photos, patti mein pehli 4
       const _dm = d => d ? String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear() : "";
-      window.__gpAll = allPh.map(x => ({ p: x.p, cap: [x.s, _dm(x.d)].filter(Boolean).join("  •  ") }));
+      window.__gpAll = allPh.map(x => ({ p: x.p, cap: [x.c, x.s, _dm(x.d)].filter(Boolean).join("  •  ") }));
       ph = allPh.slice(0, 4);
       if (ph.length) {
         box.innerHTML = _gpH("img", "फोटो") + `<div class="gph">` + ph.map(x => {

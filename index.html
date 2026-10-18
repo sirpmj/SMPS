@@ -925,7 +925,7 @@ function drawContact(S) {
 
 /* ---- Sab data load karke render ---- */
 async function load() {
-  const [home, meet, ann, news, members, set] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings"].map(sheet));
+  const [home, meet, ann, news, members, set, phSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos"].map(sheet));
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
   drawContact(S);
@@ -1011,7 +1011,15 @@ async function load() {
   /* फोटो */
   const kPh = keyOf(meet || [], /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i) || (meet && meet.length ? Object.keys(meet[0]).find(k => /photo|image|picture|फोटो|चित्र/i.test(k)) : null);
   const cap = (s, d) => [s, d ? dmy(d) : ""].filter(Boolean).join("  •  ");
-  let ph = kPh ? meet.flatMap((r, i) => parsePhotos(r[kPh]).map((q, j) => ({ i, j, d: parseDate(r.Date), p: q.p, c: q.c, s: String(r.Subject || "").trim() }))).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i) || (a.j - b.j)).map(x => ({ p: x.p, s: x.s, y: x.d ? x.d.getFullYear() : 0, cap: x.c ? [x.c, x.s, x.d ? dmy(x.d) : ""].filter(Boolean).join("  •  ") : cap(x.s, x.d) })) : [];
+  let ph = kPh ? meet.flatMap((r, i) => parsePhotos(r[kPh]).map((q, j) => ({ i, j, d: parseDate(r.Date), p: q.p, c: q.c, s: String(r.Subject || "").trim() }))).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i) || (a.j - b.j)).map(x => ({ d: x.d, p: x.p, s: x.s, y: x.d ? x.d.getFullYear() : 0, cap: x.c ? [x.c, x.s, x.d ? dmy(x.d) : ""].filter(Boolean).join("  •  ") : cap(x.s, x.d) })) : [];
+  /* alag "Photos" sheet: Date | Event | Photo | Caption — har row ek (ya kai) photo, kisi bhi function ki */
+  const gv = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? r[k] : ""; };
+  (Array.isArray(phSheet) ? phSheet : []).forEach(r => {
+    if ("ShowOnHome" in r && !isTrue(r.ShowOnHome)) return;
+    const d = parseDate(gv(r, /^(date|तारीख|दिनांक)$/i)), ev = String(gv(r, /^(event|subject|function|program|कार्यक्रम|बैठक)$/i) || "").trim(), c0 = String(gv(r, /^(caption|विवरण|details)$/i) || "").trim();
+    parsePhotos(gv(r, /(photo|image|link|फोटो)/i)).forEach(q => { const c = q.c || c0; ph.push({ d, p: q.p, s: ev, y: d ? d.getFullYear() : 0, cap: [c, ev, d ? dmy(d) : ""].filter(Boolean).join("  •  ") }); });
+  });
+  ph.sort((a, b) => (b.d ? +b.d : 0) - (a.d ? +a.d : 0));
   newPhotos(ph);
   if (!ph.length) {
     try {
