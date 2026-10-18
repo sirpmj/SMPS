@@ -505,12 +505,15 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pst-t h3 { font-family: var(--f-disp); font-size: 28px; line-height: 1.25; color: var(--deep); margin: 6px 0 8px; }
 .pst-t p { color: var(--mut); font-size: 16px; line-height: 1.7; margin: 0 0 16px; }
 .pst-b { display: flex; flex-wrap: wrap; gap: 10px; }
-.pst-b .btn, .pst-b .sbtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; text-decoration: none; }
+.pst-b .btn, .pst-b .sbtn { font-size: 15px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; text-decoration: none; }
 .pst-t .tag { display: inline-block; font-size: 13px; font-weight: 700; color: var(--brand); letter-spacing: .04em; }
 .pst-2 { margin-top: 16px; }
 .pst-2 a { display: inline-flex; align-items: center; gap: 10px; color: var(--brand); font-weight: 700; font-size: 14.5px; text-decoration: none; }
 .pst-2 img { width: 54px; height: auto; border-radius: 6px; border: 1px solid var(--line); }
-@media (max-width: 700px) { .pst { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; } .pst-img { max-width: 340px; margin: 0 auto; } .pst-t h3 { font-size: 24px; } .pst-b .btn, .pst-b .sbtn { flex: 1 1 100%; } }
+@media (max-width: 700px) { .pst { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; } .pst-img { max-width: 300px; margin: 0 auto; } .pst-t h3 { font-size: 24px; } .pst-b .btn, .pst-b .sbtn { flex: 1 1 100%; } }
+
+/* परिचय के कार्ड में दूसरा बटन (सफ़ेद पर सफ़ेद दिखता नहीं था) */
+#parichay .btn.sec { background: #fff; color: var(--brand); border: 1.5px solid var(--brand); box-shadow: none; }
 </style>
 
 </head>
