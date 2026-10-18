@@ -484,7 +484,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
   <div class="in">
     <a class="brand" href="#top" aria-label="मेवाड़ प्रजापत समाज वापी"><i></i><b>मेवाड़ प्रजापत समाज</b></a>
     <nav class="links" aria-label="मुख्य मेन्यू">
-      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
+      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a class="upi-go" href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
     </nav>
     <button class="tgl" id="themeBtn" type="button" aria-label="डार्क / लाइट मोड बदलें" title="डार्क / लाइट मोड">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
@@ -504,7 +504,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
         <div class="cta">
           <a class="btn pri" id="loginHero" href="app.html">सदस्य लॉगिन करें</a>
           <a class="btn sec" href="app.html?new=1">सदस्य बनें</a>
-          <a class="btn sec" href="#sahyog">सहयोग करें</a>
+          <a class="btn sec upi-go" href="#sahyog">सहयोग करें</a>
         </div>
       </div>
       <aside class="hero-card" aria-label="अगली बैठक">
@@ -698,6 +698,24 @@ function findDate(txt) {
 const keyOf = (rows, re) => { const ks = rows.length ? Object.keys(rows[0]) : []; return ks.find(k => re.test(String(k).trim())); };
 const isTrue = v => String(v).trim().toUpperCase() === "TRUE";
 const pickPhoto = v => { const t = String(v == null ? "" : v).trim(); if (/^data:image\//i.test(t)) return t.length < 150000 ? t : ""; const m = t.match(/https?:\/\/[^\s,;"'<>]+/i); return m ? m[0] : ""; };
+/* ek cell mein kai photo: har line = "link | caption" (ya "caption | link"); comma se alag links bhi chalenge */
+function parsePhotos(v) {
+  const t = String(v == null ? "" : v).trim(); if (!t) return [];
+  if (/^data:image\//i.test(t)) return t.length < 150000 ? [{ p: t, c: "" }] : [];
+  const out = [];
+  t.split(/\r?\n+/).forEach(line => {
+    line.split(/[,;]\s*(?=https?:\/\/)/).forEach(seg => {
+      let url = "", cap = [];
+      seg.split("|").map(x => x.trim()).forEach(x => {
+        const m = !url && x.match(/^https?:\/\/[^\s,;"'<>]+/i);
+        if (m) { url = m[0]; const rest = x.slice(m[0].length).replace(/^[\s,;:\-–]+/, ""); if (rest) cap.push(rest); }
+        else if (x && !/^https?:\/\//i.test(x)) cap.push(x);
+      });
+      if (url) out.push({ p: url, c: cap.join(" ").trim() });
+    });
+  });
+  return out;
+}
 function driveId(u) { const s = String(u || ""); if (!/drive\.google\.com|googleusercontent\.com/i.test(s)) return ""; const m = s.match(/[?&]id=([\w-]{15,})/) || s.match(/\/d\/([\w-]{15,})/); return m ? m[1] : ""; }
 
 /* ---- Render: बैठक / कार्यक्रम ---- */
@@ -798,7 +816,7 @@ function drawStats(items) {
 }
 
 /* ---- Render: photos + lightbox ---- */
-let PH = [], PHV = [], showAll = false, fy = "", fe = "";
+let PH = [], PHV = [], gShown = 8, showAll = false, fy = "", fe = "";
 const thumb = (p, w) => { const id = driveId(p); return id ? "https://lh3.googleusercontent.com/d/" + id + "=w" + w : p; };
 function drawFilters() {
   const ys = [...new Set(PH.map(x => x.y).filter(Boolean))].sort((a, b) => b - a), ev = [...new Set(PH.map(x => x.s).filter(Boolean))];
@@ -811,18 +829,18 @@ function drawPhotos() {
   PHV = PH.filter(x => (!fy || String(x.y) === fy) && (!fe || x.s === fe));
   if (!PH.length) { $("gf").hidden = true; $("gal").innerHTML = EMPTY("अभी कोई मीटिंग फोटो नहीं है।"); $("galMore").hidden = true; return; }
   if (!PHV.length) { $("gal").innerHTML = EMPTY("इस चयन में कोई फोटो नहीं है।"); $("galMore").hidden = true; return; }
-  const list = showAll ? PHV : PHV.slice(0, 8);
+  const list = PHV.slice(0, gShown);
   $("gal").innerHTML = list.map((x, i) => '<button class="ph" type="button" data-i="' + i + '" aria-label="' + esc(x.cap || "फोटो") + ' खोलें"><img src="' + esc(thumb(x.p, 500)) + '" alt="' + esc(x.cap || "समाज की फोटो") + '" loading="lazy" referrerpolicy="no-referrer"><span>' + esc(x.cap || "") + "</span></button>").join("");
   $("gal").querySelectorAll("img").forEach(im => im.addEventListener("error", () => {
     const id = driveId(PHV[+im.closest(".ph").dataset.i].p);
     if (id && !im.dataset.t) { im.dataset.t = 1; im.src = "https://drive.google.com/thumbnail?id=" + id + "&sz=w500"; } else im.style.display = "none";
   }));
-  $("galMore").hidden = PHV.length <= 8; $("galMore").textContent = showAll ? "कम फोटो दिखाएँ" : "सभी " + PHV.length + " फोटो देखें";
+  $("galMore").hidden = PHV.length <= 8; $("galMore").textContent = gShown < PHV.length ? "और फोटो देखें (" + Math.min(12, PHV.length - gShown) + " और · कुल " + PHV.length + ")" : "कम फोटो दिखाएँ";
 }
-function newPhotos(list) { PH = list; fy = ""; fe = ""; showAll = false; drawFilters(); drawPhotos(); }
-$("gYears").addEventListener("click", e => { const b = e.target.closest("[data-y]"); if (b) { fy = b.dataset.y; showAll = false; drawFilters(); drawPhotos(); } });
-$("gEv").addEventListener("change", () => { fe = $("gEv").value; showAll = false; drawPhotos(); });
-$("galMore").addEventListener("click", () => { showAll = !showAll; drawPhotos(); });
+function newPhotos(list) { PH = list; fy = ""; fe = ""; showAll = false; gShown = 8; drawFilters(); drawPhotos(); }
+$("gYears").addEventListener("click", e => { const b = e.target.closest("[data-y]"); if (b) { fy = b.dataset.y; showAll = false; gShown = 8; drawFilters(); drawPhotos(); } });
+$("gEv").addEventListener("change", () => { fe = $("gEv").value; showAll = false; gShown = 8; drawPhotos(); });
+$("galMore").addEventListener("click", () => { gShown = gShown >= PHV.length ? 8 : gShown + 12; drawPhotos(); });
 let lbI = 0;
 function lb(i) { lbI = (i + PHV.length) % PHV.length; const x = PHV[lbI]; $("lbImg").src = thumb(x.p, 1600); $("lbCap").textContent = (x.cap || "") + "  (" + (lbI + 1) + "/" + PHV.length + ")"; }
 $("gal").addEventListener("click", e => { const b = e.target.closest(".ph"); if (!b) return; $("lightbox").hidden = false; lb(+b.dataset.i); $("lbX").focus(); });
@@ -853,6 +871,16 @@ function qrGen() {
   new QRCode($("qrBox"), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
 }
 function closeQr() { $("qrModal").hidden = true; }
+
+/* सहयोग करें: mobile par seedha UPI app, desktop par QR; app na khule to Sahyog section */
+document.addEventListener("click", e => {
+  const a = e.target.closest("a.upi-go"); if (!a) return;
+  e.preventDefault();
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    const t0 = Date.now(); location.href = "upi://pay?pa=" + BANK.upi + "&pn=" + encodeURIComponent(BANK.name) + "&cu=INR";
+    setTimeout(() => { if (!document.hidden && Date.now() - t0 < 2500) $("sahyog").scrollIntoView({ behavior: "smooth" }); }, 1500);
+  } else { $("qrModal").hidden = false; qrGen(); $("qrAmt").focus(); }
+});
 $("qrOpen").onclick = () => { $("qrModal").hidden = false; qrGen(); $("qrAmt").focus(); };
 $("qrAmt").oninput = qrGen; $("qrX").onclick = closeQr;
 $("qrModal").addEventListener("click", e => { if (e.target.id === "qrModal") closeQr(); });
@@ -983,7 +1011,7 @@ async function load() {
   /* फोटो */
   const kPh = keyOf(meet || [], /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i) || (meet && meet.length ? Object.keys(meet[0]).find(k => /photo|image|picture|फोटो|चित्र/i.test(k)) : null);
   const cap = (s, d) => [s, d ? dmy(d) : ""].filter(Boolean).join("  •  ");
-  let ph = kPh ? meet.map((r, i) => ({ i, d: parseDate(r.Date), p: pickPhoto(r[kPh]), s: String(r.Subject || "").trim() })).filter(x => x.p).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i)).map(x => ({ p: x.p, s: x.s, y: x.d ? x.d.getFullYear() : 0, cap: cap(x.s, x.d) })) : [];
+  let ph = kPh ? meet.flatMap((r, i) => parsePhotos(r[kPh]).map((q, j) => ({ i, j, d: parseDate(r.Date), p: q.p, c: q.c, s: String(r.Subject || "").trim() }))).sort((a, b) => ((b.d ? +b.d : 0) - (a.d ? +a.d : 0)) || (b.i - a.i) || (a.j - b.j)).map(x => ({ p: x.p, s: x.s, y: x.d ? x.d.getFullYear() : 0, cap: x.c ? [x.c, x.s, x.d ? dmy(x.d) : ""].filter(Boolean).join("  •  ") : cap(x.s, x.d) })) : [];
   newPhotos(ph);
   if (!ph.length) {
     try {

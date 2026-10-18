@@ -2032,14 +2032,14 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- HTML to PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 
 </head>
 
 <!-- Excel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 
 <div id="splashScreen">
@@ -2110,6 +2110,15 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 <button id="newUserBtn" type="button" style="background:#fff;color:#0a7a2f"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 016-6h2a6 6 0 016 6v1"/><path d="M19 8v6M16 11h6"/></svg> New / Update Member</button>
 <div id="loginMsg" class="muted" style="margin-top:10px"></div>
 <a class="lg-back" href="index.html">&larr; समाज की वेबसाइट पर जाएँ</a>
+        </div>
+        <div class="sp-perks" id="spPerks">
+          <h4>🔐 Login के बाद आपको दिखेगा</h4>
+          <ul>
+            <li>👥 सदस्य सूची और संपर्क विवरण</li>
+            <li>📅 बैठक — Minutes, उपस्थिति और फोटो</li>
+            <li>📢 सूचनाएँ और समाज की घोषणाएँ</li>
+            <li>📄 अपना रिकॉर्ड, PDF / Excel डाउनलोड</li>
+          </ul>
         </div>
         <div class="sp-bank" id="bankCard">
           <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V10M9.5 21V10M14.5 21V10M19 21V10"/><path d="M12 3L3 8h18z"/></svg> बैंक विवरण / भुगतान</h3>
@@ -3001,18 +3010,17 @@ async function loadFooter(){
     const contact = settings["Contact"] || "";
     const email = settings["Email"] || "";
     const year = settings["Year"] || new Date().getFullYear();
-    // Build each line
-    const secondLine = address || "";
-    const thirdLineParts = [];
-    if(contact) thirdLineParts.push(`<a href="tel:${contact}">✆${contact}</a>`);
-    if(email) thirdLineParts.push(`<a href="mailto:${email}">✉️${email}</a>`);
-    thirdLineParts.push(`©${year}`);
-    const thirdLine = thirdLineParts.join('&nbsp;•&nbsp;');
-    // Set footer HTML
+    const sec = (h, t) => `<a href="index.html#${h}">${t}</a>`;
+    const thirdParts = [];
+    if(contact) thirdParts.push(`<a href="tel:${contact}">✆ ${contact}</a>`);
+    if(email) thirdParts.push(`<a href="mailto:${email}">✉️ ${email}</a>`);
     footerEl.innerHTML = `
       <div class="line">🙏 ${society} 🙏</div>
-      <div class="line">${secondLine}</div>
-      <div class="line">${thirdLine}</div>
+      <div class="line">Reg No: A/1221</div>
+      <div class="line fl">${sec("karyakram","कार्यक्रम")}${sec("sangathan","संगठन")}${sec("gallery","फोटो")}${sec("sahyog","सहयोग")}${sec("sampark","संपर्क")}<a href="index.html">वेबसाइट</a></div>
+      ${address ? `<div class="line">${address}</div>` : ""}
+      ${thirdParts.length ? `<div class="line">${thirdParts.join("&nbsp;•&nbsp;")}</div>` : ""}
+      <div class="line">© ${year} ${society}। सर्वाधिकार सुरक्षित।</div>
     `;
   }catch(err){
     console.error("Footer load error:", err);
@@ -3152,12 +3160,13 @@ const splashStartTime = Date.now();
 
 function hideSplash() {
   const splash = document.getElementById("splashScreen");
-  if (!splash) return;
+  if (!splash || splash.dataset.hid) return;
+  splash.dataset.hid = "1";
 
   const elapsed = Date.now() - splashStartTime;
 
   // minimum 3 second show
-  const delay = Math.max(3000 - elapsed, 0);
+  const delay = Math.max(350 - elapsed, 0);
 
   setTimeout(() => {
     splash.classList.add("fade-out");
@@ -3176,6 +3185,9 @@ function hideSplash() {
 async function init(){
 
   const savedUser = sessionStorage.getItem("currentUser"); // ✅ FIX
+
+  // login box turant dikhao — data peeche load hota rahega
+  if (!savedUser) { try { loginView.style.display = "block"; appView.style.display = "none"; document.body.style.visibility = "visible"; hideSplash(); } catch (e) {} }
 
   const [
     usersData,
@@ -3209,9 +3221,7 @@ if (savedUser) {
 
   // splash hide
   const splash = document.getElementById("splashScreen");
-  if (splash) setTimeout(() => {
-  hideSplash();
-}, 800);   // 🔥 more visible
+  if (splash) hideSplash();   // 🔥 more visible
 
   return;
 }
@@ -3235,9 +3245,7 @@ document.body.style.visibility = "visible";
 
 // splash hide
 const splash = document.getElementById("splashScreen");
-if (splash) setTimeout(() => {
-  hideSplash();
-}, 800);   // 🔥 more visible
+if (splash) hideSplash();   // 🔥 more visible
 }
 
 init();
@@ -7266,7 +7274,16 @@ function printPopupReceiptContent(title, bodyHtml) {
           body { font-family:'Segoe UI',sans-serif; padding:20px; }
           table { width:100%; border-collapse:collapse; margin-top:10px; }
           td { border:1px solid #ccc; padding:8px; font-size:14px; }
-        </style>
+        
+/* ===== v1.291: login = ek hi card (Login + login ke baad kya milega + Bank) ===== */
+#loginView .sp-R{background:#fff;border:1px solid #dbe5f7;border-radius:16px;box-shadow:0 6px 22px rgba(11,99,214,.10);overflow:hidden;display:flex;flex-direction:column;gap:0 !important}
+#loginView .sp-R .sp-login,#loginView .sp-R .sp-bank,#loginView .sp-R .sp-perks{background:transparent !important;border:0 !important;box-shadow:none !important;border-radius:0 !important;margin:0 !important}
+#loginView .sp-R .sp-perks,#loginView .sp-R .sp-bank{border-top:1px solid #e6edf9 !important}
+.sp-perks{padding:12px 14px}
+.sp-perks h4{margin:0 0 6px;font-size:14px;color:#0b3a8a}
+.sp-perks ul{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px;line-height:1.35;color:#334155}
+.site-footer .fl{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 16px;margin:6px 0}
+</style>
       </head>
       <body>
         ${headerHtml}
