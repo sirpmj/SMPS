@@ -2421,7 +2421,8 @@ const CRUD_ALLOWED_TABS = {
   "Announcements": { idPrefix: null,  allowEditDelete: true },
   "Assets":        { idPrefix: null,  allowEditDelete: true },
   "News":          { idPrefix: "NEWS", allowEditDelete: true },   // 🆕 v1.277 (sheet mein "ID" column chahiye)
-  "Notices":       { idPrefix: "NTC",  allowEditDelete: true }    // 🆕 v1.277
+  "Notices":       { idPrefix: "NTC",  allowEditDelete: true },    // 🆕 v1.277
+  "Photos":        { idPrefix: null,  allowEditDelete: true }     // 🆕 v1.292: kai photo ek saath
 };
 
 // 🆕 Yeh columns webapp KHUD compute karke table mein dikhata hai (Cash Book,
@@ -4402,6 +4403,70 @@ async function renderGapBlocks_() {
   }
 
 }
+/* 🆕 v1.292: Photos tab — ek saath kai photo, har ek ka apna caption */
+async function openMultiPhotoAdd_(sheetName) {
+  const cols = tableData.length ? Array.from(new Set(tableData.flatMap(r => Object.keys(r)))) : [];
+  const kk = (re, d) => cols.find(k => re.test(String(k).trim())) || d;
+  const kDate = kk(/^(date|तारीख|दिनांक)$/i, "Date"), kEv = kk(/^(event|subject|function|program|कार्यक्रम|बैठक)$/i, "Event"),
+        kPh = kk(/(photo|image|link|फोटो)/i, "Photo"), kCap = kk(/^(caption|विवरण|details)$/i, "Caption");
+  const events = Array.from(new Set(tableData.map(r => String(r[kEv] || "").trim()).filter(Boolean)));
+  const m = openModal_("📷 कई फोटो जोड़ें");
+  const t = new Date(), iso = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0");
+  const st = "width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:8px;font-size:16px;";
+  m.body.innerHTML = `
+    <label style="font-weight:700">तारीख</label><input id="mpDate" type="date" value="${iso}" style="${st}margin-bottom:8px">
+    <label style="font-weight:700">बैठक / कार्यक्रम का नाम</label>
+    <input id="mpEv" list="mpEvList" placeholder="जैसे: नवरात्रि गरबा" style="${st}margin-bottom:8px"><datalist id="mpEvList">${events.map(e => '<option value="' + String(e).replace(/"/g, "&quot;") + '">').join("")}</datalist>
+    <button type="button" id="mpPick" style="width:100%;padding:11px;border:2px dashed #0b63d6;background:#f3f8ff;color:#0b63d6;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">➕ फोटो चुनें (एक साथ कई)</button>
+    <input id="mpFiles" type="file" accept="image/*" multiple style="display:none">
+    <div id="mpList" style="margin-top:10px;display:grid;gap:8px"></div>`;
+  const files = [], list = m.body.querySelector("#mpList");
+  const draw = () => {
+    list.innerHTML = "";
+    files.forEach((f, i) => {
+      const row = document.createElement("div"); row.style.cssText = "display:flex;gap:8px;align-items:center;border:1px solid #e3ecfb;border-radius:10px;padding:6px";
+      const im = document.createElement("img"); im.src = URL.createObjectURL(f.file); im.style.cssText = "width:56px;height:56px;object-fit:cover;border-radius:8px;flex:none";
+      const cp = document.createElement("input"); cp.placeholder = "इस फोटो का caption (खाली भी चलेगा)"; cp.value = f.cap; cp.style.cssText = st + "flex:1;min-width:0;font-size:14px;padding:7px";
+      cp.oninput = () => { f.cap = cp.value; };
+      const x = document.createElement("button"); x.type = "button"; x.textContent = "✕"; x.style.cssText = "border:none;background:#fff0f0;color:#9b1b1b;border-radius:6px;width:30px;height:30px;cursor:pointer;padding:0;flex:none";
+      x.onclick = () => { files.splice(i, 1); draw(); };
+      row.append(im, cp, x); list.appendChild(row);
+    });
+    saveBtn.textContent = files.length ? "Save (" + files.length + " फोटो)" : "Save";
+  };
+  const inp = m.body.querySelector("#mpFiles");
+  m.body.querySelector("#mpPick").onclick = () => inp.click();
+  inp.onchange = () => { Array.from(inp.files).forEach(f => files.push({ file: f, cap: "" })); inp.value = ""; draw(); };
+  const saveBtn = modalBtn_("Save", "#1a9c4b", async function () {
+    const ev = m.body.querySelector("#mpEv").value.trim(), dIso = m.body.querySelector("#mpDate").value;
+    if (!files.length) { alert("पहले फोटो चुनें।"); return; }
+    if (!ev) { alert("बैठक / कार्यक्रम का नाम लिखें।"); return; }
+    this.disabled = true; let ok = 0; const fails = [];
+    for (let i = 0; i < files.length; i++) {
+      this.textContent = "Upload " + (i + 1) + "/" + files.length + "…";
+      try {
+        let val = "";
+        const big = await compressImage_(files[i].file, [1280, 1024], [0.72, 0.6], Infinity);
+        try {
+          const up = await callCrudBackend_({ action: "uploadImage", sheetName, fileName: "photo_" + (dIso || "x").replace(/[^\w-]+/g, "_") + "_" + Date.now() + "_" + i + ".jpg", mimeType: "image/jpeg", base64: big.split(",")[1] });
+          if (up && up.success && up.url) val = up.url;
+        } catch (ue) { console.warn("uploadImage:", ue); }
+        if (!val) val = await compressImage_(files[i].file, [900, 720, 600, 520, 440, 380], [0.6, 0.5, 0.4], 48000) || "";
+        if (!val) { fails.push(i + 1); continue; }
+        const data = { [kDate]: dIso ? isoToDDMMYYYY_(dIso) : "", [kEv]: ev, [kPh]: val, [kCap]: files[i].cap.trim() };
+        const res = await callCrudBackend_({ action: "addRow", sheetName, idDigits: 4, data });
+        if (res && res.success) { ok++; if (currentTab === sheetName) { const nr = { ...data }; if (res.id) nr["ID"] = res.id; tableData.push(nr); } }
+        else fails.push(i + 1);
+      } catch (e) { console.error(e); fails.push(i + 1); }
+    }
+    delete CACHE[sheetName];
+    m.close();
+    try { if (currentTab === sheetName) renderTable(); } catch (e) { console.error(e); }
+    alert(ok + " फोटो save हो गईं।" + (fails.length ? "\n\n⚠️ ये फोटो save नहीं हुईं: " + fails.join(", ") + "\n(Photos sheet में Date, Event, Photo, Caption column होने चाहिए)" : ""));
+  });
+  m.foot.appendChild(saveBtn);
+}
+
 function updateAddNewButton(sheetName) {
   { const _d = document.getElementById("dirBtn"); if (_d) _d.style.display = (sheetName === "Members" && ROLE_ACCESS?.[currentUser?.role]?.Members?.canView) ? "inline-block" : "none"; }
   const btn = document.getElementById("addNewBtn");
@@ -4410,7 +4475,7 @@ function updateAddNewButton(sheetName) {
   const actions = ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || [];
   if (crudCfg && actions.includes("ADD")) {
     btn.style.display = "inline-block";
-    btn.onclick = () => openAddRecordForm(sheetName);
+    btn.onclick = () => sheetName === "Photos" ? openMultiPhotoAdd_(sheetName) : openAddRecordForm(sheetName);
   } else {
     btn.style.display = "none";
     btn.onclick = null;
