@@ -477,16 +477,40 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pp .pl2 > span:first-child:not(:last-child){white-space:normal;flex:0 1 auto}
 .pp .pl2 .ic-b{flex:none}
 
+
 /* ===== परिचय: समाज का सफर ===== */
-.story { max-width: 860px; margin: 0 auto; padding: 26px 28px; }
-.story h3 { font-family: var(--f-disp); font-size: 26px; line-height: 1.3; color: var(--deep); margin: 0 0 14px; }
-.story p { color: var(--mut); font-size: 16.5px; line-height: 1.8; margin: 0 0 12px; }
-.story p.jy { color: var(--brand-d); font-weight: 700; text-align: center; }
-.story blockquote { margin: 16px 0; padding: 14px 18px; background: var(--tint); border-left: 4px solid var(--saffron); border-radius: 10px; color: var(--ink); font-weight: 600; font-size: 17px; line-height: 1.7; }
-.story.clamp .mp { display: none; }
-.story.clamp #storyMore { margin-top: 10px; }
-.story:not(.clamp) #storyMore { margin-top: 16px; }
-@media (max-width: 640px) { .story { padding: 20px 18px; } .story h3 { font-size: 22px; } .story p { font-size: 16px; line-height: 1.75; } }
+.story-sec { margin-top: 48px; }
+.story-grid { display: grid; grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: 36px; align-items: start; margin-top: 24px; }
+.mile { list-style: none; margin: 0; padding: 4px 0; position: relative; display: grid; gap: 26px; }
+.mile::before { content: ""; position: absolute; left: 15px; top: 16px; bottom: 16px; width: 2px; background: var(--line); }
+.mile li { position: relative; padding-left: 46px; }
+.mile li::before { content: ""; position: absolute; left: 5px; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 5px solid var(--brand); box-sizing: border-box; }
+.mile li.now::before { border-color: var(--saffron); }
+.mile b { display: block; font-size: 19px; font-weight: 800; color: var(--deep); line-height: 1.3; }
+.mile span { display: block; margin-top: 3px; color: var(--mut); font-size: 15.5px; line-height: 1.65; }
+.story-body { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 28px 32px; box-shadow: var(--shadow); min-width: 0; }
+.story-body p { color: var(--mut); font-size: 16.5px; line-height: 1.85; margin: 0 0 14px; }
+.story-body p.lead { color: var(--ink); font-size: 19px; font-weight: 600; line-height: 1.7; }
+.story-body p.jy { text-align: center; color: var(--brand-d); font-weight: 700; margin: 0 0 16px; }
+.story-body p.jy:last-child { margin: 18px 0 0; }
+.story-body blockquote { margin: 20px 0 4px; padding: 16px 20px; background: var(--tint); border-left: 4px solid var(--saffron); border-radius: 12px; color: var(--ink); font-weight: 700; font-size: 17.5px; line-height: 1.7; }
+@media (max-width: 860px) { .story-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; } .story-sec { margin-top: 36px; } }
+@media (max-width: 640px) { .story-body { padding: 22px 18px; } .story-body p { font-size: 16px; line-height: 1.8; } .story-body p.lead { font-size: 17.5px; } .mile b { font-size: 18px; } }
+
+/* ===== कार्यक्रम पोस्टर ===== */
+.pst { display: grid; grid-template-columns: minmax(0, 270px) minmax(0, 1fr); gap: 28px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 22px; }
+.pst[hidden] { display: none; }
+.pst-img { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
+.pst-img img { width: 100%; height: auto; display: block; }
+.pst-t h3 { font-family: var(--f-disp); font-size: 28px; line-height: 1.25; color: var(--deep); margin: 6px 0 8px; }
+.pst-t p { color: var(--mut); font-size: 16px; line-height: 1.7; margin: 0 0 16px; }
+.pst-b { display: flex; flex-wrap: wrap; gap: 10px; }
+.pst-b .btn, .pst-b .sbtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; text-decoration: none; }
+.pst-t .tag { display: inline-block; font-size: 13px; font-weight: 700; color: var(--brand); letter-spacing: .04em; }
+.pst-2 { margin-top: 16px; }
+.pst-2 a { display: inline-flex; align-items: center; gap: 10px; color: var(--brand); font-weight: 700; font-size: 14.5px; text-decoration: none; }
+.pst-2 img { width: 54px; height: auto; border-radius: 6px; border: 1px solid var(--line); }
+@media (max-width: 700px) { .pst { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; } .pst-img { max-width: 340px; margin: 0 auto; } .pst-t h3 { font-size: 24px; } .pst-b .btn, .pst-b .sbtn { flex: 1 1 100%; } }
 </style>
 
 </head>
@@ -529,6 +553,16 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
   <section class="s gut" id="karyakram">
     <div class="in">
       <div class="sh"><span class="tag">बैठक एवं कार्यक्रम</span><h2>अगली बैठक</h2><p>बैठक और कार्यक्रम की तारीख, समय और स्थान।</p></div>
+      <div class="pst" id="pst" hidden>
+        <a class="pst-img" id="pstA" href="poster-1.jpg" target="_blank" rel="noopener" aria-label="पोस्टर बड़ा देखें"><img id="pstI" alt="तृतीय स्नेह सम्मेलन का पोस्टर" decoding="async"></a>
+        <div class="pst-t">
+          <span class="tag" id="pstTag">आमंत्रण</span>
+          <h3 id="pstH">तृतीय स्नेह सम्मेलन</h3>
+          <p id="pstP">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक<br>अनाविल भवन (आर.एस.), एनएच-8 टोल नाके के पास, ओरवाड़, उडवाड़ा</p>
+          <div class="pst-b"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर बड़ा देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp पर भेजें</button></div>
+          <div class="pst-2" id="pst2"></div>
+        </div>
+      </div>
       <div class="mts" id="mts"></div>
     </div>
   </section>
@@ -583,23 +617,28 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
       </div>
     </div>
   
-    <div class="in" style="margin-top:34px">
-      <article class="card story clamp" id="sfarStory" aria-labelledby="sfarH">
-        <h3 id="sfarH">समाज की एकता से संगठन तक का सफर</h3>
-        <p class="jy">🙏 जय श्रीयादे माता की! 🙏</p>
-        <p>श्री मेवाड़ प्रजापत समाज – वापी की इस यात्रा की शुरुआत समाज को एकजुट करने के एक छोटे से संकल्प के साथ हुई।</p>
-        <p>दिसंबर 2024 में प्रथम स्नेह सम्मेलन के आयोजन से लगभग एक वर्ष पूर्व ही समाज को संगठित करने का प्रयास प्रारंभ हो गया था। इस दौरान समाज के लोगों को जोड़ने, परिवारों से संपर्क करने और समाज की एकता का संदेश पहुँचाने के उद्देश्य से विभिन्न स्थानों पर जाकर समाजजनों से व्यक्तिगत मुलाकात की गई।</p>
-        <p>इस पहल का उद्देश्य केवल एक कार्यक्रम आयोजित करना नहीं था, बल्कि वापी एवं आसपास के क्षेत्रों में रहने वाले मेवाड़ प्रजापत समाज के परिवारों को एक मंच पर लाना, आपसी परिचय बढ़ाना और सामाजिक एकता की मजबूत नींव रखना था।</p>
-        <p class="mp">लगातार प्रयासों, व्यक्तिगत संपर्क, समाजजनों के सहयोग और सामूहिक उत्साह के परिणामस्वरूप दिसंबर 2024 में प्रथम स्नेह सम्मेलन का सफल आयोजन किया गया।</p>
-        <p class="mp">यह सम्मेलन केवल एक कार्यक्रम नहीं, बल्कि समाज की एकता, सामूहिक शक्ति और एक नए सामाजिक सफर की शुरुआत का प्रतीक बना।</p>
-        <p class="mp">इसके बाद समाज की गतिविधियों को निरंतर आगे बढ़ाने, सामाजिक संबंधों को मजबूत करने, नई पीढ़ी को जोड़ने और समाज के विकास के लिए संगठित रूप से कार्य करने का संकल्प लिया गया।</p>
-        <p class="mp">आज श्री मेवाड़ प्रजापत समाज – वापी इसी सोच और उद्देश्य के साथ निरंतर आगे बढ़ रहा है।</p>
-        <p class="mp">इस सफर में योगदान देने वाले प्रत्येक समाजबंधु, वरिष्ठजन, मातृशक्ति, युवा साथी एवं सहयोगकर्ताओं का हम हृदय से आभार व्यक्त करते हैं।</p>
-        <p class="mp">हमारा विश्वास है कि जिस एकता के संकल्प से यह यात्रा शुरू हुई थी, वही एकता आने वाले वर्षों में समाज की सबसे बड़ी ताकत बनेगी।</p>
-        <blockquote class="mp">एक प्रयास से शुरुआत हुई, एकता से संगठन बना और सामूहिक सहयोग से समाज की प्रगति का मार्ग प्रशस्त हुआ।</blockquote>
-        <p class="jy mp">🙏 जय श्रीयादे माता की! 🙏</p>
-        <button class="btn more" id="storyMore" type="button" aria-expanded="false" aria-controls="sfarStory">पूरा सफर पढ़ें</button>
-      </article>
+  
+    <div class="in story-sec" id="sfar">
+      <div class="sh"><span class="tag">हमारा सफर</span><h2>समाज की एकता से संगठन तक का गौरवशाली सफर</h2></div>
+      <div class="story-grid">
+        <ol class="mile" aria-label="सफर के पड़ाव">
+          <li><b>कई वर्षों की मेहनत, 1 वर्ष का प्रयास</b><span>समाज को संगठित करने, परिवारों से संपर्क करने और व्यक्तिगत मुलाकात का सिलसिला।</span></li>
+          <li><b>दिसंबर 2024</b><span>प्रथम स्नेह सम्मेलन का सफल आयोजन।</span></li>
+          <li><b>जनवरी 2026</b><span>द्वितीय स्नेह सम्मेलन का आयोजन।</span></li>
+          <li class="now"><b>10 जनवरी 2027</b><span>तृतीय स्नेह सम्मेलन — अनाविल भवन (आर.एस.), ओरवाड़, उडवाड़ा।</span></li>
+        </ol>
+        <article class="story-body">
+          <p class="jy">🙏 जय श्रीयादे माता की! 🙏</p>
+          <p class="lead">श्री मेवाड़ प्रजापत समाज – वापी की यह यात्रा वर्षों के प्रयासों, अटूट संकल्प और सामूहिक सहयोग की प्रेरणादायक गाथा है।</p>
+          <p>समाज को एकजुट करने, परिवारों को आपस में जोड़ने और सभी समाजबंधुओं को एक साझा मंच पर लाने का सपना लंबे समय से देखा जा रहा था। अनेक समाजप्रेमियों के निरंतर प्रयासों, व्यक्तिगत संपर्क, वरिष्ठजनों के मार्गदर्शन और समाजबंधुओं के सहयोग से इस सपने को साकार करने की दिशा में महत्वपूर्ण कदम उठाए गए।</p>
+          <p>इन्हीं सामूहिक प्रयासों का परिणाम रहा कि दिसंबर 2024 में प्रथम स्नेह सम्मेलन का सफल आयोजन हुआ। यह सम्मेलन केवल एक कार्यक्रम नहीं, बल्कि वर्षों की मेहनत, सामाजिक एकता और संगठित भविष्य की ओर एक नई शुरुआत का प्रतीक बना।</p>
+          <p>यह उपलब्धि किसी एक व्यक्ति की नहीं, बल्कि उन सभी समाजबंधुओं की है, जिन्होंने अपने समय, समर्पण, विचारों और सहयोग से इस पहल को सफल बनाने में योगदान दिया। सभी के सामूहिक प्रयासों ने समाज को एक साझा पहचान और नई दिशा प्रदान की।</p>
+          <p>आज हमारा संकल्प समाज में आपसी प्रेम, भाईचारे और एकता को मजबूत करना, नई पीढ़ी को अपनी संस्कृति एवं संस्कारों से जोड़ना तथा शिक्षा, सहयोग और सामाजिक विकास के माध्यम से एक उज्ज्वल भविष्य का निर्माण करना है।</p>
+          <blockquote>हमारा विश्वास है कि एकता हमारी शक्ति है, सहयोग हमारी पहचान है और समाज की प्रगति हमारा सामूहिक लक्ष्य है।</blockquote>
+          <p>आइए, इसी विश्वास और एकजुटता के साथ हम सब मिलकर श्री मेवाड़ प्रजापत समाज – वापी को निरंतर प्रगति के पथ पर आगे बढ़ाएँ और आने वाली पीढ़ियों के लिए एक सशक्त, संस्कारित एवं संगठित समाज की नींव मजबूत करें।</p>
+          <p class="jy">🙏 जय श्रीयादे माता की! 🙏</p>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -694,6 +733,7 @@ const $ = id => document.getElementById(id);
 const MON = ["जनवरी","फ़रवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"];
 const DAY = ["रविवार","सोमवार","मंगलवार","बुधवार","गुरुवार","शुक्रवार","शनिवार"];
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = s => esc(s).replace(/\*([^*\n]+)\*/g, "<b>$1</b>");
 const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 const tel = p => String(p || "").replace(/\D/g, "");
 const wa = p => { const t = tel(p); return "https://wa.me/" + (t.length === 10 ? "91" + t : t); };
@@ -709,6 +749,16 @@ async function sheet(name) {
     const r = await fetch("https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(name));
     const j = await r.json(); return Array.isArray(j) ? j : [];
   } catch (e) { return null; }
+}
+/* "नवंबर 2026" / "Nov 2026" / "11/2026" -> us mahine ka aakhri din (mo = sirf mahina, tarikh baad mein) */
+const MONI = { "जनवरी":0,"फ़रवरी":1,"फरवरी":1,"मार्च":2,"अप्रैल":3,"मई":4,"जून":5,"जुलाई":6,"अगस्त":7,"सितंबर":8,"सितम्बर":8,"अक्टूबर":9,"अक्तूबर":9,"नवंबर":10,"नवम्बर":10,"दिसंबर":11,"दिसम्बर":11,
+  jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+function parseMonthOnly(val) {
+  const s = String(val == null ? "" : val).replace(/[*,]/g, " ").replace(/\s+/g, " ").trim(); if (!s) return null;
+  let m = s.match(/^(\d{1,2})[\/\-](\d{4})$/); if (m && +m[1] >= 1 && +m[1] <= 12) return new Date(+m[2], +m[1], 0);
+  m = s.match(/^(\S+)\s+(\d{4})$/); if (!m) return null;
+  const k = Object.prototype.hasOwnProperty.call(MONI, m[1]) ? m[1] : m[1].toLowerCase().slice(0, 3);
+  return Object.prototype.hasOwnProperty.call(MONI, k) ? new Date(+m[2], MONI[k] + 1, 0) : null;
 }
 function parseDate(val) {
   if (!val) return null;
@@ -769,20 +819,20 @@ setInterval(tickAll, 30000);
 let MEET = [];
 function drawMeetings(list, past) {
   MEET = list;
-  const dl = x => DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()];
+  const dl = x => x.mo ? MON[x.d.getMonth()] + " " + x.d.getFullYear() : DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()];
   $("hcList").innerHTML = list.length ? list.slice(0, 2).map(x => '<div class="hc-it"><div class="hc-t">' + esc(x.t) + '</div><div class="hc-d">' + dl(x) + "</div>" +
     ([x.time, x.place].filter(Boolean).length ? '<div class="hc-m">' + esc([x.time, x.place].filter(Boolean).join(" · ")) + "</div>" : "") +
-    '<div class="cd num" data-at="' + (+x.at) + '"></div></div>').join("")
+    (x.mo ? '<div class="hc-m">तारीख जल्द घोषित होगी</div>' : '<div class="cd num" data-at="' + (+x.at) + '"></div>') + "</div>").join("")
     : '<div class="hc-it"><div class="hc-t">जल्द घोषित होगी</div><div class="hc-m">तारीख तय होने पर यहाँ दिखेगी</div></div>';
   const t0 = today0();
   $("mts").innerHTML = (list.map(x => {
     const left = Math.round((x.d - t0) / 86400000);
-    const pill = left === 0 ? "आज" : left === 1 ? "कल" : left + " दिन बाकी";
-    return '<article class="mt"><div class="mt-top"><span class="mt-lab">' + (x.meeting ? "अगली बैठक" : "आगामी कार्यक्रम") + '</span><span class="pill' + (left <= 2 ? " hot" : "") + '">' + pill + "</span></div>" +
-      '<h3 class="mt-t">' + esc(x.t) + '</h3><div class="mt-d">' + DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()] + (x.d.getFullYear() !== t0.getFullYear() ? " " + x.d.getFullYear() : "") + "</div>" +
+    const pill = x.mo ? "तारीख जल्द" : left === 0 ? "आज" : left === 1 ? "कल" : left + " दिन बाकी";
+    return '<article class="mt"><div class="mt-top"><span class="mt-lab">' + (x.meeting ? "अगली बैठक" : "आगामी कार्यक्रम") + '</span><span class="pill' + (!x.mo && left <= 2 ? " hot" : "") + '">' + pill + "</span></div>" +
+      '<h3 class="mt-t">' + esc(x.t) + '</h3><div class="mt-d">' + (x.mo ? MON[x.d.getMonth()] + " " + x.d.getFullYear() : DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()] + (x.d.getFullYear() !== t0.getFullYear() ? " " + x.d.getFullYear() : "")) + "</div>" +
       ([x.time, x.place].filter(Boolean).length ? '<div class="mt-m">' + esc([x.time, x.place].filter(Boolean).join(" · ")) + "</div>" : "") +
-      '<div class="cd2 num" data-at="' + (+x.at) + '"></div>' + (x.ag.length ? '<ul class="mt-ag">' + x.ag.map(a => "<li>" + esc(a) + "</li>").join("") + "</ul>" : "") +
-      '<div class="mt-act"><button class="sbtn g" type="button" data-act="wa" data-i="' + MEET.indexOf(x) + '">WhatsApp पर भेजें</button><button class="sbtn" type="button" data-act="cal" data-i="' + MEET.indexOf(x) + '">कैलेंडर में जोड़ें</button></div></article>';
+      (x.mo ? "" : '<div class="cd2 num" data-at="' + (+x.at) + '"></div>') + (x.ag.length ? '<ul class="mt-ag">' + x.ag.map(a => "<li>" + esc(a) + "</li>").join("") + "</ul>" : "") +
+      '<div class="mt-act"><button class="sbtn g" type="button" data-act="wa" data-i="' + MEET.indexOf(x) + '">WhatsApp पर भेजें</button>' + (x.mo ? "" : '<button class="sbtn" type="button" data-act="cal" data-i="' + MEET.indexOf(x) + '">कैलेंडर में जोड़ें</button>') + '</div></article>';
   }).join("") || '<article class="mt">' + EMPTY("अगली बैठक की तारीख जल्द घोषित होगी।") + "</article>") +
   (past.length ? '<article class="mt past"><div class="mt-top"><span class="mt-lab">पिछली बैठकें</span></div>' + past.map(p =>
     '<div class="pastR"><b class="num">' + esc(p.r.Date || dmy(p.d)) + "</b><span>" + esc(p.r.Subject || "बैठक") + "</span></div>").join("") + "</article>" : "");
@@ -793,7 +843,7 @@ function drawMeetings(list, past) {
 /* ---- बैठक: WhatsApp share + कैलेंडर ---- */
 function meetText(x) {
   const t = [x.time, x.place].filter(Boolean);
-  let m = "🙏 *जय श्रीयादे माता की* 🙏\n*श्री मेवाड़ प्रजापत समाज-वापी*\n\n📅 *" + x.t + "*\n🗓️ " + DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()] + " " + x.d.getFullYear();
+  let m = "🙏 *जय श्रीयादे माता की* 🙏\n*श्री मेवाड़ प्रजापत समाज-वापी*\n\n📅 *" + x.t + "*\n🗓️ " + (x.mo ? MON[x.d.getMonth()] + " " + x.d.getFullYear() + " (तारीख जल्द घोषित होगी)" : DAY[x.d.getDay()] + ", " + x.d.getDate() + " " + MON[x.d.getMonth()] + " " + x.d.getFullYear());
   if (x.time) m += "\n🕐 " + x.time; if (x.place) m += "\n📍 " + x.place;
   if (x.ag.length) m += "\n\n" + x.ag.map(a => "• " + a).join("\n");
   if (location.protocol !== "file:") m += "\n\n🔗 " + location.href.split(/[?#]/)[0];
@@ -824,7 +874,7 @@ function drawNews() {
     '<button class="chip" type="button" data-k="' + k + '" aria-pressed="' + (cur === k) + '">' + v + "</button>").join("") : "";
   const list = NEWS.filter(n => cur === "all" || n.t === cur);
   $("news").innerHTML = list.length ? list.map(n =>
-    '<article class="nw ' + n.t + '"><div><div class="k">' + KIND[n.t] + (n.d ? " · " + esc(n.d) : "") + '</div><div class="h">' + esc(n.h) + "</div>" + (n.b ? '<div class="b">' + esc(n.b) + "</div>" : "") + "</div></article>").join("")
+    '<article class="nw ' + n.t + '"><div><div class="k">' + KIND[n.t] + (n.d ? " · " + esc(n.d) : "") + '</div><div class="h">' + fmt(n.h) + "</div>" + (n.b ? '<div class="b">' + fmt(n.b) + "</div>" : "") + "</div></article>").join("")
     : EMPTY("अभी कोई सूचना नहीं है।");
 }
 $("chips").addEventListener("click", e => { const b = e.target.closest("[data-k]"); if (b) { cur = b.dataset.k; drawNews(); } });
@@ -959,6 +1009,7 @@ async function load() {
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
   drawContact(S);
+  drawPoster(S);
 
   /* कार्यकारिणी / सलाहकार */
   const adv = [], off = [];
@@ -978,9 +1029,9 @@ async function load() {
   drawPeople(off, adv);
 
   /* बैठक / कार्यक्रम */
-  const meetRows = (meet || []).filter(r => !("ShowOnHome" in r) || isTrue(r.ShowOnHome)).map((r, i) => ({ r, i, d: parseDate(r.Date) })).filter(x => x.d);
+  const meetRows = (meet || []).filter(r => !("ShowOnHome" in r) || isTrue(r.ShowOnHome)).map((r, i) => { const mo = parseMonthOnly(r.Date), d0 = mo ? null : parseDate(r.Date); return { r, i, d: d0 || mo, mo: !!mo }; }).filter(x => x.d);
   const pastM = meetRows.filter(x => x.d < t0).sort((a, b) => b.d - a.d);
-  const up = meetRows.filter(x => x.d >= t0).map(x => ({ meeting: true, d: x.d, t: String(x.r.Subject || "बैठक").trim(), time: String(x.r.Time || "").trim(), place: String(x.r.Place || "").trim(),
+  const up = meetRows.filter(x => x.d >= t0).map(x => ({ meeting: true, mo: x.mo, d: x.d, t: String(x.r.Subject || "बैठक").trim(), time: String(x.r.Time || "").trim(), place: String(x.r.Place || "").trim(),
     ag: String(x.r.Details || x.r.Agenda || x.r.Description || "").split(/\n+/).map(a => a.trim()).filter(Boolean) }));
   if (S.EventDate) { const d = parseDate(S.EventDate) || findDate(S.EventDate); if (d && d >= t0) up.push({ meeting: false, d, t: S.EventName || "आगामी कार्यक्रम", time: "", place: "", ag: [] }); }
   (ann || []).filter(r => isTrue(r.ShowOnHome)).forEach(r => { const d = findDate(r.Message) || findDate(r.Title); if (d && d >= t0) up.push({ meeting: false, d, t: r.Title || "कार्यक्रम", time: "", place: "", ag: [] }); });
@@ -1124,16 +1175,26 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
   else setTimeout(function(){ if(!window.__dp) show(); },6000);
 })();
 
-/* परिचय: पूरा सफर पढ़ें / कम पढ़ें */
-(function () {
-  var st = document.getElementById("sfarStory"), b = document.getElementById("storyMore"); if (!st || !b) return;
-  b.addEventListener("click", function () {
-    var open = st.classList.toggle("clamp") === false;
-    b.textContent = open ? "कम दिखाएँ" : "पूरा सफर पढ़ें";
-    b.setAttribute("aria-expanded", open ? "true" : "false");
-    if (!open) st.scrollIntoView({ behavior: "smooth", block: "start" });
+
+/* पोस्टर: poster-1.jpg/.png (+ poster-2.jpg/.png) GitHub folder mein ho to hi dikhega; Settings sheet se badal sakte hain: Poster1, Poster2, PosterTitle, PosterInfo */
+function drawPoster(S) {
+  const box = $("pst"); if (!box) return;
+  const abs = u => new URL(u, location.href).href;
+  /* jpg / jpeg / png — jo mile wahi use hoga */
+  const names = (custom, base) => (custom ? [custom] : []).concat([".jpg", ".jpeg", ".png", ".webp"].map(e => base + e));
+  const first = (list, ok) => { let i = 0; (function t() { if (i >= list.length) return; const u = list[i++], im = new Image(); im.onload = () => ok(u); im.onerror = t; im.src = u; })(); };
+  let p1 = "poster-1.jpg";
+  if (S.PosterTitle) $("pstH").textContent = S.PosterTitle;
+  if (S.PosterInfo) $("pstP").innerHTML = esc(S.PosterInfo).replace(/\s*\|\s*|\n/g, "<br>");
+  first(names(S.Poster1, "poster-1"), function (u) {
+    p1 = u; $("pstI").src = u; $("pstA").href = u; $("pstV").href = u; $("pstD").href = u; box.hidden = false;
+    first(names(S.Poster2, "poster-2"), function (v) { $("pst2").innerHTML = '<a href="' + esc(v) + '" target="_blank" rel="noopener"><img src="' + esc(v) + '" alt=""><span>पीछे का पन्ना — सेवा सहयोगी</span></a>'; });
   });
-})();
+  $("pstW").onclick = function () {
+    const t = "🙏 *जय श्रीयादे माता की* 🙏\n*" + $("pstH").textContent + "*\n\n" + $("pstP").innerText.trim() + "\n\n🖼️ पोस्टर: " + abs(p1) + (location.protocol !== "file:" ? "\n🔗 " + location.href.split(/[?#]/)[0] : "");
+    window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank", "noopener");
+  };
+}
 </script>
 </body>
 </html>
