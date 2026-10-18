@@ -476,6 +476,17 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pp .pl2 > span{flex:none;max-width:100%;overflow:visible;text-overflow:clip;white-space:nowrap}
 .pp .pl2 > span:first-child:not(:last-child){white-space:normal;flex:0 1 auto}
 .pp .pl2 .ic-b{flex:none}
+
+/* ===== परिचय: समाज का सफर ===== */
+.story { max-width: 860px; margin: 0 auto; padding: 26px 28px; }
+.story h3 { font-family: var(--f-disp); font-size: 26px; line-height: 1.3; color: var(--deep); margin: 0 0 14px; }
+.story p { color: var(--mut); font-size: 16.5px; line-height: 1.8; margin: 0 0 12px; }
+.story p.jy { color: var(--brand-d); font-weight: 700; text-align: center; }
+.story blockquote { margin: 16px 0; padding: 14px 18px; background: var(--tint); border-left: 4px solid var(--saffron); border-radius: 10px; color: var(--ink); font-weight: 600; font-size: 17px; line-height: 1.7; }
+.story.clamp .mp { display: none; }
+.story.clamp #storyMore { margin-top: 10px; }
+.story:not(.clamp) #storyMore { margin-top: 16px; }
+@media (max-width: 640px) { .story { padding: 20px 18px; } .story h3 { font-size: 22px; } .story p { font-size: 16px; line-height: 1.75; } }
 </style>
 
 </head>
@@ -570,6 +581,25 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
         <a class="btn pri" href="app.html?new=1" style="margin-top:22px;width:100%">सदस्य बनें (New / Update Member)</a>
         <a class="btn sec" id="loginAbout" href="app.html" style="margin-top:10px;width:100%">पोर्टल में लॉगिन करें</a>
       </div>
+    </div>
+  
+    <div class="in" style="margin-top:34px">
+      <article class="card story clamp" id="sfarStory" aria-labelledby="sfarH">
+        <h3 id="sfarH">समाज की एकता से संगठन तक का सफर</h3>
+        <p class="jy">🙏 जय श्रीयादे माता की! 🙏</p>
+        <p>श्री मेवाड़ प्रजापत समाज – वापी की इस यात्रा की शुरुआत समाज को एकजुट करने के एक छोटे से संकल्प के साथ हुई।</p>
+        <p>दिसंबर 2024 में प्रथम स्नेह सम्मेलन के आयोजन से लगभग एक वर्ष पूर्व ही समाज को संगठित करने का प्रयास प्रारंभ हो गया था। इस दौरान समाज के लोगों को जोड़ने, परिवारों से संपर्क करने और समाज की एकता का संदेश पहुँचाने के उद्देश्य से विभिन्न स्थानों पर जाकर समाजजनों से व्यक्तिगत मुलाकात की गई।</p>
+        <p>इस पहल का उद्देश्य केवल एक कार्यक्रम आयोजित करना नहीं था, बल्कि वापी एवं आसपास के क्षेत्रों में रहने वाले मेवाड़ प्रजापत समाज के परिवारों को एक मंच पर लाना, आपसी परिचय बढ़ाना और सामाजिक एकता की मजबूत नींव रखना था।</p>
+        <p class="mp">लगातार प्रयासों, व्यक्तिगत संपर्क, समाजजनों के सहयोग और सामूहिक उत्साह के परिणामस्वरूप दिसंबर 2024 में प्रथम स्नेह सम्मेलन का सफल आयोजन किया गया।</p>
+        <p class="mp">यह सम्मेलन केवल एक कार्यक्रम नहीं, बल्कि समाज की एकता, सामूहिक शक्ति और एक नए सामाजिक सफर की शुरुआत का प्रतीक बना।</p>
+        <p class="mp">इसके बाद समाज की गतिविधियों को निरंतर आगे बढ़ाने, सामाजिक संबंधों को मजबूत करने, नई पीढ़ी को जोड़ने और समाज के विकास के लिए संगठित रूप से कार्य करने का संकल्प लिया गया।</p>
+        <p class="mp">आज श्री मेवाड़ प्रजापत समाज – वापी इसी सोच और उद्देश्य के साथ निरंतर आगे बढ़ रहा है।</p>
+        <p class="mp">इस सफर में योगदान देने वाले प्रत्येक समाजबंधु, वरिष्ठजन, मातृशक्ति, युवा साथी एवं सहयोगकर्ताओं का हम हृदय से आभार व्यक्त करते हैं।</p>
+        <p class="mp">हमारा विश्वास है कि जिस एकता के संकल्प से यह यात्रा शुरू हुई थी, वही एकता आने वाले वर्षों में समाज की सबसे बड़ी ताकत बनेगी।</p>
+        <blockquote class="mp">एक प्रयास से शुरुआत हुई, एकता से संगठन बना और सामूहिक सहयोग से समाज की प्रगति का मार्ग प्रशस्त हुआ।</blockquote>
+        <p class="jy mp">🙏 जय श्रीयादे माता की! 🙏</p>
+        <button class="btn more" id="storyMore" type="button" aria-expanded="false" aria-controls="sfarStory">पूरा सफर पढ़ें</button>
+      </article>
     </div>
   </section>
 
@@ -1092,6 +1122,17 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
   addEventListener("appinstalled",function(){shown=true;var b=document.getElementById("ipBg");if(b)b.remove();});
   if(ios) setTimeout(show,6000);
   else setTimeout(function(){ if(!window.__dp) show(); },6000);
+})();
+
+/* परिचय: पूरा सफर पढ़ें / कम पढ़ें */
+(function () {
+  var st = document.getElementById("sfarStory"), b = document.getElementById("storyMore"); if (!st || !b) return;
+  b.addEventListener("click", function () {
+    var open = st.classList.toggle("clamp") === false;
+    b.textContent = open ? "कम दिखाएँ" : "पूरा सफर पढ़ें";
+    b.setAttribute("aria-expanded", open ? "true" : "false");
+    if (!open) st.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 })();
 </script>
 </body>
