@@ -534,6 +534,23 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .acc > summary { padding: 14px var(--cp) !important; }
 .mts, .news, .about { gap: var(--cgap) !important; }
 .pst { margin-bottom: var(--cgap) !important; }
+
+/* पोस्टर carousel: poster-1, poster-2, ... swipe se */
+.pst-car { position: relative; min-width: 0; }
+.pst-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; border-radius: 12px; border: 1px solid var(--line); scrollbar-width: none; outline-offset: 3px; }
+.pst-track::-webkit-scrollbar { display: none; }
+.pst-track a { flex: 0 0 100%; scroll-snap-align: center; display: block; line-height: 0; }
+.pst-track img { width: 100%; height: auto; display: block; }
+.pst-nav { position: absolute; top: calc(50% - 14px); transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(10, 42, 94, .78); color: #fff; font-size: 26px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0 0 3px; }
+.pst-nav[hidden] { display: none; }
+.pst-nav.prev { left: 8px; } .pst-nav.next { right: 8px; }
+.pst-dots { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; }
+.pst-dots[hidden], .pst-hint[hidden] { display: none; }
+.pst-dots button { width: 9px; height: 9px; border-radius: 999px; border: 0; padding: 0; background: var(--line); cursor: pointer; transition: width .2s, background .2s; }
+.pst-dots button.on { width: 24px; background: var(--brand); }
+.pst-hint { text-align: center; font-size: 13px; color: var(--mut); margin-top: 6px; }
+@media (hover: none) { .pst-nav { display: none; } }
+@media (max-width: 700px) { .pst-car { max-width: 300px; margin: 0 auto; width: 100%; } }
 </style>
 
 </head>
@@ -577,13 +594,18 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
     <div class="in">
       <div class="sh"><span class="tag">बैठक एवं कार्यक्रम</span><h2>अगली बैठक</h2><p>बैठक और कार्यक्रम की तारीख, समय और स्थान।</p></div>
       <div class="pst" id="pst" hidden>
-        <a class="pst-img" id="pstA" href="poster-1.jpg" target="_blank" rel="noopener" aria-label="पोस्टर बड़ा देखें"><img id="pstI" alt="तृतीय स्नेह सम्मेलन का पोस्टर" decoding="async"></a>
+        <div class="pst-car" id="pstCar" aria-roledescription="carousel" aria-label="स्नेह सम्मेलन का पोस्टर">
+          <div class="pst-track" id="pstTrack" tabindex="0"></div>
+          <button class="pst-nav prev" id="pstPrev" type="button" aria-label="पिछला पन्ना" hidden>&#8249;</button>
+          <button class="pst-nav next" id="pstNext" type="button" aria-label="अगला पन्ना" hidden>&#8250;</button>
+          <div class="pst-dots" id="pstDots" hidden></div>
+          <div class="pst-hint" id="pstHint" hidden>अगला पन्ना देखने के लिए स्वाइप करें</div>
+        </div>
         <div class="pst-t">
           <span class="tag" id="pstTag">आमंत्रण</span>
           <h3 id="pstH">तृतीय स्नेह सम्मेलन</h3>
           <p id="pstP">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक<br>अनाविल भवन (आर.एस.), एनएच-8 टोल नाके के पास, ओरवाड़, उडवाड़ा</p>
           <div class="pst-b"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp</button></div>
-          <div class="pst-2" id="pst2"></div>
         </div>
       </div>
       <div class="mts" id="mts"></div>
@@ -1199,22 +1221,39 @@ try { const t = localStorage.getItem("smps_site_theme"); if (t) document.documen
 })();
 
 
-/* पोस्टर: poster-1.jpg/.png (+ poster-2.jpg/.png) GitHub folder mein ho to hi dikhega; Settings sheet se badal sakte hain: Poster1, Poster2, PosterTitle, PosterInfo */
+/* पोस्टर: poster-1, poster-2, poster-3 ... (.jpg/.png) jitne GitHub folder mein hon sab swipe mein aayenge; Settings sheet se badal sakte hain: Poster1, Poster2, PosterTitle, PosterInfo */
 function drawPoster(S) {
   const box = $("pst"); if (!box) return;
   const abs = u => new URL(u, location.href).href;
-  /* jpg / jpeg / png — jo mile wahi use hoga */
   const names = (custom, base) => (custom ? [custom] : []).concat([".jpg", ".jpeg", ".png", ".webp"].map(e => base + e));
-  const first = (list, ok) => { let i = 0; (function t() { if (i >= list.length) return; const u = list[i++], im = new Image(); im.onload = () => ok(u); im.onerror = t; im.src = u; })(); };
-  let p1 = "poster-1.jpg";
+  const first = (list, ok, fail) => { let i = 0; (function t() { if (i >= list.length) { fail && fail(); return; } const u = list[i++], im = new Image(); im.onload = () => ok(u); im.onerror = t; im.src = u; })(); };
+  const track = $("pstTrack"), dots = $("pstDots"), prev = $("pstPrev"), next = $("pstNext"), hint = $("pstHint");
+  const urls = []; let cur = 0;
+  hint.textContent = matchMedia("(hover: none)").matches ? "अगला पन्ना देखने के लिए स्वाइप करें" : "अगला पन्ना देखने के लिए तीर (›) या बिंदु दबाएँ";
   if (S.PosterTitle) $("pstH").textContent = S.PosterTitle;
   if (S.PosterInfo) $("pstP").innerHTML = esc(S.PosterInfo).replace(/\s*\|\s*|\n/g, "<br>");
-  first(names(S.Poster1, "poster-1"), function (u) {
-    p1 = u; $("pstI").src = u; $("pstA").href = u; $("pstV").href = u; $("pstD").href = u; box.hidden = false;
-    first(names(S.Poster2, "poster-2"), function (v) { $("pst2").innerHTML = '<a href="' + esc(v) + '" target="_blank" rel="noopener"><img src="' + esc(v) + '" alt=""><span>पीछे का पन्ना — सेवा सहयोगी</span></a>'; });
-  });
+  function go(i) { const w = track.clientWidth; track.scrollTo({ left: Math.max(0, Math.min(urls.length - 1, i)) * w, behavior: "smooth" }); }
+  function mark() {
+    const w = track.clientWidth || 1; cur = Math.max(0, Math.min(urls.length - 1, Math.round(track.scrollLeft / w)));
+    [].forEach.call(dots.children, (d, k) => { d.classList.toggle("on", k === cur); d.setAttribute("aria-current", k === cur ? "true" : "false"); });
+    $("pstV").href = urls[cur]; $("pstD").href = urls[cur];
+    prev.hidden = urls.length < 2 || cur === 0; next.hidden = urls.length < 2 || cur === urls.length - 1;
+  }
+  function add(u) {
+    const a = document.createElement("a"), im = document.createElement("img");
+    a.href = u; a.target = "_blank"; a.rel = "noopener"; a.setAttribute("aria-label", "पोस्टर पन्ना " + (urls.length + 1) + " बड़ा देखें");
+    im.src = u; im.alt = "स्नेह सम्मेलन पोस्टर — पन्ना " + (urls.length + 1); im.decoding = "async"; a.appendChild(im); track.appendChild(a);
+    const d = document.createElement("button"); d.type = "button"; d.setAttribute("aria-label", "पन्ना " + (urls.length + 1)); const k = urls.length; d.onclick = () => go(k); dots.appendChild(d);
+    urls.push(u); dots.hidden = hint.hidden = urls.length < 2; box.hidden = false; mark();
+  }
+  function load(n) { if (n > 8) return; first(names(S["Poster" + n], "poster-" + n), function (u) { add(u); load(n + 1); }); }
+  track.addEventListener("scroll", function () { clearTimeout(track._t); track._t = setTimeout(mark, 60); }, { passive: true });
+  track.addEventListener("keydown", function (e) { if (e.key === "ArrowRight") { e.preventDefault(); go(cur + 1); } else if (e.key === "ArrowLeft") { e.preventDefault(); go(cur - 1); } });
+  prev.onclick = () => go(cur - 1); next.onclick = () => go(cur + 1);
+  window.addEventListener("resize", () => track.scrollTo({ left: cur * track.clientWidth, behavior: "auto" }));
+  load(1);
   $("pstW").onclick = function () {
-    const t = "🙏 *जय श्रीयादे माता की* 🙏\n*" + $("pstH").textContent + "*\n\n" + $("pstP").innerText.trim() + "\n\n🖼️ पोस्टर: " + abs(p1) + (location.protocol !== "file:" ? "\n🔗 " + location.href.split(/[?#]/)[0] : "");
+    const t = "🙏 *जय श्रीयादे माता की* 🙏\n*" + $("pstH").textContent + "*\n\n" + $("pstP").innerText.trim() + "\n\n" + urls.map((u, i) => "🖼️ पोस्टर" + (urls.length > 1 ? " " + (i + 1) : "") + ": " + abs(u)).join("\n") + (location.protocol !== "file:" ? "\n🔗 " + location.href.split(/[?#]/)[0] : "");
     window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank", "noopener");
   };
 }
