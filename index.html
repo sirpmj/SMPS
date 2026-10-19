@@ -502,6 +502,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pst[hidden] { display: none; }
 .pst-img { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
 .pst-img img { width: 100%; height: auto; display: block; }
+.pst-t h3:empty, .pst-t p:empty { display: none; }
 .pst-t h3 { font-family: var(--f-disp); font-size: 28px; line-height: 1.25; color: var(--ink); margin: 6px 0 8px; }
 .pst-t p { color: var(--mut); font-size: 16px; line-height: 1.7; margin: 0 0 16px; }
 .pst-b { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -551,6 +552,9 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 .pst-hint { text-align: center; font-size: 13px; color: var(--mut); margin-top: 6px; }
 @media (hover: none) { .pst-nav { display: none; } }
 @media (max-width: 700px) { .pst-car { max-width: 300px; margin: 0 auto; width: 100%; } }
+
+.mile em { font-style: normal; font-size: 12px; font-weight: 700; color: #7a4a00; background: #fde9bd; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+[data-theme="dark"] .mile em { color: #ffd98a; background: #3a2c10; }
 </style>
 
 </head>
@@ -574,8 +578,8 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
     <div class="in">
       <div>
         <span class="reg">पंजीकृत संस्था · Reg No: <b id="regNo">A/1221</b></span>
-        <h1>श्री मेवाड़ प्रजापत समाज<em>वापी</em></h1>
-        <p class="lead">मेवाड़ की माटी से जुड़े परिवारों का साझा घर। बैठकें, सूचनाएँ, सुख-दुख की खबरें और सहयोग, सब एक जगह।</p>
+        <h1 id="heroT">श्री मेवाड़ प्रजापत समाज<em>वापी</em></h1>
+        <p class="lead" id="heroTag">मेवाड़ की माटी से जुड़े परिवारों का साझा घर। बैठकें, सूचनाएँ, सुख-दुख की खबरें और सहयोग, सब एक जगह।</p>
         <div class="cta">
           <a class="btn pri" id="loginHero" href="app.html">सदस्य लॉगिन करें</a>
           <a class="btn sec" href="app.html?new=1">सदस्य बनें</a>
@@ -603,8 +607,8 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
         </div>
         <div class="pst-t">
           <span class="tag" id="pstTag">आमंत्रण</span>
-          <h3 id="pstH">तृतीय स्नेह सम्मेलन</h3>
-          <p id="pstP">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक<br>अनाविल भवन (आर.एस.), एनएच-8 टोल नाके के पास, ओरवाड़, उडवाड़ा</p>
+          <h3 id="pstH"></h3>
+          <p id="pstP"></p>
           <div class="pst-b"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp</button></div>
         </div>
       </div>
@@ -642,12 +646,12 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
     <div class="in about">
       <div>
         <div class="sh" style="margin-bottom:18px"><span class="tag">परिचय</span><h2>हमारे बारे में</h2></div>
-        <p>श्री मेवाड़ प्रजापत समाज, वापी मेवाड़ क्षेत्र से आकर वापी में बसे प्रजापत परिवारों की पंजीकृत संस्था है। हम <b>एक-दूसरे के सुख-दुख में साथ</b> खड़े रहने की परंपरा निभाते हैं।</p>
-        <p>समाज की बैठकें, शिक्षा और सहयोग की योजनाएँ, और सामाजिक आयोजन सदस्यों के सहयोग से चलते हैं। सभी जानकारी इस पोर्टल पर समय से पहुँचे, इसके लिए सदस्य अपने मोबाइल नंबर से लॉगिन कर सकते हैं।</p>
+        <p id="aboutP1">श्री मेवाड़ प्रजापत समाज, वापी मेवाड़ क्षेत्र से आकर वापी में बसे प्रजापत परिवारों की पंजीकृत संस्था है। हम <b>एक-दूसरे के सुख-दुख में साथ</b> खड़े रहने की परंपरा निभाते हैं।</p>
+        <p id="aboutP2">समाज की बैठकें, शिक्षा और सहयोग की योजनाएँ, और सामाजिक आयोजन सदस्यों के सहयोग से चलते हैं। सभी जानकारी इस पोर्टल पर समय से पहुँचे, इसके लिए सदस्य अपने मोबाइल नंबर से लॉगिन कर सकते हैं।</p>
         <div class="facts">
-          <div><span>संस्था का नाम</span><b>श्री मेवाड़ प्रजापत समाज-वापी</b></div>
-          <div><span>पंजीकरण संख्या</span><b>A/1221</b></div>
-          <div><span>स्थान</span><b>वापी, गुजरात</b></div>
+          <div><span>संस्था का नाम</span><b id="fName">श्री मेवाड़ प्रजापत समाज-वापी</b></div>
+          <div><span>पंजीकरण संख्या</span><b id="fReg">A/1221</b></div>
+          <div><span>स्थान</span><b id="fPlace">वापी, गुजरात</b></div>
         </div>
       </div>
       <div class="card">
@@ -664,7 +668,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
   
   
     <div class="in story-sec" id="sfar">
-      <div class="sh"><span class="tag">हमारा सफर</span><h2>समाज की एकता से संगठन तक का गौरवशाली सफर</h2></div>
+      <div class="sh"><span class="tag">हमारा सफर</span><h2 id="storyH">समाज की एकता से संगठन तक का गौरवशाली सफर</h2></div>
       <div class="story-grid">
         <ol class="mile" aria-label="सफर के पड़ाव">
           <li><b>कई वर्षों की मेहनत, 1 वर्ष का प्रयास</b><span>समाज को संगठित करने, परिवारों से संपर्क करने और व्यक्तिगत मुलाकात का सिलसिला।</span></li>
@@ -672,7 +676,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
           <li><b>जनवरी 2026</b><span>द्वितीय स्नेह सम्मेलन का आयोजन।</span></li>
           <li class="now"><b>10 जनवरी 2027</b><span>तृतीय स्नेह सम्मेलन — अनाविल भवन (आर.एस.), ओरवाड़, उडवाड़ा।</span></li>
         </ol>
-        <article class="story-body">
+        <article class="story-body" id="storyBody">
           <p class="jy">🙏 जय श्रीयादे माता की! 🙏</p>
           <p class="lead">श्री मेवाड़ प्रजापत समाज – वापी की यह यात्रा वर्षों के प्रयासों, अटूट संकल्प और सामूहिक सहयोग की प्रेरणादायक गाथा है।</p>
           <p>समाज को एकजुट करने, परिवारों को आपस में जोड़ने और सभी समाजबंधुओं को एक साझा मंच पर लाने का सपना लंबे समय से देखा जा रहा था। अनेक समाजप्रेमियों के निरंतर प्रयासों, व्यक्तिगत संपर्क, वरिष्ठजनों के मार्गदर्शन और समाजबंधुओं के सहयोग से इस सपने को साकार करने की दिशा में महत्वपूर्ण कदम उठाए गए।</p>
@@ -739,8 +743,8 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 </div>
 <footer class="gut">
   <div class="in">
-    <b>श्री मेवाड़ प्रजापत समाज-वापी</b>
-    <div>Reg No: A/1221</div>
+    <b id="fName2">श्री मेवाड़ प्रजापत समाज-वापी</b>
+    <div id="fReg2">Reg No: A/1221</div>
     <div class="fl"><a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a></div>
     <div id="fAddr" style="margin-bottom:6px"></div>
     <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.290</div>
@@ -1048,13 +1052,57 @@ function drawContact(S) {
   $("yr").textContent = S.Year || new Date().getFullYear();
 }
 
+/* ---- Settings sheet se text: SocietyName, RegNo, Place, HeroTitle, HeroTagline, AboutP1, AboutP2, StoryTitle, Story ---- */
+function applyContent(S) {
+  const set = (id, v, html) => { const e = $(id); if (e && v) { if (html) e.innerHTML = v; else e.textContent = v; } };
+  set("fName", S.SocietyName); set("fName2", S.SocietyName);
+  if (S.RegNo) { set("regNo", S.RegNo); set("fReg", S.RegNo); set("fReg2", "Reg No: " + S.RegNo); }
+  set("fPlace", S.Place);
+  if (S.HeroTitle) { const p = S.HeroTitle.split("|").map(x => x.trim()); $("heroT").innerHTML = esc(p[0]) + (p[1] ? "<em>" + esc(p[1]) + "</em>" : ""); }
+  set("heroTag", S.HeroTagline);
+  if (S.AboutP1) set("aboutP1", fmt(S.AboutP1), true);
+  if (S.AboutP2) set("aboutP2", fmt(S.AboutP2), true);
+  set("storyH", S.StoryTitle);
+  if (S.Story) {
+    let lead = false;
+    $("storyBody").innerHTML = String(S.Story).replace(/\r/g, "").split(/\n\s*\n/).map(x => x.trim()).filter(Boolean).map(p => {
+      if (/^>/.test(p)) return "<blockquote>" + fmt(p.replace(/^>\s*/, "")) + "</blockquote>";
+      if (/^🙏/.test(p)) return '<p class="jy">' + fmt(p) + "</p>";
+      const c = lead ? "" : ' class="lead"'; lead = true; return "<p" + c + ">" + fmt(p.replace(/\n/g, " ")) + "</p>";
+    }).join("");
+  }
+}
+
+/* ---- हमारा सफर: "Safar" sheet se (When | Details | ShowOnHome). Sheet na ho to HTML mein likha default dikhta hai ---- */
+function drawJourney(rows) {
+  const ol = document.querySelector(".mile"); if (!ol) return;
+  const items = (Array.isArray(rows) ? rows : [])
+    .filter(r => String(r.ShowOnHome == null ? "" : r.ShowOnHome).trim().toUpperCase() !== "FALSE")
+    .map(r => ({ w: String(r.When || r.Date || "").trim(), d: String(r.Details || r.Detail || "").trim() })).filter(x => x.w);
+  if (!items.length) return;
+  const t0 = today0();
+  const jd = w => {
+    let m = w.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    m = w.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})$/); if (m && Object.prototype.hasOwnProperty.call(MONI, m[2])) return new Date(+m[3], MONI[m[2]], +m[1]);
+    return parseMonthOnly(w);
+  };
+  const fut = items.map(x => { const d = jd(x.w); return !!d && d >= t0; });
+  const last = fut.lastIndexOf(false);
+  ol.innerHTML = items.map((x, i) => {
+    const up = fut[i], now = up || (!fut.some(Boolean) && i === items.length - 1);
+    return '<li' + (now ? ' class="now"' : "") + '><b>' + esc(x.w) + (up ? ' <em>आगामी</em>' : "") + "</b>" + (x.d ? "<span>" + esc(x.d) + "</span>" : "") + "</li>";
+  }).join("");
+}
+
 /* ---- Sab data load karke render ---- */
 async function load() {
-  const [home, meet, ann, news, members, set, phSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos"].map(sheet));
+  const [home, meet, ann, news, members, set, phSheet, safarSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar"].map(sheet));
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
   drawContact(S);
+  applyContent(S);
   drawPoster(S);
+  drawJourney(safarSheet);
 
   /* कार्यकारिणी / सलाहकार */
   const adv = [], off = [];
