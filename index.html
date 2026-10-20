@@ -5,9 +5,11 @@
 <meta name="description" content="श्री मेवाड़ प्रजापत समाज-वापी (Reg No: A/1221): बैठक, कार्यक्रम, सूचनाएँ, कार्यकारिणी, फोटो और सहयोग की जानकारी।">
 <meta name="theme-color" content="#0a2a5e">
 <meta property="og:type" content="website"><meta property="og:locale" content="hi_IN">
-<meta property="og:title" content="श्री मेवाड़ प्रजापत समाज-वापी">
-<meta property="og:description" content="बैठक, कार्यक्रम, सूचनाएँ, कार्यकारिणी और सहयोग, सब एक जगह।">
-<meta property="og:image" content="https://sirpmj.github.io/SMPS/Logo-512.png">
+<meta property="og:title" content="तृतीय स्नेह सम्मेलन · रविवार, 10 जनवरी 2027 — श्री मेवाड़ प्रजापत समाज-वापी">
+<meta property="og:description" content="सपरिवार पधारें · अनाविल भवन (आर.एस.), ओरवाड़, उडवाड़ा · सुबह 8:00 से शाम 4:00 बजे तक। बैठक, सूचनाएँ और सहयोग, सब एक जगह।">
+<meta property="og:image" content="https://sirpmj.github.io/SMPS/poster-1.png">
+<meta property="og:image:alt" content="तृतीय स्नेह सम्मेलन का पोस्टर">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="Logo-192.png">
 <link rel="manifest" href="manifest.json">
 <script>window.__dp=null;addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__dp=e;window.dispatchEvent(new Event("smps-installable"));});if("serviceWorker"in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
@@ -555,6 +557,76 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
 
 .mile em { font-style: normal; font-size: 12px; font-weight: 700; color: #7a4a00; background: #fde9bd; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
 [data-theme="dark"] .mile em { color: #ffd98a; background: #3a2c10; }
+
+/* ===== सम्मेलन card: gintii, forms, seva, vyapar ===== */
+.pst.noimg { grid-template-columns: minmax(0, 1fr); }
+.evcd { display: inline-block; margin: 0 0 10px; padding: 4px 14px; border-radius: 999px; background: #fde9bd; color: #7a4a00; font-weight: 800; font-size: 15px; }
+.evcd[hidden] { display: none; }
+[data-theme="dark"] .evcd { background: #3a2c10; color: #ffd98a; }
+.pst-b[hidden], #pstX[hidden], .pst-car[hidden] { display: none; }
+.pst-a { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.pst-a .btn { min-height: 46px; padding: 0 10px; font-size: 15px; white-space: normal; line-height: 1.3; }
+.pst-u { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.pst-u .sbtn { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0 16px; text-decoration: none; font-size: 14.5px; }
+@media (max-width: 700px) { .pst-a { grid-template-columns: 1fr; } .pst-u .sbtn { flex: 1 1 0; } }
+/* dialog form */
+dialog.fd { border: 0; border-radius: var(--cr); padding: 0; width: min(520px, 94vw); max-height: 92vh; overflow: auto; background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(7, 20, 43, .45); }
+dialog.fd::backdrop { background: rgba(7, 20, 43, .6); }
+.fd-in { padding: 20px; display: grid; gap: 12px; }
+.fd-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fd-h h3 { margin: 0; font-size: 21px; line-height: 1.3; color: var(--ink); }
+.fd-x { border: 0; background: var(--tint); color: var(--ink); width: 36px; height: 36px; border-radius: 50%; font-size: 22px; line-height: 1; cursor: pointer; padding: 0 0 2px; }
+.fd-p { margin: 0; color: var(--mut); font-size: 15px; line-height: 1.6; }
+.fr { display: grid; gap: 5px; }
+.fr label, .fck { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.fr label i { color: #d63b3b; font-style: normal; }
+.fr input, .fr select, .fr textarea { font: inherit; font-size: 16px; width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); }
+.fr input:focus, .fr select:focus, .fr textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
+.fck { display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; font-weight: 500; }
+.fck input { margin-top: 4px; width: 18px; height: 18px; flex: none; }
+.hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; opacity: 0; }
+.fd-m { font-size: 14.5px; line-height: 1.55; min-height: 0; }
+.fd-m.err { color: #c0392b; background: #fdecea; border-radius: 10px; padding: 10px 12px; }
+[data-theme="dark"] .fd-m.err { color: #ff9c92; background: #3a1d1b; }
+.fd-b { display: flex; gap: 10px; flex-wrap: wrap; }
+.fd-b .btn { flex: 1 1 140px; min-height: 46px; }
+.fd-ok { text-align: center; display: grid; gap: 10px; padding: 10px 0; }
+.fd-ok h3 { margin: 0; font-size: 22px; color: var(--ink); }
+.fd-ok p { margin: 0; color: var(--mut); line-height: 1.6; }
+.fd-tick { width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; background: #16a34a; color: #fff; font-size: 30px; display: grid; place-items: center; }
+/* सेवा सहयोगी */
+.sv { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--cgap); }
+.sv-c { background: var(--surface); border: 1px solid var(--line); border-radius: var(--cr); box-shadow: var(--shadow); padding: var(--cp); display: grid; gap: 4px; align-content: start; }
+.sv-n { font-weight: 800; font-size: 17px; line-height: 1.35; color: var(--ink); }
+.sv-p { color: var(--mut); font-size: 14.5px; }
+.sv-t { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sv-t span { background: #fde9bd; color: #7a4a00; font-weight: 700; font-size: 13.5px; padding: 3px 11px; border-radius: 999px; }
+[data-theme="dark"] .sv-t span { background: #3a2c10; color: #ffd98a; }
+#sevaN { color: var(--brand); }
+/* व्यवसायी */
+.vy-bar { display: flex; gap: 10px; margin: 4px 0 12px; }
+.vy-bar[hidden] { display: none; }
+.vy-bar input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 11px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.vy { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--cgap); margin-top: 12px; }
+.vy-c { background: var(--surface); border: 1px solid var(--line); border-radius: var(--cr); box-shadow: var(--shadow); padding: var(--cp); display: grid; gap: 4px; align-content: start; }
+.vy-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.vy-b { font-weight: 800; font-size: 17px; line-height: 1.35; color: var(--ink); }
+.vy-n, .vy-p { color: var(--mut); font-size: 14.5px; }
+.vy-d { color: var(--ink); font-size: 14.5px; line-height: 1.55; margin-top: 2px; }
+.vy-a { display: flex; gap: 8px; margin-top: 8px; }
+.vy-e { grid-column: 1 / -1; color: var(--mut); text-align: center; padding: 20px 0; margin: 0; }
+.vy-add2 { margin-top: 16px; text-align: center; }
+@media (max-width: 700px) { .vy-bar { flex-direction: column; } .vy-a .sbtn { flex: 1 1 0; } }
+
+dialog.fd .btn.sec { background: transparent; color: var(--brand); border: 1.5px solid var(--brand); box-shadow: none; }
+.fd-m a { color: var(--brand); }
+
+/* QR + दर्शक गिनती */
+.vis { margin-top: 8px; font-size: 13.5px; opacity: .9; }
+footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-numeric: tabular-nums; }
+.qr-b { text-align: center; padding: 6px 0 4px; }
+.qr-b #qrBox { display: inline-block; padding: 12px; background: #fff; border-radius: 12px; line-height: 0; }
+.qr-b p { margin: 12px 0 0; color: var(--mut); font-size: 15px; line-height: 1.6; }
 </style>
 
 </head>
@@ -563,7 +635,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
   <div class="in">
     <a class="brand" href="#top" aria-label="मेवाड़ प्रजापत समाज वापी"><i></i><b>मेवाड़ प्रजापत समाज</b></a>
     <nav class="links" aria-label="मुख्य मेन्यू">
-      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a class="upi-go" href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
+      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#vyapar">व्यवसाय</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a class="upi-go" href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
     </nav>
     <button class="tgl" id="themeBtn" type="button" aria-label="डार्क / लाइट मोड बदलें" title="डार्क / लाइट मोड">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
@@ -608,15 +680,27 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
         <div class="pst-t">
           <span class="tag" id="pstTag">आमंत्रण</span>
           <h3 id="pstH"></h3>
+          <div class="evcd" id="evCd" hidden></div>
           <p id="pstP"></p>
-          <div class="pst-b"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp</button></div>
+          <div class="pst-b" id="pstB"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp</button></div>
+          <div id="pstX" hidden>
+            <div class="pst-a"><button class="btn pri" id="evRsvp" type="button">सपरिवार आने की सूचना</button><button class="btn pri" id="evTalent" type="button">प्रतिभा सम्मान: नाम दें</button></div>
+            <div class="pst-u"><a class="sbtn" id="evMap" href="#" target="_blank" rel="noopener">नक्शा खोलें</a><button class="sbtn" id="evCal" type="button">कैलेंडर में जोड़ें</button><button class="sbtn" id="evQr" type="button">QR कोड</button></div>
+          </div>
         </div>
       </div>
       <div class="mts" id="mts"></div>
     </div>
   </section>
 
-  <section class="s alt gut" id="suchna">
+    <section class="s gut" id="seva" hidden>
+    <div class="in">
+      <div class="sh"><span class="tag">सेवा</span><h2>सेवा सहयोगी</h2><p>आयोजन में सेवा का संकल्प लेने वाले समस्त बंधुओं का हार्दिक आभार। <b id="sevaN"></b></p></div>
+      <div class="sv" id="sevaList"></div>
+    </div>
+  </section>
+
+  <section class="s gut" id="suchna">
     <div class="in">
       <div class="sh"><span class="tag">सूचनाएँ एवं समाचार</span><h2>समाज की खबरें</h2><p>महत्वपूर्ण सूचनाएँ, शुभ समाचार और शोक सूचनाएँ।</p></div>
       <div class="chips" id="chips" role="group" aria-label="सूचना छाँटें"></div>
@@ -631,6 +715,16 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
       <details class="acc" id="accAdv"><summary><span>वरिष्ठ सलाहकार</span><i class="cnt" id="cntAdv"></i></summary><div class="people" id="advList"></div></details>
       <div id="statsWrap" hidden><h3 class="sub" style="margin-top:8px">समाज एक नज़र में</h3>
       <div class="stats" id="stats"></div></div>
+    </div>
+  </section>
+
+    <section class="s gut" id="vyapar">
+    <div class="in">
+      <div class="sh"><span class="tag">व्यवसाय</span><h2>समाज के व्यवसायी</h2><p>अपने समाज के बंधुओं के व्यवसाय और सेवाएँ, आपसी सहयोग से आगे बढ़ें।</p></div>
+      <div class="vy-bar" id="vyTools" hidden><input id="vyQ" type="search" placeholder="नाम, व्यवसाय या शहर खोजें" aria-label="खोजें"></div>
+      <div class="chips" id="vyChips"></div>
+      <div class="vy" id="vyList"></div>
+      <div class="vy-add2"><button class="btn pri" id="vyAdd2" type="button">+ अपना व्यवसाय जुड़वाएँ</button></div>
     </div>
   </section>
 
@@ -716,6 +810,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
     </div>
   </section>
 </main>
+<dialog id="fdlg" class="fd" aria-label="फ़ॉर्म"></dialog>
 
 <nav class="tabbar" id="tabbar" aria-label="सेक्शन">
   <a href="#karyakram" data-s="karyakram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>कार्यक्रम</span></a>
@@ -748,6 +843,7 @@ footer { padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); } fo
     <div class="fl"><a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a></div>
     <div id="fAddr" style="margin-bottom:6px"></div>
     <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.290</div>
+    <div class="vis" id="visBox" hidden title="सिर्फ़ गिनती — किसी की कोई निजी जानकारी नहीं ली जाती">👁 कुल दर्शक: <b id="visN">–</b></div>
   </div>
 </footer>
 
@@ -900,7 +996,7 @@ function meetText(x) {
 }
 function icsDate(d, withTime) { const z = n => String(n).padStart(2, "0"); return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + (withTime ? "T" + z(d.getHours()) + z(d.getMinutes()) + "00" : ""); }
 function addCal(x) {
-  const hasT = !!parseTime(x.time), z = n => String(n).padStart(2, "0"), e = new Date(x.at); e.setHours(e.getHours() + 2);
+  const hasT = !!parseTime(x.time), z = n => String(n).padStart(2, "0"), e = new Date(x.end || x.at); if (!x.end) e.setHours(e.getHours() + 2);
   const nx = new Date(x.d); nx.setDate(nx.getDate() + 1);
   const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SMPS Vapi//Samaj//HI", "BEGIN:VEVENT", "UID:" + x.at.getTime() + "@smps-vapi", "DTSTAMP:" + new Date().toISOString().replace(/[-:]|\.\d{3}/g, ""),
     hasT ? "DTSTART:" + icsDate(x.at, true) : "DTSTART;VALUE=DATE:" + icsDate(x.d), hasT ? "DTEND:" + icsDate(e, true) : "DTEND;VALUE=DATE:" + icsDate(nx),
@@ -1073,6 +1169,147 @@ function applyContent(S) {
   }
 }
 
+/* ================= सम्मेलन: उलटी गिनती, फ़ॉर्म, नक्शा, कैलेंडर ================= */
+const API_URL = "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec";
+let EV = null, SET = {};
+function evData(S) {
+  const d = (S.EventDate && (parseDate(S.EventDate) || findDate(S.EventDate))) || new Date(2027, 0, 10);
+  return { name: S.EventName || "तृतीय स्नेह सम्मेलन", date: d, time: S.EventTime || "सुबह 8:00 से शाम 4:00 बजे तक",
+    venue: S.EventVenue || "अनाविल भवन (आर.एस.), एनएच-8 टोल नाके के पास, ओरवाड़, उडवाड़ा",
+    map: S.EventMap || "https://maps.app.goo.gl/61Xg8H6qgAHUYNC97" };
+}
+function evDateStr() { return DAY[EV.date.getDay()] + ", " + EV.date.getDate() + " " + MON[EV.date.getMonth()] + " " + EV.date.getFullYear(); }
+function drawEvent(S) {
+  SET = S; visDraw(); const box = $("pst"); if (!box) return;
+  const e = evData(S), dd = new Date(e.date.getFullYear(), e.date.getMonth(), e.date.getDate()), days = Math.round((dd - today0()) / 864e5);
+  if (days < 0) return;                       // कार्यक्रम बीत गया: card sirf poster ke saath (agar ho) dikhega
+  EV = e; EV.date = dd;
+  box.hidden = false; box.classList.add("noimg"); $("pstCar").hidden = true; $("pstB").hidden = true;
+  $("pstH").textContent = EV.name;
+  $("pstP").innerHTML = esc(evDateStr() + " · " + EV.time) + "<br>" + esc(EV.venue);
+  const cd = $("evCd"); cd.textContent = days === 0 ? "आज है!" : days === 1 ? "कल है!" : days + " दिन बाकी"; cd.hidden = false;
+  $("pstX").hidden = false; $("evMap").href = EV.map;
+  $("evCal").onclick = () => {
+    const parts = EV.time.split(/\s+(?:से|to|-|–)\s+/i), at = atTime(EV.date, parts[0]), end = parts[1] ? atTime(EV.date, parts[1]) : null;
+    addCal({ t: EV.name, d: EV.date, at, end, time: parts[0], place: EV.venue, ag: [] });
+  };
+  $("evRsvp").onclick = () => openForm(rsvpForm());
+  $("evTalent").onclick = () => openForm(talentForm());
+  $("evQr").onclick = showEvQr;
+}
+function waLink(text) { const n = String(SET.Contact || "9824150420").replace(/\D/g, "").slice(-10); return "https://wa.me/91" + n + "?text=" + encodeURIComponent(text); }
+function openForm(cfg) {
+  const dlg = $("fdlg"), fid = k => "f_" + k;
+  const fh = cfg.fields.map(f => {
+    const id = fid(f.k), req = f.req ? " required" : "";
+    if (f.type === "check") return '<label class="fck"><input type="checkbox" id="' + id + '"' + req + "> <span>" + esc(f.label) + "</span></label>";
+    const lab = '<label for="' + id + '">' + esc(f.label) + (f.req ? " <i>*</i>" : "") + "</label>";
+    let inp;
+    if (f.type === "select") inp = '<select id="' + id + '">' + f.opts.map(o => "<option>" + esc(o) + "</option>").join("") + "</select>";
+    else if (f.type === "textarea") inp = '<textarea id="' + id + '" rows="3" maxlength="500" placeholder="' + esc(f.ph || "") + '"></textarea>';
+    else inp = '<input id="' + id + '" type="' + (f.type === "number" ? "number" : f.type === "tel" ? "tel" : "text") + '"' + (f.type === "tel" ? ' inputmode="tel" maxlength="16" autocomplete="tel"' : f.type === "number" ? ' inputmode="numeric" min="' + (f.min == null ? 0 : f.min) + '" max="' + (f.max == null ? 99 : f.max) + '"' : ' maxlength="100"') + ' placeholder="' + esc(f.ph || "") + '"' + (f.val != null ? ' value="' + esc(f.val) + '"' : "") + req + ">";
+    return '<div class="fr">' + lab + inp + "</div>";
+  }).join("");
+  dlg.innerHTML = '<form class="fd-in" id="fdf" novalidate><div class="fd-h"><h3>' + esc(cfg.title) + '</h3><button type="button" class="fd-x" id="fdx" aria-label="बंद करें">&times;</button></div>' +
+    (cfg.intro ? '<p class="fd-p">' + esc(cfg.intro) + "</p>" : "") + fh +
+    '<input type="text" id="f_hp" tabindex="-1" autocomplete="off" class="hp" aria-hidden="true"><div class="fd-m" id="fdm" role="alert"></div><div class="fd-b"><button class="btn pri" id="fds" type="submit">भेजें</button></div></form>';
+  const close = () => { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); };
+  if (dlg.showModal) { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
+  $("fdx").onclick = close;
+  $("fdf").onsubmit = async ev => {
+    ev.preventDefault(); const m = $("fdm"); m.textContent = ""; m.className = "fd-m";
+    if ($("f_hp").value) return;
+    const vals = {}; let bad = "";
+    cfg.fields.forEach(f => {
+      const e = $(fid(f.k)); let v = f.type === "check" ? e.checked : String(e.value || "").trim();
+      if (f.type === "tel") v = v.replace(/\D/g, "").slice(-10);
+      if (f.req && (v === "" || v === false)) bad = bad || (f.type === "check" ? "अनुमति पर निशान लगाएँ" : f.label + " भरें");
+      else if (f.type === "tel" && v && !/^[6-9]\d{9}$/.test(v)) bad = bad || "मोबाइल नंबर 10 अंकों का सही नंबर लिखें";
+      vals[f.k] = v;
+    });
+    if (!bad && cfg.validate) bad = cfg.validate(vals) || "";
+    if (bad) { m.textContent = bad; m.className = "fd-m err"; return; }
+    const btn = $("fds"); btn.disabled = true; btn.textContent = "भेज रहे हैं…";
+    const wa = waLink(cfg.wa(vals));
+    try {
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(API_URL, { method: "POST", body: JSON.stringify(Object.assign({ action: cfg.action }, cfg.extra || {}, vals)), signal: ctl.signal });
+      clearTimeout(to);
+      const j = JSON.parse(await r.text());
+      if (!j.success) throw new Error(j.msg || "सेव नहीं हुआ");
+      $("fdf").innerHTML = '<div class="fd-ok"><div class="fd-tick">✓</div><h3>धन्यवाद!</h3><p>' + esc(cfg.done) + '</p><div class="fd-b">' +
+        (cfg.waPrimary ? '<a class="btn pri" href="' + wa + '" target="_blank" rel="noopener">WhatsApp पर भेजें</a>' : '<a class="btn sec" href="' + wa + '" target="_blank" rel="noopener">WhatsApp पर भी भेजें</a>') +
+        '<button class="btn ' + (cfg.waPrimary ? "sec" : "pri") + '" id="fdc" type="button">बंद करें</button></div></div>';
+      $("fdc").onclick = close;
+    } catch (err) {
+      btn.disabled = false; btn.textContent = "फिर से भेजें";
+      m.className = "fd-m err"; m.innerHTML = "भेजना नहीं हो पाया (" + esc(err.name === "AbortError" ? "समय समाप्त" : err.message) + "). WhatsApp से भेज दें: <a href=\"" + wa + '" target="_blank" rel="noopener"><b>WhatsApp खोलें</b></a>';
+    }
+  };
+}
+function rsvpForm() {
+  return { title: "सपरिवार आने की सूचना", intro: EV.name + " · " + evDateStr(), action: "sammelanRsvp", extra: { event: EV.name }, done: "आपकी आने की सूचना दर्ज हो गई। आपका हार्दिक स्वागत है!",
+    fields: [{ k: "name", label: "परिवार के मुखिया का नाम", req: 1 }, { k: "mobile", label: "मोबाइल नंबर", type: "tel", req: 1 }, { k: "place", label: "गाँव / शहर", req: 1 },
+      { k: "adults", label: "बड़े (कुल)", type: "number", req: 1, min: 1, max: 50, val: 2 }, { k: "children", label: "बच्चे (कुल)", type: "number", min: 0, max: 50, val: 0 }, { k: "note", label: "कोई सूचना (वैकल्पिक)", type: "textarea" }],
+    wa: v => "🙏 जय श्रीयादे माता की 🙏\n" + EV.name + " (" + evDateStr() + ")\nआने की सूचना:\nनाम: " + v.name + "\nगाँव/शहर: " + v.place + "\nबड़े: " + v.adults + ", बच्चे: " + (v.children || 0) + "\nमोबाइल: " + v.mobile };
+}
+function talentForm() {
+  return { title: "प्रतिभा सम्मान के लिए नाम", intro: "80% या उससे अधिक अंक पाने वाले विद्यार्थी (कक्षा 1 से उच्च शिक्षा तक)।", action: "talentEntry", extra: { event: EV.name }, waPrimary: true,
+    done: "आपका नाम दर्ज हो गया। कृपया अंकतालिका की फोटो WhatsApp पर भेज दें।",
+    fields: [{ k: "student", label: "विद्यार्थी का नाम", req: 1 }, { k: "cls", label: "कक्षा / पाठ्यक्रम", req: 1, ph: "जैसे: कक्षा 10, B.Com" }, { k: "percent", label: "प्राप्त प्रतिशत (%)", type: "number", req: 1, min: 0, max: 100 },
+      { k: "school", label: "स्कूल / कॉलेज (वैकल्पिक)" }, { k: "parent", label: "माता / पिता का नाम", req: 1 }, { k: "mobile", label: "मोबाइल नंबर", type: "tel", req: 1 }, { k: "place", label: "गाँव / शहर", req: 1 }],
+    validate: v => +v.percent < 80 ? "प्रतिभा सम्मान के लिए 80% या उससे अधिक अंक चाहिए" : "",
+    wa: v => "🙏 जय श्रीयादे माता की 🙏\nप्रतिभा सम्मान के लिए नाम:\nविद्यार्थी: " + v.student + "\nकक्षा/पाठ्यक्रम: " + v.cls + "\nप्रतिशत: " + v.percent + "%\nमाता/पिता: " + v.parent + "\nगाँव/शहर: " + v.place + "\nमोबाइल: " + v.mobile + "\n(अंकतालिका की फोटो इसी चैट में भेज रहा/रही हूँ)" };
+}
+function bizForm() {
+  return { title: "अपना व्यवसाय जुड़वाएँ", intro: "कार्यकारिणी की जाँच के बाद आपका विवरण वेबसाइट की सूची में दिखेगा।", action: "bizRequest", done: "आपका विवरण मिल गया। जाँच के बाद सूची में जोड़ दिया जाएगा।",
+    fields: [{ k: "name", label: "आपका नाम", req: 1 }, { k: "business", label: "व्यवसाय / फर्म का नाम", req: 1 }, { k: "category", label: "श्रेणी", type: "select", opts: ["दुकान / व्यापार", "निर्माण / ठेकेदारी", "उद्योग / फैक्ट्री", "सेवा / कारीगरी", "खेती / डेयरी", "शिक्षा / कोचिंग", "अन्य"] },
+      { k: "city", label: "शहर / गाँव", req: 1 }, { k: "mobile", label: "मोबाइल नंबर", type: "tel", req: 1 }, { k: "details", label: "संक्षिप्त विवरण (वैकल्पिक)", type: "textarea", ph: "क्या काम/सेवा करते हैं" },
+      { k: "consent", label: "मैं अपना यह विवरण (मोबाइल सहित) समाज की वेबसाइट पर दिखाने की अनुमति देता/देती हूँ।", type: "check", req: 1 }],
+    wa: v => "🙏 जय श्रीयादे माता की 🙏\nव्यवसाय सूची में जुड़वाना है:\nनाम: " + v.name + "\nव्यवसाय: " + v.business + "\nशहर/गाँव: " + v.city + "\nमोबाइल: " + v.mobile };
+}
+
+/* ---- सेवा सहयोगी: "Boli" sheet se (sirf naam, gaon aur seva — rakam/mobile kabhi nahi) ---- */
+function drawSeva(rows, S) {
+  const sec = $("seva"); if (!sec) return;
+  let pre = S.SevaFilter || "BOLI/2025/"; if (pre === "*") pre = "";
+  const g = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? String(r[k] == null ? "" : r[k]).trim() : ""; };
+  const map = new Map();
+  (Array.isArray(rows) ? rows : []).forEach(r => {
+    const id = g(r, /^(id|boli ?id)$/i), who = g(r, /^(member|name|नाम)$/i).replace(/\s+/g, " "), seva = g(r, /^(for|seva|सेवा)$/i).replace(/\s+/g, " ");
+    if (!who || !seva || (pre && id.indexOf(pre) !== 0)) return;
+    if (!map.has(who)) map.set(who, []); if (map.get(who).indexOf(seva) < 0) map.get(who).push(seva);
+  });
+  if (!map.size) { sec.hidden = true; return; }
+  $("sevaN").textContent = map.size + " सहयोगी";
+  $("sevaList").innerHTML = Array.from(map.entries()).map(([who, sv]) => {
+    const m = who.match(/^(.*?)\s*\(([^)]*)\)\s*$/), nm = m ? m[1] : who, pl = m ? m[2] : "";
+    return '<article class="sv-c"><div class="sv-n">' + esc(nm) + "</div>" + (pl ? '<div class="sv-p">' + esc(pl) + "</div>" : "") + '<div class="sv-t">' + sv.map(x => "<span>" + esc(x) + "</span>").join("") + "</div></article>";
+  }).join("");
+  sec.hidden = false;
+}
+
+/* ---- समाज के व्यवसायी: "Vyapar" sheet (ShowOnHome = TRUE wali rows hi dikhti hain) ---- */
+function drawVyapar(rows) {
+  const list = (Array.isArray(rows) ? rows : []).filter(r => String(r.ShowOnHome == null ? "" : r.ShowOnHome).trim().toUpperCase() === "TRUE")
+    .map(r => ({ n: String(r.Name || "").trim(), b: String(r.Business || "").trim(), c: String(r.Category || "").trim(), city: String(r.City || "").trim(), m: String(r.Mobile || "").replace(/\D/g, "").slice(-10), d: String(r.Details || "").trim() })).filter(x => x.n || x.b);
+  let cat = "", q = "";
+  $("vyAdd2").onclick = () => openForm(bizForm());
+  const draw = () => {
+    const cats = Array.from(new Set(list.map(x => x.c).filter(Boolean)));
+    $("vyChips").innerHTML = cats.length > 1 ? ["सभी"].concat(cats).map(c => '<button type="button" class="chip" aria-pressed="' + ((c === "सभी" && !cat) || c === cat) + '" data-c="' + esc(c === "सभी" ? "" : c) + '">' + esc(c) + "</button>").join("") : "";
+    const f = list.filter(x => (!cat || x.c === cat) && (!q || (x.n + " " + x.b + " " + x.city + " " + x.c + " " + x.d).toLowerCase().indexOf(q) >= 0));
+    $("vyList").innerHTML = f.length ? f.map(x => '<article class="vy-c"><div class="vy-top"><div class="vy-b">' + esc(x.b || x.n) + "</div>" + (x.c ? '<span class="pill">' + esc(x.c) + "</span>" : "") + "</div>" +
+      (x.b && x.n ? '<div class="vy-n">' + esc(x.n) + "</div>" : "") + (x.city ? '<div class="vy-p">' + esc(x.city) + "</div>" : "") + (x.d ? '<div class="vy-d">' + esc(x.d) + "</div>" : "") +
+      (x.m ? '<div class="vy-a"><a class="sbtn" href="tel:+91' + x.m + '">कॉल</a><a class="sbtn g" href="https://wa.me/91' + x.m + '" target="_blank" rel="noopener">WhatsApp</a></div>' : "") + "</article>").join("")
+      : '<p class="vy-e">' + (list.length ? "कोई परिणाम नहीं मिला।" : "अभी कोई व्यवसाय सूचीबद्ध नहीं है। पहले आप अपना व्यवसाय जुड़वाएँ!") + "</p>";
+    $("vyTools").hidden = !list.length;
+  };
+  $("vyChips").onclick = e => { const b = e.target.closest("button[data-c]"); if (b) { cat = b.dataset.c; draw(); } };
+  $("vyQ").oninput = e => { q = e.target.value.trim().toLowerCase(); draw(); };
+  draw();
+}
+
 /* ---- हमारा सफर: "Safar" sheet se (When | Details | ShowOnHome). Sheet na ho to HTML mein likha default dikhta hai ---- */
 function drawJourney(rows) {
   const ol = document.querySelector(".mile"); if (!ol) return;
@@ -1096,13 +1333,16 @@ function drawJourney(rows) {
 
 /* ---- Sab data load karke render ---- */
 async function load() {
-  const [home, meet, ann, news, members, set, phSheet, safarSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar"].map(sheet));
+  const [home, meet, ann, news, members, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
   drawContact(S);
   applyContent(S);
+  drawEvent(S);
   drawPoster(S);
   drawJourney(safarSheet);
+  drawSeva(boliSheet, S);
+  drawVyapar(vyaparSheet);
 
   /* कार्यकारिणी / सलाहकार */
   const adv = [], off = [];
@@ -1292,7 +1532,7 @@ function drawPoster(S) {
     a.href = u; a.target = "_blank"; a.rel = "noopener"; a.setAttribute("aria-label", "पोस्टर पन्ना " + (urls.length + 1) + " बड़ा देखें");
     im.src = u; im.alt = "स्नेह सम्मेलन पोस्टर — पन्ना " + (urls.length + 1); im.decoding = "async"; a.appendChild(im); track.appendChild(a);
     const d = document.createElement("button"); d.type = "button"; d.setAttribute("aria-label", "पन्ना " + (urls.length + 1)); const k = urls.length; d.onclick = () => go(k); dots.appendChild(d);
-    urls.push(u); dots.hidden = hint.hidden = urls.length < 2; box.hidden = false; mark();
+    urls.push(u); dots.hidden = hint.hidden = urls.length < 2; box.hidden = false; box.classList.remove("noimg"); $("pstCar").hidden = false; $("pstB").hidden = false; mark();
   }
   function load(n) { if (n > 8) return; first(names(S["Poster" + n], "poster-" + n), function (u) { add(u); load(n + 1); }); }
   track.addEventListener("scroll", function () { clearTimeout(track._t); track._t = setTimeout(mark, 60); }, { passive: true });
@@ -1305,6 +1545,40 @@ function drawPoster(S) {
     window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank", "noopener");
   };
 }
+
+/* ---- QR: is page / कार्यक्रम का link, print ya WhatsApp ke liye ---- */
+function showEvQr() {
+  const dlg = $("fdlg"); if (!dlg) return;
+  const url = location.href.split(/[?#]/)[0] + "#karyakram";
+  dlg.innerHTML = '<div class="fd-in"><div class="fd-h"><h3>कार्यक्रम का QR कोड</h3><button type="button" class="fd-x" id="qrx" aria-label="बंद करें">&times;</button></div>' +
+    '<div class="qr-b"><div id="qrBox"></div><p>स्कैन करके ' + esc(EV ? EV.name : "कार्यक्रम") + ' की जानकारी और पोस्टर देखें।</p></div>' +
+    '<div class="fd-b"><button class="btn pri" id="qrc" type="button">बंद करें</button></div></div>';
+  const close = () => { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); };
+  if (dlg.showModal) { if (!dlg.open) dlg.showModal(); } else dlg.setAttribute("open", "");
+  $("qrx").onclick = close; $("qrc").onclick = close;
+  try { new QRCode($("qrBox"), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M }); }
+  catch (e) { $("qrBox").innerHTML = '<a href="' + esc(url) + '">' + esc(url) + "</a>"; }
+}
+
+/* ---- दर्शक गिनती: din mein ek browser = ek ginti; koi naam/IP/ID save nahi hota ---- */
+let VIS_TOTAL = null;
+function visDraw() {
+  const b = $("visBox"); if (!b) return;
+  if (VIS_TOTAL == null || String(SET.ShowVisitors || "").trim().toUpperCase() === "FALSE") { b.hidden = true; return; }
+  $("visN").textContent = Number(VIS_TOTAL).toLocaleString("en-IN"); b.hidden = false;
+}
+(function () {
+  if (!/^https?:$/.test(location.protocol) || /^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname)) return;   // test mein ginti nahi
+  const t = new Date().toISOString().slice(0, 10); let first = true;
+  try { first = localStorage.getItem("smps_v_day") !== t; if (first) localStorage.setItem("smps_v_day", t); VIS_TOTAL = +localStorage.getItem("smps_v_tot") || null; } catch (e) {}
+  setTimeout(function () {
+    fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "visit", first: first }), keepalive: true })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.success && typeof j.total === "number") { VIS_TOTAL = j.total; try { localStorage.setItem("smps_v_tot", j.total); } catch (e) {} visDraw(); } })
+      .catch(function () { visDraw(); });
+  }, 2500);
+  visDraw();
+})();
 </script>
 </body>
 </html>
