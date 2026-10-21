@@ -603,6 +603,10 @@ dialog.fd::backdrop { background: rgba(7, 20, 43, .6); }
 .sv-t span { background: #fde9bd; color: #7a4a00; font-weight: 700; font-size: 13.5px; padding: 3px 11px; border-radius: 999px; }
 [data-theme="dark"] .sv-t span { background: #3a2c10; color: #ffd98a; }
 #sevaN { color: var(--brand); }
+.sv-h { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sv-h:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; border-radius: 8px; }
+.sv-ar { display: inline-block; font-style: normal; font-size: .7em; color: var(--brand); transition: transform .2s; }
+.sv-h[aria-expanded="true"] .sv-ar { transform: rotate(180deg); }
 /* व्यवसायी */
 .vy-bar { display: flex; gap: 10px; margin: 4px 0 12px; }
 .vy-bar[hidden] { display: none; }
@@ -695,9 +699,11 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
 
     <section class="s gut" id="seva" hidden>
     <div class="in">
-      <div class="sh"><span class="tag">सेवा</span><h2>सेवा सहयोगी</h2><p>आयोजन में सेवा का संकल्प लेने वाले समस्त बंधुओं का हार्दिक आभार। <b id="sevaN"></b></p></div>
+      <div class="sh sv-h" id="sevaHead" role="button" tabindex="0" aria-expanded="false" aria-controls="sevaBody"><span class="tag">सेवा</span><h2>सेवा सहयोगी <i class="sv-ar" aria-hidden="true">▾</i></h2><p>आयोजन में सेवा का संकल्प लेने वाले समस्त बंधुओं का हार्दिक आभार। <b id="sevaN"></b></p></div>
+      <div id="sevaBody" hidden>
       <div class="chips" id="sevaYrs" role="group" aria-label="साल चुनें" hidden></div>
       <div class="sv" id="sevaList"></div>
+      </div>
     </div>
   </section>
 
@@ -1306,6 +1312,11 @@ function drawSeva(rows, S) {
       ch.hidden = false;
     } else ch.hidden = true;
   };
+  const hd = $("sevaHead"), bd = $("sevaBody");
+  const setOpen = o => { bd.hidden = !o; hd.setAttribute("aria-expanded", String(o)); };
+  setOpen(on(S.SevaOpen));                                       // Settings: SevaOpen = TRUE ho to khula shuru hota hai, warna band
+  hd.onclick = () => setOpen(bd.hidden);
+  hd.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(bd.hidden); } };
   $("sevaYrs").onclick = e => { const b = e.target.closest("button[data-y]"); if (b) { cur = b.dataset.y; draw(); } };
   draw();
   sec.hidden = false;

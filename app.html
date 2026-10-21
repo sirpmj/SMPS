@@ -2453,6 +2453,18 @@ function normLoginMobile_(s){
   else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
   return d;
 }
+// 🆕 Login access: Members sheet mein "Login" column ho to sirf jinke aage TRUE/YES/Haan ho wahi login kar sakte hain.
+// Column hi na ho to pehle jaisa — sab registered members login kar sakte hain.
+const LOGIN_COL_RE_ = /^(login|login ?allowed|login ?access)$/i;
+function loginColOf_(rec){ return Object.keys(rec || {}).find(k => LOGIN_COL_RE_.test(String(k).trim())); }
+function loginColumnExists_(){ return Object.values(MEMBERS || {}).some(r => loginColOf_(r)); }
+function loginAllowed_(rec){
+  if (!rec) return false;
+  if (!loginColumnExists_()) return true;
+  const k = loginColOf_(rec);
+  return !!k && /^(TRUE|YES|Y|1|HAAN|हाँ|हां)$/i.test(String(rec[k] == null ? "" : rec[k]).trim());
+}
+const LOGIN_DENIED_MSG_ = "आपके मोबाइल नंबर पर अभी लॉगिन की सुविधा चालू नहीं है। कृपया कार्यकारिणी से संपर्क करें।";
 function toNumber(val){
   if(val===undefined||val===null||val==="") return 0;
   return Number(String(val).replace(/[^0-9.-]/g,"")) || 0;
@@ -3046,6 +3058,11 @@ document.getElementById("sendOtpBtn").onclick = async () => {
     return;
   }
 
+  if (!loginAllowed_(MEMBERS[mobile])) {
+    alert(LOGIN_DENIED_MSG_);
+    return;
+  }
+
   // 🆕 OTP ab CLIENT-SIDE generate hota hai (crypto-random, 6 digit) — isliye
   // WhatsApp turant (bilkul instant, koi blank tab nahi) khul sakta hai, kisi
   // bhi server response ka wait kiye bina. Server ko yeh OTP background mein
@@ -3126,9 +3143,18 @@ document.getElementById("verifyOtpBtn").onclick = async () => {
       return;
     }
 
+    if (!loginAllowed_(member)) {
+      verifyOtpBtn.disabled = false;
+      verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
+      loginInfoMsg.style.display = "none";
+      alert(LOGIN_DENIED_MSG_);
+      return;
+    }
+
     currentUser = {
       name: member.Member || member.Name,
-      role: member.Role || "Member"
+      role: member.Role || "Member",
+      mobile: mobile
     };
 
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
@@ -3203,6 +3229,17 @@ async function init(){
   ROLE_ACCESS = roleAccessData;
 
 if (savedUser) {
+  try {
+    const cu0 = JSON.parse(savedUser);
+    const rec0 = (cu0.mobile && MEMBERS[cu0.mobile]) || Object.values(MEMBERS).find(r => String(r.Member || r.Name || "").trim() === String(cu0.name || "").trim());
+    if (rec0 && !loginAllowed_(rec0)) {           // Members sheet mein se Login hata diya gaya — session / "याद रखें" dono band
+      sessionStorage.removeItem("currentUser");
+      try { localStorage.removeItem("smps_remember"); } catch (e) {}
+      alert(LOGIN_DENIED_MSG_);
+      location.reload();
+      return;
+    }
+  } catch (e) {}
   currentUser = JSON.parse(savedUser);
 
   loginView.style.display = "none";
