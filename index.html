@@ -684,7 +684,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
           <p id="pstP"></p>
           <div class="pst-b" id="pstB"><a class="btn pri" id="pstV" href="poster-1.jpg" target="_blank" rel="noopener">पोस्टर देखें</a><a class="sbtn" id="pstD" href="poster-1.jpg" download>डाउनलोड</a><button class="sbtn g" id="pstW" type="button">WhatsApp</button></div>
           <div id="pstX" hidden>
-            <div class="pst-a"><button class="btn pri" id="evRsvp" type="button">सपरिवार आने की सूचना</button><button class="btn pri" id="evTalent" type="button">प्रतिभा सम्मान: नाम दें</button></div>
+            <div class="pst-a"><button class="btn pri" id="evRsvp" type="button" hidden>सपरिवार आने की सूचना</button><button class="btn pri" id="evTalent" type="button">प्रतिभा सम्मान: नाम दें</button></div>
             <div class="pst-u"><a class="sbtn" id="evMap" href="#" target="_blank" rel="noopener">नक्शा खोलें</a><button class="sbtn" id="evCal" type="button">कैलेंडर में जोड़ें</button><button class="sbtn" id="evQr" type="button">QR कोड</button></div>
           </div>
         </div>
@@ -696,6 +696,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
     <section class="s gut" id="seva" hidden>
     <div class="in">
       <div class="sh"><span class="tag">सेवा</span><h2>सेवा सहयोगी</h2><p>आयोजन में सेवा का संकल्प लेने वाले समस्त बंधुओं का हार्दिक आभार। <b id="sevaN"></b></p></div>
+      <div class="chips" id="sevaYrs" role="group" aria-label="साल चुनें" hidden></div>
       <div class="sv" id="sevaList"></div>
     </div>
   </section>
@@ -718,7 +719,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
     </div>
   </section>
 
-    <section class="s gut" id="vyapar">
+    <section class="s gut" id="vyapar" hidden>
     <div class="in">
       <div class="sh"><span class="tag">व्यवसाय</span><h2>समाज के व्यवसायी</h2><p>अपने समाज के बंधुओं के व्यवसाय और सेवाएँ, आपसी सहयोग से आगे बढ़ें।</p></div>
       <div class="vy-bar" id="vyTools" hidden><input id="vyQ" type="search" placeholder="नाम, व्यवसाय या शहर खोजें" aria-label="खोजें"></div>
@@ -922,6 +923,7 @@ function findDate(txt) {
 }
 const keyOf = (rows, re) => { const ks = rows.length ? Object.keys(rows[0]) : []; return ks.find(k => re.test(String(k).trim())); };
 const isTrue = v => String(v).trim().toUpperCase() === "TRUE";
+const on = v => /^(TRUE|YES|1|HAAN|हाँ|हां|SHOW)$/i.test(String(v == null ? "" : v).trim());   // Settings ke show/hide switch
 const pickPhoto = v => { const t = String(v == null ? "" : v).trim(); if (/^data:image\//i.test(t)) return t.length < 150000 ? t : ""; const m = t.match(/https?:\/\/[^\s,;"'<>]+/i); return m ? m[0] : ""; };
 /* ek cell mein kai photo: har line = "link | caption" (ya "caption | link"); comma se alag links bhi chalenge */
 function parsePhotos(v) {
@@ -1272,20 +1274,40 @@ function bizForm() {
 /* ---- सेवा सहयोगी: "Boli" sheet se (sirf naam, gaon aur seva — rakam/mobile kabhi nahi) ---- */
 function drawSeva(rows, S) {
   const sec = $("seva"); if (!sec) return;
-  let pre = S.SevaFilter || "BOLI/2025/"; if (pre === "*") pre = "";
+  if (!on(S.ShowSeva)) { sec.hidden = true; return; }            // Settings: ShowSeva = TRUE tabhi section dikhega
   const g = (r, re) => { const k = Object.keys(r).find(k => re.test(String(k).trim())); return k ? String(r[k] == null ? "" : r[k]).trim() : ""; };
-  const map = new Map();
+  const yrOf = id => (String(id).match(/(?:19|20)\d{2}/) || [""])[0];
+  /* Settings: SevaYears = "2025,2026" (kaun se saal dikhane hain) ya "*" (sab saal). Khaali ho to purana SevaFilter (default BOLI/2025/) */
+  const yrs = String(S.SevaYears || "").split(/[\s,;|]+/).map(x => x.trim()).filter(Boolean), all = yrs.indexOf("*") >= 0;
+  let pre = S.SevaFilter || "BOLI/2025/"; if (pre === "*") pre = "";
+  const by = new Map();                                          // saal -> (naam -> [seva])
   (Array.isArray(rows) ? rows : []).forEach(r => {
-    const id = g(r, /^(id|boli ?id)$/i), who = g(r, /^(member|name|नाम)$/i).replace(/\s+/g, " "), seva = g(r, /^(for|seva|सेवा)$/i).replace(/\s+/g, " ");
-    if (!who || !seva || (pre && id.indexOf(pre) !== 0)) return;
-    if (!map.has(who)) map.set(who, []); if (map.get(who).indexOf(seva) < 0) map.get(who).push(seva);
+    const id = g(r, /^(id|boli ?id)$/i), who = g(r, /^(member|name|नाम)$/i).replace(/\s+/g, " "), seva = g(r, /^(for|seva|सेवा)$/i).replace(/\s+/g, " "), y = yrOf(id);
+    if (!who || !seva) return;
+    if (yrs.length) { if (!all && yrs.indexOf(y) < 0) return; } else if (pre && id.indexOf(pre) !== 0) return;
+    if (!by.has(y)) by.set(y, new Map());
+    const m = by.get(y); if (!m.has(who)) m.set(who, []); if (m.get(who).indexOf(seva) < 0) m.get(who).push(seva);
   });
-  if (!map.size) { sec.hidden = true; return; }
-  $("sevaN").textContent = map.size + " सहयोगी";
-  $("sevaList").innerHTML = Array.from(map.entries()).map(([who, sv]) => {
+  if (!by.size) { sec.hidden = true; return; }
+  const years = Array.from(by.keys()).sort().reverse();         // naya saal pehle
+  let cur = years[0];                                            // shuru mein sabse naya saal; baaki click se
+  const card = ([who, sv]) => {
     const m = who.match(/^(.*?)\s*\(([^)]*)\)\s*$/), nm = m ? m[1] : who, pl = m ? m[2] : "";
     return '<article class="sv-c"><div class="sv-n">' + esc(nm) + "</div>" + (pl ? '<div class="sv-p">' + esc(pl) + "</div>" : "") + '<div class="sv-t">' + sv.map(x => "<span>" + esc(x) + "</span>").join("") + "</div></article>";
-  }).join("");
+  };
+  const draw = () => {
+    const map = new Map();
+    (cur === "*" ? years : [cur]).forEach(y => by.get(y).forEach((sv, who) => { if (!map.has(who)) map.set(who, []); sv.forEach(x => { if (map.get(who).indexOf(x) < 0) map.get(who).push(x); }); }));
+    $("sevaN").textContent = map.size + " सहयोगी";
+    $("sevaList").innerHTML = Array.from(map.entries()).map(card).join("");
+    const ch = $("sevaYrs");
+    if (years.length > 1) {
+      ch.innerHTML = years.concat(["*"]).map(y => '<button type="button" class="chip" data-y="' + y + '" aria-pressed="' + (y === cur) + '">' + (y === "*" ? "सभी" : (y || "अन्य")) + "</button>").join("");
+      ch.hidden = false;
+    } else ch.hidden = true;
+  };
+  $("sevaYrs").onclick = e => { const b = e.target.closest("button[data-y]"); if (b) { cur = b.dataset.y; draw(); } };
+  draw();
   sec.hidden = false;
 }
 
@@ -1342,7 +1364,13 @@ async function load() {
   drawPoster(S);
   drawJourney(safarSheet);
   drawSeva(boliSheet, S);
-  drawVyapar(vyaparSheet);
+  /* समाज के व्यवसायी: Settings ShowVyapar = TRUE tabhi section + menu link dikhega */
+  const vyOn = on(S.ShowVyapar);
+  $("vyapar").hidden = !vyOn;
+  document.querySelectorAll('a[href="#vyapar"]').forEach(a => { a.hidden = !vyOn; });
+  if (vyOn) drawVyapar(vyaparSheet);
+  /* सपरिवार आने की सूचना: Settings ShowRsvp = TRUE tabhi button dikhega */
+  if ($("evRsvp")) $("evRsvp").hidden = !on(S.ShowRsvp);
 
   /* कार्यकारिणी / सलाहकार */
   const adv = [], off = [];
