@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded", function () {
   try {
     if (!sessionStorage.getItem("currentUser")) {
       const rd = JSON.parse(localStorage.getItem("smps_remember") || "null");
-      if (rd && rd.user && rd.exp > Date.now()) sessionStorage.setItem("currentUser", JSON.stringify(rd.user));
+      if (rd && rd.user && rd.token && rd.exp > Date.now()) { sessionStorage.setItem("currentUser", JSON.stringify(rd.user)); sessionStorage.setItem("smps_token", rd.token); }
       else if (rd) localStorage.removeItem("smps_remember");
     }
     if (localStorage.getItem("smps_theme") === "dark") document.documentElement.setAttribute("data-theme", "dark");
@@ -606,6 +606,7 @@ align:center;margin-top:0px;margin-bottom:0px;
 button{padding:10px 16px;border-radius:8px;cursor:pointer;transition:0.3s;font-weight:500}
 button:hover{opacity:0.9}
 #logoutBtn{background:#d9534f;color:#fff}
+#pinBtn{background:#0b63d6;color:#fff}
 #refreshBtn{background:#0b63d6;color:#fff}
 
 /* 🆕 App header ka structure: Row1 = [buttons ..... user-info (right side,
@@ -908,7 +909,7 @@ td.act-cell { vertical-align: top; }
   .page-btn { min-height: 38px; min-width: 38px; padding: 8px 12px !important; }
   #searchWrapper #pageSize, #searchWrapper #searchInput,
   #searchWrapper #addNewBtn, #searchWrapper #bulkRemBtn, #searchWrapper #commitFilter { height: 38px !important; box-sizing: border-box; }
-  #loginBtn, #refreshBtn, #logoutBtn { min-height: 40px; }
+  #loginBtn, #refreshBtn, #logoutBtn, #pinBtn { min-height: 40px; }
 
   /* ---- Edit / Add popup = bottom sheet ---- */
   #editPopup { align-items: flex-end !important; }
@@ -2100,14 +2101,14 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       <div class="sp-R">
         <div class="sp-login">
 <h2 class="sp-wel"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg> समाज पोर्टल में आपका स्वागत है</h2>
-<div class="sp-sub">अपने मोबाइल नंबर से WhatsApp OTP द्वारा login करें</div>
+<div class="sp-sub">अपने मोबाइल नंबर और PIN से login करें</div>
 <span id="loginTitle" style="display:none"></span>
 <label id="labelMobile" style="display:none">User Name</label>
 <input id="username" type="text" inputmode="tel" autocomplete="tel" placeholder="10 अंको का मोबाइल नंबर डालें">
-<label class="sp-otpl">OTP</label>
-<input id="otpInput" type="text" placeholder="WhatsApp पर आया OTP डालें" style="display:none">
+<label class="sp-otpl">PIN</label>
+<input id="otpInput" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="अपना PIN डालें (4 से 6 अंक)">
 <label class="sp-rem"><input type="checkbox" id="rememberDev" checked> इस डिवाइस पर 30 दिन login याद रखें</label>
-<button id="sendOtpBtn" type="button" style="background:#0b63d6;color:#fff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg> Send OTP</button>
+<button id="sendOtpBtn" type="button" style="background:#0b63d6;color:#fff"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg> Login</button>
 <button id="verifyOtpBtn" type="button" style="background:#008000;color:#fff;display:none"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg> Verify & Login</button>
 <div id="loginInfoMsg" style="display:none;margin:6px 0;padding:4px 6px;background:#fff8e1;border:1px solid #ffe0a3;color:#856404;border-radius:4px;font-size:12.5px;text-align:center;line-height:1.25"></div>
 <button id="newUserBtn" type="button" style="background:#fff;color:#0a7a2f"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 016-6h2a6 6 0 016 6v1"/><path d="M19 8v6M16 11h6"/></svg> New / Update Member</button>
@@ -2369,7 +2370,16 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5
    sirf generic "Network error" nahi. Agar Apps Script deploy purana ho,
    ya "Anyone" access na ho, to response HTML aata hai JSON ki jagah —
    yeh helper us case ko bhi pakad kar batata hai. */
+function forceRelogin_(msg) {
+  try { localStorage.removeItem("smps_remember"); } catch (e) {}
+  sessionStorage.removeItem("currentUser"); sessionStorage.removeItem("smps_token");
+  if (msg) alert(msg);
+  location.reload();
+}
 async function callCrudBackend_(payload) {
+  payload = Object.assign({}, payload);
+  const tk0 = sessionStorage.getItem("smps_token");
+  if (tk0 && !payload.token) payload.token = tk0;
   let res;
   try {
     res = await fetch(WEB_APP_URL, {
@@ -2392,6 +2402,7 @@ async function callCrudBackend_(payload) {
       "Console mein poora response check karein."
     );
   }
+  if (json && json.code === "AUTH" && payload.action !== "login") { forceRelogin_(json.msg); return new Promise(function () {}); }
   return json;
 }
 
@@ -3034,144 +3045,107 @@ async function loadFooter(){
   }
 }
 
-document.getElementById("sendOtpBtn").onclick = async () => {
-
-  const mobile = normLoginMobile_(username.value);
-
-  if (mobile.length !== 10) {
-    alert("कृपया 10 अंकों का मोबाइल नंबर डालें");
-    return;
-  }
-
-  // 🔥 MEMBERS pehle se load hona chahiye (init() ke waqt normally ho jaata hai).
-  // Agar kisi wajah se abhi tak nahi hua, to yahi ek jagah hai jahan wait karna
-  // padega — lekin yeh rare case hai (normally MEMBERS load hone ka time
-  // number type karne mein hi nikal jaata hai).
-  if (!MEMBERS || Object.keys(MEMBERS).length === 0) {
-    loginInfoMsg.innerText = "⏳ कृपया प्रतीक्षा करें...";
-    loginInfoMsg.style.display = "block";
-    MEMBERS = await loadMembers();
-  }
-
-  if (!MEMBERS[mobile]) {
-    alert("आपका मोबाइल नंबर रजिस्टर नहीं है। कृपया पहले रजिस्टर करें।");
-    return;
-  }
-
-  if (!loginAllowed_(MEMBERS[mobile])) {
-    alert(LOGIN_DENIED_MSG_);
-    return;
-  }
-
-  // 🆕 OTP ab CLIENT-SIDE generate hota hai (crypto-random, 6 digit) — isliye
-  // WhatsApp turant (bilkul instant, koi blank tab nahi) khul sakta hai, kisi
-  // bhi server response ka wait kiye bina. Server ko yeh OTP background mein
-  // (fire-and-forget) bata dete hain taaki verify step mein match kar sake.
-  const otpArr = new Uint32Array(1);
-  crypto.getRandomValues(otpArr);
-  const otp = String(100000 + (otpArr[0] % 900000));
-
-  const waMessage =
-    "🔐 श्री मेवाड़ प्रजापत समाज – वापी\n" +
-    "आपका OTP है: *" + otp + "*\n(5 मिनट वैध)";
-  const waUrl = "https://wa.me/91" + mobile + "?text=" + encodeURIComponent(waMessage);
-
-  // 🆕 Bilkul turant (sync) WhatsApp khol do — koi blank intermediate tab nahi
-  window.open(waUrl, "_blank");
-
-  // Background mein server ko OTP store karne ke liye bata do (verify ke liye chahiye)
-  callCrudBackend_({ action: "storeOtp", mobile, otp }).catch(err => {
-    console.error("OTP store failed:", err);
-  });
-
-  otpInput.style.display = "block";
-  verifyOtpBtn.style.display = "block";
-  sendOtpBtn.style.display = "none";
-
-  const maskedMobile = mobile.slice(0, 2) + "XXXXXX" + mobile.slice(-2);
-  loginInfoMsg.innerText = "OTP भेजा गया है मोबाइल: " + maskedMobile;
-  loginInfoMsg.style.display = "block";
-};
-
-document.getElementById("verifyOtpBtn").onclick = async () => {
-  const otp = otpInput.value.trim();
-  const mobile = normLoginMobile_(username.value);
-
-  if (otp.length !== 6) {
-    alert("6 अंकों का OTP डालें");
-    return;
-  }
-
-  const verifyOtpBtnOriginalHTML = verifyOtpBtn.innerHTML;
-  verifyOtpBtn.disabled = true;
-  verifyOtpBtn.innerHTML = "⏳ जाँच की जा रही है...";
-  loginInfoMsg.innerText = "⏳ OTP जाँचा जा रहा है, कृपया प्रतीक्षा करें...";
-  loginInfoMsg.style.display = "block";
-
+/* ===========================
+   PIN LOGIN (server par jaancha jata hai)
+   =========================== */
+async function doPinLogin_() {
+  const mobile = normLoginMobile_(username.value), pin = String(otpInput.value || "").replace(/\D/g, "");
+  if (mobile.length !== 10) { alert("कृपया 10 अंकों का मोबाइल नंबर डालें"); return; }
+  if (pin.length < 4) { alert("अपना PIN डालें (4 से 6 अंक)"); return; }
+  const btn = sendOtpBtn, btnHtml = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = "⏳ जाँच हो रही है...";
   try {
-
-    // 🆕 yahan bhi wahi callCrudBackend_ helper — HTML/parse error par
-    // asli wajah dikhayega, generic "Server connection failed" nahi
-    const res = await callCrudBackend_({ action: "verifyOtp", mobile, otp });
-
-    if (!res.success) {
-      verifyOtpBtn.disabled = false;
-      verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
-      loginInfoMsg.style.display = "none";
-      alert(res.msg || "OTP सही नहीं है");
-      return;
-    }
-
-    // 🔥 ensure MEMBERS loaded (agar page dobara khuli ho aur MEMBERS khaali reh gaya ho)
-    if (!MEMBERS || Object.keys(MEMBERS).length === 0) {
-      MEMBERS = await loadMembers();
-    }
-
-    // ✅ LOGIN SUCCESS
-    const member = MEMBERS[mobile];
-
-    // 🆕 Pehle yahan koi check nahi tha — agar member record kisi wajah se
-    // nahi milta tha (jaise OTP bhejte waqt aur verify karte waqt MEMBERS
-    // list refresh ho gayi ho), to "member.Member" par error aa jaata tha
-    // aur bina koi message dikhaye login rukk jaata tha ("OTP dalne ke baad
-    // kuch nahi hota" wali complaint isi se aati thi).
-    if (!member) {
-      verifyOtpBtn.disabled = false;
-      verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
-      loginInfoMsg.style.display = "none";
-      alert("आपका रिकॉर्ड नहीं मिला। कृपया पेज रीलोड करके फिर कोशिश करें।");
-      return;
-    }
-
-    if (!loginAllowed_(member)) {
-      verifyOtpBtn.disabled = false;
-      verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
-      loginInfoMsg.style.display = "none";
-      alert(LOGIN_DENIED_MSG_);
-      return;
-    }
-
-    currentUser = {
-      name: member.Member || member.Name,
-      role: member.Role || "Member",
-      mobile: mobile
-    };
-
+    const remember = !!(document.getElementById("rememberDev") || {}).checked;
+    const res = await callCrudBackend_({ action: "login", mobile, pin, remember });
+    if (!res || !res.success) { alert((res && res.msg) || "लॉगिन नहीं हो पाया"); return; }
+    currentUser = { name: res.user.name, role: res.user.role || "Member", mobile: mobile };
     sessionStorage.setItem("currentUser", JSON.stringify(currentUser));
-    try { const rc = document.getElementById("rememberDev"); if (rc && rc.checked) localStorage.setItem("smps_remember", JSON.stringify({ user: currentUser, exp: Date.now() + 30 * 86400000 })); else localStorage.removeItem("smps_remember"); } catch (e) {}
+    sessionStorage.setItem("smps_token", res.token);
+    try {
+      if (remember) localStorage.setItem("smps_remember", JSON.stringify({ user: currentUser, token: res.token, exp: res.exp }));
+      else localStorage.removeItem("smps_remember");
+    } catch (e) {}
+    otpInput.value = "";
     loginInfoMsg.style.display = "none";
+    if (!MEMBERS || Object.keys(MEMBERS).length === 0) { try { MEMBERS = await loadMembers(); } catch (e) {} }
     openApp();
     resetIdleTimer();
-
+    if (res.mustChange) openPinDialog_(true);
   } catch (err) {
-
     console.error(err);
-    verifyOtpBtn.disabled = false;
-    verifyOtpBtn.innerHTML = verifyOtpBtnOriginalHTML;
-    loginInfoMsg.style.display = "none";
     alert(err.message || "Server connection failed. कृपया बाद में पुनः प्रयास करें।");
+  } finally {
+    btn.disabled = false; btn.innerHTML = btnHtml;
   }
-};
+}
+sendOtpBtn.onclick = doPinLogin_;
+otpInput.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doPinLogin_(); } });
+
+/* ---- 🔑 PIN dialog: apna PIN badlo (+ kaaryakarini: kisi member ka PIN set/reset) ---- */
+function closePinOv_() { const o = document.getElementById("pinOv"); if (o) o.remove(); }
+function openPinDialog_(forced) {
+  closePinOv_();
+  const acts = ((ROLE_ACCESS || {})[currentUser && currentUser.role] || {})["Members"];
+  const canSet = !forced && !!acts && (acts.canAction || []).indexOf("PIN") >= 0;
+  const o = document.createElement("div"); o.id = "pinOv";
+  o.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:14px";
+  const inp = 'type="password" inputmode="numeric" maxlength="6" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;font-size:18px;letter-spacing:6px;text-align:center;margin:4px 0 10px;border:1.5px solid #bbb;border-radius:8px"';
+  const btn = 'type="button" style="padding:10px 14px;font-size:15px;border:0;border-radius:8px;cursor:pointer;color:#fff;background:#0b63d6"';
+  o.innerHTML = '<div style="background:#fff;color:#222;border-radius:12px;max-width:380px;width:100%;padding:16px;max-height:92vh;overflow:auto;font-size:15px;line-height:1.4">' +
+    '<h3 style="margin:0 0 6px">🔑 ' + (forced ? "नया PIN बनाएँ" : "अपना PIN बदलें") + '</h3>' +
+    (forced ? '<p style="margin:0 0 8px;color:#a15c00">आपका PIN कार्यकारिणी ने बनाया है। आगे बढ़ने से पहले अपना नया PIN बनाइए।</p>' : '') +
+    '<label>अभी का PIN</label><input id="pinOld" ' + inp + '>' +
+    '<label>नया PIN (4 से 6 अंक)</label><input id="pinNew" ' + inp + '>' +
+    '<label>नया PIN दोबारा</label><input id="pinNew2" ' + inp + '>' +
+    '<div id="pinMsg" style="min-height:20px;color:#c0392b;margin-bottom:6px"></div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><button id="pinSave" ' + btn + '>PIN बदलें</button>' +
+    (forced ? '' : '<button id="pinClose" ' + btn.replace("#0b63d6", "#777") + '>बंद करें</button>') + '</div>' +
+    (canSet ? '<hr style="margin:14px 0"><h3 style="margin:0 0 6px">👥 सदस्य का PIN सेट / रीसेट</h3>' +
+      '<label>सदस्य का मोबाइल नंबर</label><input id="pinMob" type="tel" inputmode="tel" maxlength="14" autocomplete="off" style="width:100%;box-sizing:border-box;padding:10px;font-size:17px;margin:4px 0 10px;border:1.5px solid #bbb;border-radius:8px">' +
+      '<button id="pinMake" ' + btn.replace("#0b63d6", "#0a7a2f") + '>नया PIN बनाएँ</button>' +
+      '<div id="pinRes" style="margin-top:10px"></div>' : '') + '</div>';
+  document.body.appendChild(o);
+  const $$ = id => o.querySelector("#" + id), msg = t => { $$("pinMsg").textContent = t || ""; };
+  if ($$("pinClose")) $$("pinClose").onclick = closePinOv_;
+  $$("pinSave").onclick = async () => {
+    const oldPin = $$("pinOld").value.replace(/\D/g, ""), n1 = $$("pinNew").value.replace(/\D/g, ""), n2 = $$("pinNew2").value.replace(/\D/g, "");
+    if (oldPin.length < 4) return msg("अभी का PIN डालें");
+    if (!/^\d{4,6}$/.test(n1)) return msg("नया PIN 4 से 6 अंकों का हो");
+    if (n1 !== n2) return msg("दोनों नए PIN एक जैसे नहीं हैं");
+    if (n1 === oldPin) return msg("नया PIN पुराने से अलग रखें");
+    $$("pinSave").disabled = true; msg("");
+    try {
+      const r = await callCrudBackend_({ action: "changePin", oldPin: oldPin, newPin: n1 });
+      if (r && r.success) { closePinOv_(); alert("✔ आपका PIN बदल गया।"); }
+      else { msg((r && r.msg) || "PIN नहीं बदल पाया"); $$("pinSave").disabled = false; }
+    } catch (e) { msg(e.message || "Server error"); $$("pinSave").disabled = false; }
+  };
+  if (canSet) $$("pinMake").onclick = async () => {
+    const mob = normLoginMobile_($$("pinMob").value), box = $$("pinRes");
+    if (mob.length !== 10) { box.textContent = "10 अंकों का मोबाइल नंबर डालें"; box.style.color = "#c0392b"; return; }
+    $$("pinMake").disabled = true; box.textContent = "⏳ ..."; box.style.color = "#555";
+    try {
+      const r = await callCrudBackend_({ action: "adminSetPin", mobile: mob });
+      if (r && r.success) {
+        const wa = "https://wa.me/91" + mob + "?text=" + encodeURIComponent("🔐 श्री मेवाड़ प्रजापत समाज – वापी\nआपका login PIN: *" + r.pin + "*\nपहली बार login करते ही आपको नया PIN बनाना होगा। यह PIN किसी को न बताएँ।");
+        box.style.color = "#222";
+        box.innerHTML = "";
+        const t = document.createElement("div"); t.textContent = r.name + " का अस्थायी PIN:"; box.appendChild(t);
+        const big = document.createElement("div"); big.textContent = r.pin; big.style.cssText = "font-size:28px;font-weight:800;letter-spacing:8px;margin:4px 0"; box.appendChild(big);
+        if (!r.canLogin) { const w = document.createElement("div"); w.style.color = "#c0392b"; w.textContent = "ध्यान दें: Members sheet में इनके आगे Login = TRUE नहीं है, इसलिए अभी login नहीं कर पाएँगे।"; box.appendChild(w); }
+        const a = document.createElement("a"); a.href = wa; a.target = "_blank"; a.rel = "noopener"; a.textContent = "WhatsApp से भेजें"; a.style.cssText = "display:inline-block;margin-top:6px;padding:9px 12px;background:#25a244;color:#fff;border-radius:8px;text-decoration:none"; box.appendChild(a);
+      } else { box.style.color = "#c0392b"; box.textContent = (r && r.msg) || "PIN नहीं बन पाया"; }
+    } catch (e) { box.style.color = "#c0392b"; box.textContent = e.message || "Server error"; }
+    $$("pinMake").disabled = false;
+  };
+}
+(function () {
+  const lb = document.getElementById("logoutBtn");
+  if (!lb || document.getElementById("pinBtn")) return;
+  const b = document.createElement("button"); b.id = "pinBtn"; b.type = "button"; b.textContent = "🔑 PIN";
+  b.onclick = () => openPinDialog_(false);
+  lb.parentNode.insertBefore(b, lb);
+})();
 
 
 
@@ -3228,6 +3202,12 @@ async function init(){
   MEMBERS = membersData;
   ROLE_ACCESS = roleAccessData;
 
+if (savedUser && !sessionStorage.getItem("smps_token")) {      // purana (PIN se pehle ka) login — dobara PIN se login karwao
+  sessionStorage.removeItem("currentUser");
+  try { localStorage.removeItem("smps_remember"); } catch (e) {}
+  location.reload();
+  return;
+}
 if (savedUser) {
   try {
     const cu0 = JSON.parse(savedUser);
@@ -3479,6 +3459,7 @@ el("logoutBtn").onclick = () => {
   // 🔐 Session clear
   try { localStorage.removeItem("smps_remember"); } catch (e) {}
   sessionStorage.removeItem("currentUser");
+  sessionStorage.removeItem("smps_token");
   currentUser = null;
 
   // 🧹 JS memory clear
@@ -3507,7 +3488,7 @@ el("logoutBtn").onclick = () => {
   // reset login fields
   el("username").value = "";
   el("otpInput").value = "";
-  el("otpInput").style.display = "none";
+  el("otpInput").style.display = "block";
   el("sendOtpBtn").style.display = "block";
   el("verifyOtpBtn").style.display = "none";
 
@@ -6025,6 +6006,7 @@ function sendBirthday(mobile,name){
     method:"POST",
     body: JSON.stringify({
       action:"sendBirthday",
+      token: sessionStorage.getItem("smps_token") || "",
       mobile:mobile,
       name:name
     })
