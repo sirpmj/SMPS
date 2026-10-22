@@ -8,6 +8,11 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
+  v1.284  (Templates sheet: Tab + Title column)
+   - Templates sheet ke "Tab" column se template us tab ka ho jata hai; "Title" list mein naam dikhata hai
+   - Ek tab ke 2+ templates ho to WhatsApp icon dabane par list khulti hai (preview ke saath), chuno aur WhatsApp khul jata hai
+   - Members tab: Invite / Greeting / Intro / Thanks / Portal / Birthday / Anniversary — sab list mein; Boli tab: reminder + Sammelan yaad
+   - {{Member}} ab Members sheet ke naam wale column se bhi bharta hai
   v1.281  (mobile fit)
    - Header: अ / 🌙 / 📲 buttons ab title ke upar nahi chadhte (title ke liye jagah chhodi)
    - Bank card: UPI ID ki line label ke neeche poori chaudai mein — beech se nahi tutti (mobile + desktop)
@@ -198,7 +203,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.240"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.284"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -2711,29 +2716,15 @@ function buildBankBlock_(row) {
   return t;
 }
 
-/* 🆕 Ek tab ke kai messages: Templates sheet mein Type = "<Tab>-<naam>" (jaise Members-Sammelan Invite, Boli-Sammelan Reminder).
-   Ek se zyada option ho to WhatsApp button par "message chuniye" list khulti hai. */
-function tplOptions_(tab) {
-  const out = [], pre = tab + "-";
-  const isRem = (tab === "Boli" || tab === "Donation");
-  if (isRem) out.push({ k: "", title: "बकाया reminder (ऑटो)" });
-  else if ((window.TEMPLATES && TEMPLATES[tab]) || DEFAULT_TEMPLATES[tab]) out.push({ k: "", title: "मानक message" });
-  Object.keys(window.TEMPLATES || {}).forEach(k => {
-    if (k.indexOf(pre) === 0 && String(TEMPLATES[k] || "").trim()) out.push({ k, title: k.slice(pre.length).trim() || k });
-  });
-  return out;
-}
-function getMessageFromTemplate(type, row, optKey) {
-  if (!optKey && !TEMPLATES[type] && !DEFAULT_TEMPLATES[type]) { const o = tplOptions_(type); if (o.length) optKey = o[0].k; }   // jaise Members: sirf Members-… wale message hon
-  const opt = optKey && TEMPLATES[optKey] ? String(TEMPLATES[optKey]) : "";
-  const forceBuiltin = !opt && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
+function getMessageFromTemplate(type, row, tplOv) {
+  const forceBuiltin = !tplOv && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
   // "सहयोग राशि" wali row: message mein Member ki jagah Notes ka naam
   if (row && isAnonMember_(row[SETTINGS?.MemberColumn] || row["Member"])) {
     const mk = (SETTINGS?.MemberColumn && SETTINGS.MemberColumn in row) ? SETTINGS.MemberColumn : "Member";
     row = { ...row, [mk]: displayMemberFromRow_(row) };
   }
-  const usedDefault = !opt && (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
-  let template = opt || (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "";
+  const usedDefault = !tplOv && (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
+  let template = (tplOv ? tplOv.message : (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type]))) || "";
   if (!template) return "";
   const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment|CommitBlock)\s*}}/.test(template);
   const hadBankPh = /{{\s*BankDetails\s*}}/.test(template);
@@ -2767,6 +2758,8 @@ function getMessageFromTemplate(type, row, optKey) {
     const val = row[key] || "";
     template = template.replace(new RegExp(`{{${key}}}`, "g"), () => val);
   }
+  // 🆕 v1.284: {{Member}} ka column naam alag ho to bhi naam bhar do
+  template = template.replace(/{{\s*Member\s*}}/g, () => getRowMemberName_(row));
   template = template.replace(/{{Date}}/g, () => formatDate(row["Date"]));
   template = template.replace(/{{Amount}}/g, () => toNumber(row["Amount"]).toLocaleString());
 
@@ -2783,13 +2776,13 @@ function getMessageFromTemplate(type, row, optKey) {
   }
 
   template = template.replace(/\\n/g, "\n");
-  if (usedDefault || opt) {
+  if (usedDefault) {
     template = template.replace(/{{[^}]+}}/g, ""); // default template mein jo field row mein nahi, hata do
     template = template.replace(/\n{3,}/g, "\n\n").trim(); // khaali blok hatne par bachi extra khaali lines
   }
 
   // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
-  if (type === "Boli" || type === "Donation") {
+  if ((type === "Boli" || type === "Donation") && !(tplOv && tplOv.type !== type)) {
     if (!hadCommitPlaceholder && commits.length) {
       const cBlock = "🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n");
       const ls0 = template.split("\n");
@@ -2814,8 +2807,58 @@ function getMessageFromTemplate(type, row, optKey) {
       }
     }
   }
+  if (tplOv) template = template.replace(/{{[^}]+}}/g, "").replace(/\n{3,}/g, "\n\n").trim();
   return template;
 }
+
+/* ===========================
+   🆕 v1.284: Templates sheet — Tab + Title column se ek tab ke KAI templates.
+   Tab mein WhatsApp icon dabane par list khulti hai, wahan se message chuno.
+   =========================== */
+function templatesForTab_(tab) {
+  const t = String(tab || "").trim().toLowerCase();
+  return (window.TEMPLATE_LIST || []).filter(x => x.tab.toLowerCase() === t && String(x.message || "").trim());
+}
+function findRowByEnc_(encId) {
+  const incoming = decodeURIComponent(encId || "");
+  let rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === incoming);
+  if (!rec) rec = tableData.find(r => (r["ID"] || "") === incoming);
+  const mc = SETTINGS && SETTINGS["MemberColumn"];
+  if (!rec && mc) rec = tableData.find(r => (r[mc] || "") === incoming);
+  if (!rec) rec = tableData.find(r => Object.values(r).some(v => String(v) === incoming));
+  return rec;
+}
+function openTemplatePicker_(encId, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const row = findRowByEnc_(encId);
+  if (!row) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const mobile = getRowMobile_(row);
+  const m = openModal_("💬 WhatsApp संदेश चुनें" + (getRowMemberName_(row) ? " — " + getRowMemberName_(row) : ""));
+  if (!mobile) {
+    const w = document.createElement("div");
+    w.style.cssText = "background:#fef3c7;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px;color:#92400e;";
+    w.textContent = "इस रिकॉर्ड में mobile नंबर नहीं है।";
+    m.body.appendChild(w);
+  }
+  templatesForTab_(currentTab).forEach(tp => {
+    // Boli/Donation ka apna reminder: app ka built-in (bank + वादा ke saath) hi chale
+    const builtinRem = USE_BUILTIN_REMINDER_TEMPLATES && tp.type === currentTab && (tp.type === "Boli" || tp.type === "Donation");
+    const ov = builtinRem ? null : tp;
+    const msg = getMessageFromTemplate(tp.type, row, ov) || "";
+    const card = document.createElement("div");
+    card.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;";
+    const h = document.createElement("div"); h.style.cssText = "font-weight:700;font-size:14px;margin-bottom:4px;"; h.textContent = tp.title;
+    const p = document.createElement("div"); p.style.cssText = "font-size:12px;color:#64748b;white-space:pre-line;max-height:3.6em;overflow:hidden;"; p.textContent = msg;
+    card.appendChild(h); card.appendChild(p);
+    card.onclick = () => {
+      if (!mobile) { alert("इस रिकॉर्ड में mobile नंबर नहीं है।"); return; }
+      m.close(); window.open(buildWaUrl_(mobile, msg), "_blank");
+    };
+    m.body.appendChild(card);
+  });
+  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+}
+
 /* ===========================
    Fetch helper (OpenSheet)
    =========================== */
@@ -2953,9 +2996,15 @@ async function loadUsers(){
 async function loadTemplates(){
   const data = await fetchSheet("Templates");
   const templates = {};
+  const list = [];
   data.forEach(row=>{
-    if(row.Type) templates[row.Type] = row.Message || "";
+    if(row.Type) {
+      templates[row.Type] = row.Message || "";
+      // 🆕 v1.284: Tab + Title column — ek tab ke kai templates (WhatsApp par dabate hi list se chuno)
+      list.push({ type: String(row.Type).trim(), tab: String(row.Tab || row.Type).trim(), title: String(row.Title || row.Type).trim(), message: row.Message || "" });
+    }
   });
+  window.TEMPLATE_LIST = list;
   return templates;
 }
 async function loadSettings(){
@@ -6053,15 +6102,16 @@ function renderActionButtons(row, encId) {
     if(mobile.length === 10){ 
       mobile = defaultCountryCode + mobile; 
     }
-    if (tplOptions_(currentTab).length >= 2) {   // kai message: chuniye
-      btns.push(abBtn_("ab-wa", "wa", "WhatsApp — message चुनें", "", `href="#" onclick="openMsgChooser_('${encId}', event)"`));
-      return layoutActionRows_(btns);
-    }
+    const _tl = templatesForTab_(currentTab);
+    if (_tl.length > 1 || (_tl.length === 1 && _tl[0].type !== currentTab)) {   // 🆕 v1.284: kai templates → list se chuno
+      btns.push(abBtn_("ab-wa", "wa", "WhatsApp (संदेश चुनें)", "", `href="#" onclick="openTemplatePicker_('${encId}', event)"`));
+    } else {
     const message = getMessageFromTemplate(currentTab, row) || "";
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
+    }
   }
   return layoutActionRows_(btns);
 }
@@ -6445,32 +6495,6 @@ function buildWaUrl_(mobileRaw, message) {
   return (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
     .replace("{{Mobile}}", encodeURIComponent(mobile))
     .replace("{{Message}}", encodeURIComponent(message || ""));
-}
-function openMsgChooser_(incomingEnc, e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const id = decodeURIComponent(incomingEnc || "");
-  const rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === id);
-  if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
-  const tab = currentTab, opts = tplOptions_(tab), mob = getRowMobile_(rec);
-  const old = document.getElementById("msgChooser"); if (old) old.remove();
-  const ov = document.createElement("div"); ov.id = "msgChooser";
-  ov.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px";
-  const nm = getRowMemberName_(rec);
-  ov.innerHTML = '<div style="background:#fff;color:#1f2937;border-radius:14px;max-width:460px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.3)">' +
-    '<div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center"><b>📨 कौन सा message भेजें?' + (nm ? '<br><small style="font-weight:400;color:#64748b">' + escHtml_(nm) + '</small>' : '') + '</b><button type="button" id="mcX" style="border:0;background:none;font-size:22px;cursor:pointer">&times;</button></div>' +
-    '<div style="overflow:auto;padding:8px 12px" id="mcL"></div></div>';
-  document.body.appendChild(ov);
-  const L = ov.querySelector("#mcL");
-  opts.forEach(o => {
-    const m = getMessageFromTemplate(tab, rec, o.k) || "";
-    const b = document.createElement("button"); b.type = "button";
-    b.style.cssText = "display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;cursor:pointer;color:inherit";
-    b.innerHTML = '<b>' + escHtml_(o.title) + '</b><div style="font-size:12px;color:#64748b;margin-top:3px;white-space:pre-line">' + escHtml_(m.replace(/\s+/g, " ").slice(0, 110)) + (m.length > 110 ? "…" : "") + '</div>';
-    b.onclick = () => { ov.remove(); window.open(buildWaUrl_(mob, m), "_blank"); };
-    L.appendChild(b);
-  });
-  ov.querySelector("#mcX").onclick = () => ov.remove();
-  ov.addEventListener("click", ev => { if (ev.target === ov) ov.remove(); });
 }
 function getRowMemberName_(row) {
   return String(row?.[SETTINGS?.MemberColumn] || row?.["Member"] || row?.["Name"] || "").trim();
