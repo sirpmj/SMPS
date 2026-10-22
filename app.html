@@ -2711,15 +2711,29 @@ function buildBankBlock_(row) {
   return t;
 }
 
-function getMessageFromTemplate(type, row) {
-  const forceBuiltin = USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
+/* 🆕 Ek tab ke kai messages: Templates sheet mein Type = "<Tab>-<naam>" (jaise Members-Sammelan Invite, Boli-Sammelan Reminder).
+   Ek se zyada option ho to WhatsApp button par "message chuniye" list khulti hai. */
+function tplOptions_(tab) {
+  const out = [], pre = tab + "-";
+  const isRem = (tab === "Boli" || tab === "Donation");
+  if (isRem) out.push({ k: "", title: "बकाया reminder (ऑटो)" });
+  else if ((window.TEMPLATES && TEMPLATES[tab]) || DEFAULT_TEMPLATES[tab]) out.push({ k: "", title: "मानक message" });
+  Object.keys(window.TEMPLATES || {}).forEach(k => {
+    if (k.indexOf(pre) === 0 && String(TEMPLATES[k] || "").trim()) out.push({ k, title: k.slice(pre.length).trim() || k });
+  });
+  return out;
+}
+function getMessageFromTemplate(type, row, optKey) {
+  if (!optKey && !TEMPLATES[type] && !DEFAULT_TEMPLATES[type]) { const o = tplOptions_(type); if (o.length) optKey = o[0].k; }   // jaise Members: sirf Members-… wale message hon
+  const opt = optKey && TEMPLATES[optKey] ? String(TEMPLATES[optKey]) : "";
+  const forceBuiltin = !opt && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
   // "सहयोग राशि" wali row: message mein Member ki jagah Notes ka naam
   if (row && isAnonMember_(row[SETTINGS?.MemberColumn] || row["Member"])) {
     const mk = (SETTINGS?.MemberColumn && SETTINGS.MemberColumn in row) ? SETTINGS.MemberColumn : "Member";
     row = { ...row, [mk]: displayMemberFromRow_(row) };
   }
-  const usedDefault = (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
-  let template = (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "";
+  const usedDefault = !opt && (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
+  let template = opt || (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "";
   if (!template) return "";
   const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment|CommitBlock)\s*}}/.test(template);
   const hadBankPh = /{{\s*BankDetails\s*}}/.test(template);
@@ -2769,7 +2783,7 @@ function getMessageFromTemplate(type, row) {
   }
 
   template = template.replace(/\\n/g, "\n");
-  if (usedDefault) {
+  if (usedDefault || opt) {
     template = template.replace(/{{[^}]+}}/g, ""); // default template mein jo field row mein nahi, hata do
     template = template.replace(/\n{3,}/g, "\n\n").trim(); // khaali blok hatne par bachi extra khaali lines
   }
@@ -6039,6 +6053,10 @@ function renderActionButtons(row, encId) {
     if(mobile.length === 10){ 
       mobile = defaultCountryCode + mobile; 
     }
+    if (tplOptions_(currentTab).length >= 2) {   // kai message: chuniye
+      btns.push(abBtn_("ab-wa", "wa", "WhatsApp — message चुनें", "", `href="#" onclick="openMsgChooser_('${encId}', event)"`));
+      return layoutActionRows_(btns);
+    }
     const message = getMessageFromTemplate(currentTab, row) || "";
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
@@ -6427,6 +6445,32 @@ function buildWaUrl_(mobileRaw, message) {
   return (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
     .replace("{{Mobile}}", encodeURIComponent(mobile))
     .replace("{{Message}}", encodeURIComponent(message || ""));
+}
+function openMsgChooser_(incomingEnc, e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const id = decodeURIComponent(incomingEnc || "");
+  const rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === id);
+  if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
+  const tab = currentTab, opts = tplOptions_(tab), mob = getRowMobile_(rec);
+  const old = document.getElementById("msgChooser"); if (old) old.remove();
+  const ov = document.createElement("div"); ov.id = "msgChooser";
+  ov.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px";
+  const nm = getRowMemberName_(rec);
+  ov.innerHTML = '<div style="background:#fff;color:#1f2937;border-radius:14px;max-width:460px;width:100%;max-height:86vh;display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.3)">' +
+    '<div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center"><b>📨 कौन सा message भेजें?' + (nm ? '<br><small style="font-weight:400;color:#64748b">' + escHtml_(nm) + '</small>' : '') + '</b><button type="button" id="mcX" style="border:0;background:none;font-size:22px;cursor:pointer">&times;</button></div>' +
+    '<div style="overflow:auto;padding:8px 12px" id="mcL"></div></div>';
+  document.body.appendChild(ov);
+  const L = ov.querySelector("#mcL");
+  opts.forEach(o => {
+    const m = getMessageFromTemplate(tab, rec, o.k) || "";
+    const b = document.createElement("button"); b.type = "button";
+    b.style.cssText = "display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;cursor:pointer;color:inherit";
+    b.innerHTML = '<b>' + escHtml_(o.title) + '</b><div style="font-size:12px;color:#64748b;margin-top:3px;white-space:pre-line">' + escHtml_(m.replace(/\s+/g, " ").slice(0, 110)) + (m.length > 110 ? "…" : "") + '</div>';
+    b.onclick = () => { ov.remove(); window.open(buildWaUrl_(mob, m), "_blank"); };
+    L.appendChild(b);
+  });
+  ov.querySelector("#mcX").onclick = () => ov.remove();
+  ov.addEventListener("click", ev => { if (ev.target === ov) ov.remove(); });
 }
 function getRowMemberName_(row) {
   return String(row?.[SETTINGS?.MemberColumn] || row?.["Member"] || row?.["Name"] || "").trim();

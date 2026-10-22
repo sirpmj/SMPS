@@ -912,7 +912,7 @@ function pubBundle() {
   let cachedStr = null, cached = null;
   try { cachedStr = localStorage.getItem(PUB_KEY); cached = cachedStr ? JSON.parse(cachedStr) : null; } catch (e) { cached = null; }
   const fresh = fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
-    .then(r => r.json()).then(j => (j && j.success) ? j : null).catch(() => null);
+    .then(r => r.json()).then(j => { if (!(j && j.success)) console.error("readSheets failed:", j); return (j && j.success) ? j : null; }).catch(e => { console.error("readSheets error:", e); return null; });
   fresh.then(j => {                                   // taaza data aane par agli baar ke liye save; pehle se alag ho to bar dikhao
     if (!j) return;
     const str = JSON.stringify(j);
@@ -1212,7 +1212,7 @@ function evData(S) {
 }
 function evDateStr() { return DAY[EV.date.getDay()] + ", " + EV.date.getDate() + " " + MON[EV.date.getMonth()] + " " + EV.date.getFullYear(); }
 function drawEvent(S) {
-  SET = S; visDraw(); const box = $("pst"); if (!box) return;
+  SET = S; if (typeof visDraw === "function") visDraw(); const box = $("pst"); if (!box) return;
   const e = evData(S), dd = new Date(e.date.getFullYear(), e.date.getMonth(), e.date.getDate()), days = Math.round((dd - today0()) / 864e5);
   if (days < 0) return;                       // कार्यक्रम बीत गया: card sirf poster ke saath (agar ho) dikhega
   EV = e; EV.date = dd;
@@ -1391,7 +1391,13 @@ function drawJourney(rows) {
 /* ---- Sab data load karke render ---- */
 async function load() {
   const [home, meet, ann, news, _mUnused, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
-  const B0 = await pubBundle(), MS = (B0 && B0.membersSummary) || null;      // poori member list nahi: sirf aane wale janmdin + ginti
+  const B0 = await pubBundle(), MS = (B0 && B0.membersSummary) || null;
+  if (!B0) {   /* server se data nahi aaya — "लोड हो रहा है…" par atkne ki jagah saaf sandesh + dobara koshish */
+    const msg = '<div class="empty" style="padding:14px;text-align:center">⚠️ जानकारी लोड नहीं हो पाई।<br><button type="button" class="btn pri" style="margin-top:8px" onclick="try{localStorage.removeItem(\'smps_pub_v1\')}catch(e){}location.reload()">🔄 दोबारा कोशिश करें</button></div>';
+    ["mts","news","offList","gal"].forEach(function (id) { const e = $(id); if (e) e.innerHTML = msg; });
+    const h = $("hcList"); if (h) h.innerHTML = '<div class="hc-it"><div class="hc-m">जानकारी लोड नहीं हो पाई</div></div>';
+    return;
+  }      // poori member list nahi: sirf aane wale janmdin + ginti
   const members = MS ? MS.bday : [];
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
