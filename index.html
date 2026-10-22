@@ -896,11 +896,16 @@ const ICON = {
 };
 
 /* ---- Sheet se data ---- */
+/* 🔒 Data ab Google Sheet se seedha nahi (sheet private hai) — Apps Script se, ek hi call mein, sirf public/saaf kiya hua */
+let _pub = null;
+function pubBundle() {
+  if (!_pub) _pub = fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
+    .then(r => r.json()).then(j => (j && j.success) ? j : null).catch(() => null);
+  return _pub;
+}
 async function sheet(name) {
-  try {
-    const r = await fetch("https://opensheet.elk.sh/" + SHEET_ID + "/" + encodeURIComponent(name));
-    const j = await r.json(); return Array.isArray(j) ? j : [];
-  } catch (e) { return null; }
+  const b = await pubBundle(); if (!b) return null;
+  const r = b.sheets && b.sheets[name]; return Array.isArray(r) ? r : [];
 }
 /* "नवंबर 2026" / "Nov 2026" / "11/2026" -> us mahine ka aakhri din (mo = sirf mahina, tarikh baad mein) */
 const MONI = { "जनवरी":0,"फ़रवरी":1,"फरवरी":1,"मार्च":2,"अप्रैल":3,"मई":4,"जून":5,"जुलाई":6,"अगस्त":7,"सितंबर":8,"सितम्बर":8,"अक्टूबर":9,"अक्तूबर":9,"नवंबर":10,"नवम्बर":10,"दिसंबर":11,"दिसम्बर":11,
@@ -1366,7 +1371,9 @@ function drawJourney(rows) {
 
 /* ---- Sab data load karke render ---- */
 async function load() {
-  const [home, meet, ann, news, members, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
+  const [home, meet, ann, news, _mUnused, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
+  const B0 = await pubBundle(), MS = (B0 && B0.membersSummary) || null;      // poori member list nahi: sirf aane wale janmdin + ginti
+  const members = MS ? MS.bday : [];
   const t0 = today0(), S = {};
   (set || []).forEach(r => { if (r.Key) S[String(r.Key).trim()] = String(r.Value || "").trim(); });
   drawContact(S);
@@ -1452,14 +1459,9 @@ async function load() {
   }
   NEWS = N; drawNews();
 
-  /* समाज एक नज़र में */
-  if (members && members.length) {
-    const kN = keyOf(members, /^(member|name|नाम|member name)$/i) || keyOf(members, /name|नाम/i), kV = keyOf(members, /origin|village|native|गांव|गाँव|मूल/i), kG = keyOf(members, /gotra|गोत्र/i),
-      kSt = keyOf(members, /^status$/i), kCi = keyOf(members, /^current[\s_]*city$/i) || keyOf(members, /current[\s_]*city|वर्तमान/i) || keyOf(members, /^city$|^शहर$/i);
-    const ok = members.filter(r => String(r[kN] || "").trim() && !(kSt && /pending|inactive|reject/i.test(String(r[kSt] || ""))));
-    const cnt = k => k ? new Set(ok.map(r => String(r[k] || "").trim().toLowerCase()).filter(Boolean)).size : 0;
-    drawStats([[ok.length, "सदस्य"], [cnt(kV), "गाँव"], [cnt(kG), "गोत्र"], [cnt(kCi), "वर्तमान शहर"]].filter(x => x[0]));
-  } else drawStats([]);
+  /* समाज एक नज़र में — server se sirf ginti aati hai */
+  if (MS && MS.stats) drawStats([[MS.stats.n, "सदस्य"], [MS.stats.v, "गाँव"], [MS.stats.g, "गोत्र"], [MS.stats.c, "वर्तमान शहर"]].filter(x => x[0]));
+  else drawStats([]);
 
   /* फोटो */
   const kPh = keyOf(meet || [], /^(meeting[\s_]*)?(photo|image|picture|फोटो)s?([\s_]*(url|link))?$/i) || (meet && meet.length ? Object.keys(meet[0]).find(k => /photo|image|picture|फोटो|चित्र/i.test(k)) : null);

@@ -2849,6 +2849,26 @@ async function preloadFormulaColumnsForAllTabs_() {
   } catch (e) { /* best-effort — fail ho bhi jaye to normal per-tab fetch fallback kaam karega */ }
 }
 
+/* ---- 🔒 sheet padhna: opensheet band. 15 ms ke andar ki saari maangein EK hi Apps Script call mein jati hain ---- */
+const _rsQ = {}; let _rsTimer = null;
+function _rsFlush() {
+  const q = {}; Object.keys(_rsQ).forEach(k => { q[k] = _rsQ[k]; delete _rsQ[k]; }); _rsTimer = null;
+  const names = Object.keys(q); if (!names.length) return;
+  const failAll = e => names.forEach(n => q[n].forEach(c => c.no(e)));
+  fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: names, token: sessionStorage.getItem("smps_token") || "" }) })
+    .then(r => r.text())
+    .then(t => {
+      let j; try { j = JSON.parse(t); } catch (e) { return failAll(new Error("readSheets: bad response")); }
+      if (j && j.code === "AUTH") { forceRelogin_(j.msg); return; }
+      if (!j || !j.success) return failAll(new Error((j && j.msg) || "readSheets failed"));
+      names.forEach(n => q[n].forEach(c => c.ok(Array.isArray(j.sheets && j.sheets[n]) ? j.sheets[n] : [])));
+    })
+    .catch(failAll);
+}
+function _rsGet(name) {
+  return new Promise((ok, no) => { (_rsQ[name] = _rsQ[name] || []).push({ ok, no }); if (!_rsTimer) _rsTimer = setTimeout(_rsFlush, 15); });
+}
+
 async function fetchSheet(sheetName, forceFresh){
   try{
     const now = Date.now();
@@ -2857,10 +2877,7 @@ async function fetchSheet(sheetName, forceFresh){
       return CACHE[sheetName].data;
     }
 
-    const res = await fetch(`https://opensheet.elk.sh/${SHEET_ID}/${encodeURIComponent(sheetName)}`);
-    const json = await res.json();
-
-    const data = Array.isArray(json) ? json : [];
+    const data = await _rsGet(sheetName);      // 🔒 Apps Script (readSheets) se — sheet private ho sakti hai
 
     CACHE[sheetName] = {
       data: data,
@@ -3067,6 +3084,7 @@ async function doPinLogin_() {
     } catch (e) {}
     otpInput.value = "";
     loginInfoMsg.style.display = "none";
+    Object.keys(CACHE).forEach(k => delete CACHE[k]);       // login se pehle ka (public) data hata do — ab poora data aayega
     if (!MEMBERS || Object.keys(MEMBERS).length === 0) { try { MEMBERS = await loadMembers(); } catch (e) {} }
     openApp();
     resetIdleTimer();
