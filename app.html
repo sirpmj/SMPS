@@ -3085,7 +3085,11 @@ async function doPinLogin_() {
     otpInput.value = "";
     loginInfoMsg.style.display = "none";
     Object.keys(CACHE).forEach(k => delete CACHE[k]);       // login se pehle ka (public) data hata do — ab poora data aayega
-    if (!MEMBERS || Object.keys(MEMBERS).length === 0) { try { MEMBERS = await loadMembers(); } catch (e) {} }
+    /* RoleAccess / Members / Templates / Settings login se pehle khaali ya adhure aate hain — login ke turant baad token se dobara lo */
+    try {
+      const [st, tp, ra, mb] = await Promise.all([loadSettings(), loadTemplates(), loadRoleAccess(), loadMembers()]);
+      SETTINGS = st; TEMPLATES = tp; ROLE_ACCESS = ra; MEMBERS = mb;
+    } catch (e) { console.error("post-login reload failed", e); }
     openApp();
     resetIdleTimer();
     if (res.mustChange) openPinDialog_(true);
@@ -3622,7 +3626,9 @@ function canShowCard(cardKey){
 /* ===========================
    Dashboard render
    =========================== */
+let _dashRun = 0;
 async function renderMainDashboard(forceFresh){
+  const _myRun = ++_dashRun;                       // sirf sabse naya render hi cards jodega
 
   el("mainDashboard").style.display="flex";
   el("mainDashboard").innerHTML="";
@@ -3639,6 +3645,7 @@ async function renderMainDashboard(forceFresh){
       fetchSheet("Fund Ledger", forceFresh),
       fetchSheet("Expenses", forceFresh)
     ]);
+    if (_myRun !== _dashRun) return;               // koi naya render shuru ho chuka hai — yeh purana band
 
     // ===== Date/Year/FY Filter =====
     let boliData = boli;
@@ -3923,6 +3930,7 @@ function setActiveTab(name){
 }
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName, forceFresh) {
+  if (!sheetName) return;                          // koi tab chuna hi nahi — "No data in" jaisa khaali message nahi
   try {
     // 🆕 Naye tab ka data aane tak purane tab ka "Add New" button chhupa do —
     // warna loading ke beech click karne par PICHHLE tab ka form khul jaata tha
