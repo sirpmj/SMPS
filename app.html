@@ -3090,6 +3090,9 @@ async function doPinLogin_() {
       const [st, tp, ra, mb] = await Promise.all([loadSettings(), loadTemplates(), loadRoleAccess(), loadMembers()]);
       SETTINGS = st; TEMPLATES = tp; ROLE_ACCESS = ra; MEMBERS = mb;
     } catch (e) { console.error("post-login reload failed", e); }
+    if (!ROLE_ACCESS || !ROLE_ACCESS[currentUser.role]) {          // ek baar phir koshish — tabs ki list zaroori hai
+      try { delete CACHE["RoleAccess"]; ROLE_ACCESS = await loadRoleAccess(); } catch (e) { console.error(e); }
+    }
     openApp();
     resetIdleTimer();
     if (res.mustChange) openPinDialog_(true);
@@ -3200,6 +3203,7 @@ function hideSplash() {
 async function init(){
 
   const savedUser = sessionStorage.getItem("currentUser"); // ✅ FIX
+  const bootHadToken = !!sessionStorage.getItem("smps_token");   // boot ke waqt login (token) tha ya nahi
 
   // login box turant dikhao — data peeche load hota rahega
   if (!savedUser) { try { loginView.style.display = "block"; appView.style.display = "none"; document.body.style.visibility = "visible"; hideSplash(); } catch (e) {} }
@@ -3217,6 +3221,13 @@ async function init(){
     loadMembers(),
     loadRoleAccess()
   ]);
+
+  /* Login box data se pehle dikh jata hai. Agar user data aane se pehle hi login kar chuka hai, to boot ka (bina-login wala,
+     khaali/public) data login ke baad ke poore data ko overwrite na kare — isse tabs gayab ho jate the. */
+  if (!bootHadToken && sessionStorage.getItem("smps_token")) {
+    try { document.body.style.visibility = "visible"; hideSplash(); } catch (e) {}
+    return;
+  }
 
   USERS = usersData;
   TEMPLATES = templatesData;
