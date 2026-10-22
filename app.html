@@ -2855,7 +2855,8 @@ function _rsFlush() {
   const q = {}; Object.keys(_rsQ).forEach(k => { q[k] = _rsQ[k]; delete _rsQ[k]; }); _rsTimer = null;
   const names = Object.keys(q); if (!names.length) return;
   const failAll = e => names.forEach(n => q[n].forEach(c => c.no(e)));
-  fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: names, token: sessionStorage.getItem("smps_token") || "" }) })
+  const fresh = names.filter(n => q[n].some(c => c.fresh));
+  fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: names, fresh: fresh, token: sessionStorage.getItem("smps_token") || "" }) })
     .then(r => r.text())
     .then(t => {
       let j; try { j = JSON.parse(t); } catch (e) { return failAll(new Error("readSheets: bad response")); }
@@ -2865,8 +2866,19 @@ function _rsFlush() {
     })
     .catch(failAll);
 }
-function _rsGet(name) {
-  return new Promise((ok, no) => { (_rsQ[name] = _rsQ[name] || []).push({ ok, no }); if (!_rsTimer) _rsTimer = setTimeout(_rsFlush, 15); });
+function _rsGet(name, fresh) {
+  return new Promise((ok, no) => { (_rsQ[name] = _rsQ[name] || []).push({ ok, no, fresh: !!fresh }); if (!_rsTimer) _rsTimer = setTimeout(_rsFlush, 15); });
+}
+
+/* Dashboard dikhne ke baad background mein: jin tabs ko role dekh sakta hai unka data EK hi call mein le aao,
+   taaki tab par click karte hi turant khule */
+let _prefetchDone = null;
+function prefetchTabsData_() {
+  if (_prefetchDone) return _prefetchDone;
+  const acc = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {};
+  const names = Object.keys(acc).filter(n => acc[n] && acc[n].canView && !CACHE[n]);
+  _prefetchDone = Promise.all(names.map(n => fetchSheet(n).catch(() => []))).then(() => {}, () => {});
+  return _prefetchDone;
 }
 
 async function fetchSheet(sheetName, forceFresh){
@@ -2877,7 +2889,7 @@ async function fetchSheet(sheetName, forceFresh){
       return CACHE[sheetName].data;
     }
 
-    const data = await _rsGet(sheetName);      // 🔒 Apps Script (readSheets) se — sheet private ho sakti hai
+    const data = await _rsGet(sheetName, forceFresh);      // 🔒 Apps Script (readSheets) se — sheet private ho sakti hai
 
     CACHE[sheetName] = {
       data: data,
@@ -3086,9 +3098,13 @@ async function doPinLogin_() {
     loginInfoMsg.style.display = "none";
     Object.keys(CACHE).forEach(k => delete CACHE[k]);       // login se pehle ka (public) data hata do — ab poora data aayega
     /* RoleAccess / Members / Templates / Settings login se pehle khaali ya adhure aate hain — login ke turant baad token se dobara lo */
+    _prefetchDone = null;
     try {
+      // dashboard ka data bhi isi EK call mein mangwa lo (alag se dobara call nahi), taaki dashboard turant dikhe
+      const extra = ["Home", "Boli", "Donation", "Fund Ledger", "Expenses"].map(n => fetchSheet(n).catch(() => []));
       const [st, tp, ra, mb] = await Promise.all([loadSettings(), loadTemplates(), loadRoleAccess(), loadMembers()]);
       SETTINGS = st; TEMPLATES = tp; ROLE_ACCESS = ra; MEMBERS = mb;
+      await Promise.all(extra);
     } catch (e) { console.error("post-login reload failed", e); }
     if (!ROLE_ACCESS || !ROLE_ACCESS[currentUser.role]) {          // ek baar phir koshish — tabs ki list zaroori hai
       try { delete CACHE["RoleAccess"]; ROLE_ACCESS = await loadRoleAccess(); } catch (e) { console.error(e); }
@@ -3558,13 +3574,16 @@ async function openApp(){
   fetchHomeSheet();
   loadFooter(); // 🆕 safety net — login ke baad bhi footer/address dobara populate karo
   buildTabs();
-  preloadFormulaColumnsForAllTabs_(); // 🆕 background mein saare tabs ka Add/Edit cache pehle se bhar do (fire-and-forget, kuch block nahi karta)
+  let _dp = Promise.resolve();
   if (shouldShowDashboard()) {
   el("mainDashboard").style.display = "flex";
-  renderMainDashboard();
+  _dp = renderMainDashboard();
 } else {
   el("mainDashboard").style.display = "none";
 }
+  // dashboard dikhne ke BAAD, background mein: saare tabs ka data (ek call) aur Add/Edit ke formula-columns pehle se bhar lo
+  Promise.resolve(_dp).catch(() => {}).then(() => new Promise(r => setTimeout(r, 300)))
+    .then(() => prefetchTabsData_()).then(() => preloadFormulaColumnsForAllTabs_()).catch(e => console.warn(e));
 
   // 🆕 Ab koi bhi tab default mein auto-open nahi hoti — jab tak user khud
   // kisi tab par click na kare, content area khaali/band rehta hai (sirf
