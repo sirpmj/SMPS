@@ -760,7 +760,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
         <ol class="steps">
           <li><div><b>सदस्यता फॉर्म भरें</b><span>पोर्टल पर "New / Update Member" से अपना और परिवार का विवरण दें।</span></div></li>
           <li><div><b>कार्यकारिणी से सत्यापन</b><span>पदाधिकारी विवरण जाँचकर आपको सदस्य के रूप में जोड़ते हैं।</span></div></li>
-          <li><div><b>WhatsApp OTP से लॉगिन</b><span>अपने मोबाइल नंबर पर आए OTP से पोर्टल खोलें और सब जानकारी देखें।</span></div></li>
+          <li><div><b>PIN से लॉगिन</b><span>अपने मोबाइल नंबर और कार्यकारिणी से मिले PIN से पोर्टल खोलें और सब जानकारी देखें।</span></div></li>
         </ol>
         <a class="btn pri" href="app.html?new=1" style="margin-top:22px;width:100%">सदस्य बनें (New / Update Member)</a>
         <a class="btn sec" id="loginAbout" href="app.html" style="margin-top:10px;width:100%">पोर्टल में लॉगिन करें</a>
@@ -898,9 +898,28 @@ const ICON = {
 /* ---- Sheet se data ---- */
 /* 🔒 Data ab Google Sheet se seedha nahi (sheet private hai) — Apps Script se, ek hi call mein, sirf public/saaf kiya hua */
 let _pub = null;
+const PUB_KEY = "smps_pub_v1";
+function showUpdateBar() {
+  if (document.getElementById("updBar") || !document.body) return;
+  const d = document.createElement("div"); d.id = "updBar";
+  d.textContent = "🔄 नई जानकारी आई है — ताज़ा करने के लिए यहाँ दबाएँ";
+  d.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9999;background:#7a1f1f;color:#fff;padding:10px 16px;border-radius:24px;font:600 14px system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;max-width:92vw;text-align:center";
+  d.onclick = () => location.reload();
+  document.body.appendChild(d);
+}
 function pubBundle() {
-  if (!_pub) _pub = fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
+  if (_pub) return _pub;
+  let cachedStr = null, cached = null;
+  try { cachedStr = localStorage.getItem(PUB_KEY); cached = cachedStr ? JSON.parse(cachedStr) : null; } catch (e) { cached = null; }
+  const fresh = fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
     .then(r => r.json()).then(j => (j && j.success) ? j : null).catch(() => null);
+  fresh.then(j => {                                   // taaza data aane par agli baar ke liye save; pehle se alag ho to bar dikhao
+    if (!j) return;
+    const str = JSON.stringify(j);
+    try { localStorage.setItem(PUB_KEY, str); } catch (e) {}
+    if (cachedStr && str !== cachedStr) showUpdateBar();
+  });
+  _pub = (cached && cached.sheets) ? Promise.resolve(cached) : fresh;   // pichhli baar ka data turant dikhao, peeche se naya laao
   return _pub;
 }
 async function sheet(name) {

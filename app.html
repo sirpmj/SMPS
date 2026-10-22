@@ -3097,6 +3097,10 @@ async function doPinLogin_() {
     otpInput.value = "";
     loginInfoMsg.style.display = "none";
     Object.keys(CACHE).forEach(k => delete CACHE[k]);       // login se pehle ka (public) data hata do — ab poora data aayega
+    if (res.bundle && res.bundle.sheets) {                   // login ke jawab mein hi pehla data aa gaya — alag se call nahi
+      const _now = Date.now();
+      Object.keys(res.bundle.sheets).forEach(n => { CACHE[n] = { data: res.bundle.sheets[n], time: _now }; });
+    }
     /* RoleAccess / Members / Templates / Settings login se pehle khaali ya adhure aate hain — login ke turant baad token se dobara lo */
     _prefetchDone = null;
     try {
@@ -6021,10 +6025,11 @@ function renderActionButtons(row, encId) {
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
   }
-  if (currentTab === "News" && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
+  if ((currentTab === "News" || currentTab === "Announcements") && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
     const _k = Object.keys(row), _f = re => _k.find(k => re.test(String(k).trim()));
-    const _t = String(row[_f(/^title|शीर्षक/i)] || "").trim(), _m = String(row[_f(/message|detail|विवरण|समाचार|text/i)] || "").trim();
-    const _msg = "📰 *" + (_t || "समाज की खबर") + "*\n" + _m + "\n\n🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
+    const _isAnn = currentTab === "Announcements";
+    const _t = String(row[_f(/^(title|subject|heading|शीर्षक|विषय)/i)] || "").trim(), _m = String(row[_f(/message|detail|description|विवरण|समाचार|सूचना|text/i)] || "").trim();
+    const _msg = (_isAnn ? "📢 *" : "📰 *") + (_t || (_isAnn ? "समाज की सूचना" : "समाज की खबर")) + "*\n" + _m + "\n\n🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp भेजें", "", `target="_blank" href="https://api.whatsapp.com/send?text=${encodeURIComponent(_msg)}"`));
   } else if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
@@ -6535,7 +6540,7 @@ function updateCommitToolbar_(sheetName) {
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
-  const canWa = (ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || []).includes("WHATSAPP");
+  const canWa = currentUser?.role === "Admin" || (ROLE_ACCESS?.[currentUser?.role]?.[sheetName]?.canAction || []).includes("WHATSAPP");
   if (bulk) bulk.style.display = (on && canWa) ? "inline-block" : "none";
 }
 function openCommitView_(sheetName, mode) {
@@ -6877,7 +6882,7 @@ function openMeetingView_(incomingEnc, start, e) {
 // 🆕 v1.257: Minutes ko "चर्चा / निर्णय" (points) aur "✅ कार्य (किसे / कब तक)" mein todo / jodo; WhatsApp message banao
 function splitMinutes_(text) {
   const t = String(text || "").replace(/\r/g, "").trim();
-  const m = t.match(/^\s*✅\s*कार्य.*$/m);
+  const m = t.match(/^[ \t]*✅[ \t]*कार्य.*$/m);      // [ \t] — pehle \s* khaali line se match hokar heading ko bhi "kaam" bana deta tha
   const head = m ? t.slice(0, m.index) : t;
   const tail = m ? t.slice(m.index).split("\n").slice(1) : [];
   const numbered = /^\s*\d+[.)]\s/.test(head.trim());
@@ -8376,6 +8381,189 @@ if ('serviceWorker' in navigator) {
   if (typeof renderMeetingUpdates === "function") { const _m = renderMeetingUpdates; renderMeetingUpdates = async function () { const r = await _m.apply(this, arguments); try { await decorateMeetingRsvp_(); } catch (e) {} return r; }; }
   // safety: agar login render hamare wrap se pehle chal chuka ho
   [2500, 6000].forEach(ms => setTimeout(() => { try { const b = document.getElementById("gpNotices"); if (b && !b.innerHTML) renderNotices_(); decorateMeetingRsvp_(); } catch (e) {} }, ms));
+})();
+</script>
+<script>
+/* =========================================================================
+   📨 मैसेज केंद्र — Members / Meetings / Announcements / News से कई सदस्यों को WhatsApp संदेश
+   WhatsApp ek बार में ek hi chat kholta hai, isliye yahan "queue" hai: सूची में हर सदस्य के आगे WhatsApp बटन
+   (ya ▶ अगला भेजें) — हर बार उसी सदस्य का नाम लगा हुआ संदेश खुलता है, aap bas "Send" dabate jao.
+   ========================================================================= */
+(function () {
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const acc = t => (ROLE_ACCESS && currentUser && ROLE_ACCESS[currentUser.role] && ROLE_ACCESS[currentUser.role][t]) || null;
+  const canSend = t => { const a = acc(t); return !!currentUser && (currentUser.role === "Admin" || !!(a && a.canView && (a.canAction || []).includes("WHATSAPP"))); };
+  const kf = (r, re) => Object.keys(r || {}).find(k => re.test(String(k).trim()));
+  const val = (r, re) => { const k = kf(r, re); return k ? String(r[k] == null ? "" : r[k]).trim() : ""; };
+  const nmKey = s => String(s || "").replace(/\(.*?\)/g, " ").replace(/^\s*\d+[.)\s]+/, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const first = s => String(s || "").replace(/\s*\(.*$/, "").replace(/\s+/g, " ").trim();
+  const isAct = r => !/pending|inactive|reject/i.test(String(r.Status || r.status || ""));
+  const fmtD = v => { try { const d = parseRowDate_(v); if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); } catch (e) {} return String(v || ""); };
+  const members = () => Object.values(MEMBERS || {}).map(r => ({ name: String(r.Member || r.Name || "").trim(), mobile: String(r.Mobile || r.mobile || "").replace(/\D/g, "").slice(-10), st: r }))
+    .filter(m => m.name && m.mobile.length === 10 && isAct(m.st));
+  const TABS = ["Members", "Meetings", "Announcements", "News"];
+  const SIGN = "🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
+  const NOTES_RE = /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i;
+
+  function minutesBody(rec, text, att) {
+    const sm = splitMinutes_(text);
+    let msg = "";
+    if (sm.points.length) msg += "*चर्चा / निर्णय:*\n" + sm.points.map((p, i) => (i + 1) + ". " + p).join("\n");
+    if (sm.tasks.length) msg += (msg ? "\n\n" : "") + "*✅ कार्य सूची (किसे / कब तक):*\n" + sm.tasks.map((k, i) => (i + 1) + ". " + k.t + (k.w || k.d ? "\n    " + (k.w ? "👤 " + k.w : "") + (k.w && k.d ? "   " : "") + (k.d ? "📅 " + k.d : "") : "")).join("\n");
+    if (att) msg += (msg ? "\n\n" : "") + "👥 उपस्थित: " + att;
+    return msg;
+  }
+  function attNames(rec) {
+    const a = val(rec, /^attendance$/i);
+    return a ? Array.from(new Set(a.split(/[,\n;]+/).map(x => nmKey(x)).filter(Boolean))) : [];
+  }
+  function rowLabel(tab, r) {
+    const d = fmtD(val(r, /^date$/i)), t = val(r, /^(subject|title|topic|agenda|विषय|शीर्षक)/i) || val(r, /detail|description|message|विवरण/i);
+    return ((d ? d + " — " : "") + (t || "(बिना शीर्षक)")).slice(0, 90);
+  }
+  function presets(tab, r) {
+    const hi = "🙏 जय श्रीयादे माता की {{Name}} जी!\n\n";
+    if (tab === "Members") return [
+      { k: "invite", label: "🔗 समाज पोर्टल लिंक + PIN से लॉगिन", text:
+        "👋 जय श्रीयादे माता की {{Name}} जी!\n\n🙏 श्री मेवाड़ प्रजापत समाज – वापी में अपने रिकॉर्ड को देखने, अपडेट करने और नया जोड़ने हेतु, कृपया नीचे दिए गए लिंक पर क्लिक करें 👇\n\n🔗 https://sirpmj.github.io/SMPS/\n\n👇 उसके बाद देखने के लिए\n📱 अपना मोबाइल नंबर और समाज से मिला PIN डालकर लॉगिन करें।\n🔑 PIN न मिला हो तो कार्यकारिणी से लें। पहली बार लॉगिन पर नया PIN बनाना होगा।\n\n💡 अपडेट या नया जोड़ने के लिए\nNew / Update Member पर क्लिक करें। For Help call 8866338793\n\nधन्यवाद 🙏\nश्री मेवाड़ प्रजापत समाज – वापी" },
+      { k: "blank", label: "✍️ खुद लिखें", text: hi + "\n\n" + SIGN }
+    ];
+    if (tab === "Meetings") {
+      const subj = val(r, /^(subject|title|topic|agenda|विषय)/i), tm = val(r, /time|समय/i), ve = val(r, /venue|place|location|स्थान/i), d = fmtD(val(r, /^date$/i));
+      const notes = val(r, NOTES_RE), att = attNames(r);
+      const notice = hi + "📢 *" + (subj || "समाज की मीटिंग") + "*\n📅 तारीख: " + d + (tm ? "\n⏰ समय: " + tm : "") + (ve ? "\n📍 स्थान: " + ve : "") + "\n\nकृपया समय पर पधारें। 🙏\n\n" + SIGN;
+      const mb = minutesBody(r, notes, att.length);
+      return [
+        { k: "notice", label: "📢 मीटिंग की सूचना", text: notice },
+        { k: "minutes", label: "📋 मिनट्स (मीटिंग में क्या हुआ)", text: hi + "📋 *मीटिंग मिनट्स*\n📅 " + d + (subj ? "\n📌 " + subj : "") + (mb ? "\n\n" + mb : "\n\n(मिनट्स अभी नहीं लिखे गए)") + "\n\n" + SIGN },
+        { k: "thanks", label: "🙏 उपस्थित सदस्यों को धन्यवाद + मिनट्स", text: hi + d + " की मीटिंग में उपस्थित रहने के लिए हार्दिक धन्यवाद। 🙏" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN },
+        { k: "absent", label: "🕊️ अनुपस्थित सदस्यों को सूचना + मिनट्स", text: hi + d + " की मीटिंग में आप उपस्थित नहीं हो पाए। कोई बात नहीं 🙏 मीटिंग की जानकारी नीचे है।" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN }
+      ];
+    }
+    if (tab === "Announcements" || tab === "News") {
+      const t = val(r, /^(title|subject|heading|शीर्षक|विषय)/i), m = val(r, /message|detail|description|text|विवरण|सूचना|समाचार/i);
+      return [{ k: "post", label: (tab === "News" ? "📰 खबर" : "📢 घोषणा"), text: hi + (tab === "News" ? "📰 *" : "📢 *") + (t || (tab === "News" ? "समाज की खबर" : "समाज की सूचना")) + "*\n" + m + "\n\n" + SIGN }];
+    }
+    return [];
+  }
+
+  window.openMsgCenter_ = function () {
+    const tab = currentTab;
+    if (TABS.indexOf(tab) < 0) return;
+    if (!canSend(tab)) { alert("इस टैब पर संदेश भेजने की अनुमति नहीं है (RoleAccess में WHATSAPP चाहिए)।"); return; }
+    const mem = members();
+    const rowTab = tab !== "Members";
+    let rows = (tableData || []).slice();
+    rows.sort((a, b) => { const x = parseRowDate_(val(a, /^date$/i)), y = parseRowDate_(val(b, /^date$/i)); return (y ? +y : 0) - (x ? +x : 0); });
+    const m = openModal_("📨 मैसेज भेजें — " + tab);
+    const L = (t) => `<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">${t}</label>`;
+    const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
+    m.body.innerHTML =
+      (rowTab ? L(tab === "Meetings" ? "कौन सी मीटिंग" : "कौन सी पोस्ट") + `<select id="mcRow" ${sty}>${rows.map((r, i) => `<option value="${i}">${esc(rowLabel(tab, r))}</option>`).join("")}</select>` : "") +
+      L("किन्हें भेजना है") + `<select id="mcGrp" ${sty}></select>` +
+      L("संदेश का प्रकार") + `<select id="mcTpl" ${sty}></select>` +
+      L("संदेश — {{Name}} की जगह हर सदस्य का नाम अपने आप लगेगा (आप बदल भी सकते हैं)") + `<textarea id="mcTxt" rows="9" ${sty}></textarea>` +
+      `<div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div><div id="mcList"></div>`;
+    const $ = id => m.body.querySelector("#" + id);
+    if (rowTab && !rows.length) { m.body.innerHTML = "<p class='muted'>इस टैब में अभी कोई रिकॉर्ड नहीं है।</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close)); return; }
+
+    let list = [], done = new Set(), sel = new Set(), tpls = [];
+    const curRow = () => rowTab ? rows[+$("mcRow").value] : null;
+    const groups = () => {
+      if (tab === "Members") return [{ k: "list", t: "इस list के सदस्य (search / filter के अनुसार)" }, { k: "all", t: "सभी सक्रिय सदस्य" }];
+      if (tab === "Meetings") return [{ k: "all", t: "सभी सक्रिय सदस्य" }, { k: "pres", t: "सिर्फ़ उपस्थित सदस्य" }, { k: "abs", t: "सिर्फ़ अनुपस्थित सदस्य" }];
+      return [{ k: "all", t: "सभी सक्रिय सदस्य" }];
+    };
+    const recipients = () => {
+      const g = $("mcGrp").value;
+      if (tab === "Members" && g === "list") {
+        const seen = new Set();
+        return (lastFilteredRows_ || []).map(r => ({ name: getRowMemberName_(r), mobile: getRowMobile_(r).slice(-10) }))
+          .filter(x => x.name && x.mobile.length === 10 && !seen.has(x.mobile) && seen.add(x.mobile));
+      }
+      if (tab === "Meetings" && g !== "all") {
+        const att = new Set(attNames(curRow()));
+        return mem.filter(x => (g === "pres") === att.has(nmKey(x.name)));
+      }
+      return mem;
+    };
+    const textFor = i => $("mcTxt").value.replace(/\{\{\s*Name\s*\}\}/gi, first(list[i].name));
+    const refreshInfo = () => {
+      const s = Array.from(sel);
+      $("mcInfo").textContent = "चुने गए: " + s.length + " / " + list.length + "  •  भेजे गए: " + s.filter(i => done.has(i)).length;
+    };
+    const send = i => {
+      window.open(buildWaUrl_(list[i].mobile, textFor(i)), "_blank");
+      done.add(i);
+      const row = $("mcList").querySelector(`[data-i="${i}"]`);
+      if (row) { row.style.opacity = ".5"; row.querySelector(".tick").textContent = "✔"; }
+      refreshInfo();
+    };
+    const drawList = () => {
+      done = new Set(); sel = new Set(list.map((_, i) => i));
+      $("mcList").innerHTML = list.length ? list.map((x, i) =>
+        `<div data-i="${i}" style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eee;padding:7px 0">
+           <input type="checkbox" class="ck" checked style="width:auto">
+           <div style="flex:1;min-width:0;font-size:13px"><b>${esc(x.name)}</b> <span style="color:#64748b">${esc(x.mobile)}</span></div>
+           <span class="tick" style="color:#1a9c4b;font-weight:700"></span>
+           <button type="button" class="go" style="background:#25a244;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;width:auto">WhatsApp</button>
+         </div>`).join("") : "<p class='muted'>इस समूह में mobile वाला कोई सक्रिय सदस्य नहीं मिला।</p>";
+      $("mcList").querySelectorAll("[data-i]").forEach(d => {
+        const i = +d.dataset.i;
+        d.querySelector(".ck").onchange = e => { e.target.checked ? sel.add(i) : sel.delete(i); refreshInfo(); };
+        d.querySelector(".go").onclick = () => send(i);
+      });
+      refreshInfo();
+    };
+    const fillTpl = () => { const t = tpls[$("mcTpl").selectedIndex]; if (t) $("mcTxt").value = t.text; };
+    const rebuild = () => {
+      list = recipients(); drawList();
+    };
+    const rebuildTpl = () => {
+      tpls = presets(tab, curRow());
+      $("mcTpl").innerHTML = tpls.map(t => `<option>${esc(t.label)}</option>`).join("");
+      fillTpl();
+    };
+    $("mcGrp").innerHTML = groups().map(g => `<option value="${g.k}">${esc(g.t)}</option>`).join("");
+    if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); };
+    $("mcGrp").onchange = rebuild;
+    $("mcTpl").onchange = () => {
+      fillTpl();
+      if (tab === "Meetings") {                 // thanks → उपस्थित, absent → अनुपस्थित, baaki → सभी
+        const k = tpls[$("mcTpl").selectedIndex].k, g = k === "thanks" ? "pres" : k === "absent" ? "abs" : "all";
+        if ($("mcGrp").value !== g) { $("mcGrp").value = g; rebuild(); }
+      }
+    };
+    rebuildTpl(); rebuild();
+
+    m.foot.appendChild(modalBtn_("☑ सभी / कोई नहीं", "#475569", () => {
+      const all = sel.size === list.length;
+      sel = new Set(all ? [] : list.map((_, i) => i));
+      $("mcList").querySelectorAll(".ck").forEach(c => { c.checked = !all; });
+      refreshInfo();
+    }));
+    m.foot.appendChild(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => {
+      const i = list.findIndex((_, k) => sel.has(k) && !done.has(k));
+      if (i === -1) { alert("चुने हुए सभी को भेज दिया गया है।"); return; }
+      const row = $("mcList").querySelector(`[data-i="${i}"]`); if (row) row.scrollIntoView({ block: "center" });
+      send(i);
+    }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+
+  /* ---- toolbar button ---- */
+  function msgBtn_(sheetName) {
+    const anchor = document.getElementById("dirBtn") || document.getElementById("addNewBtn"); if (!anchor || !anchor.parentNode) return;
+    let b = document.getElementById("msgCenterBtn");
+    if (!b) {
+      b = document.createElement("button"); b.id = "msgCenterBtn"; b.type = "button"; b.title = "सदस्यों को WhatsApp संदेश भेजें"; b.setAttribute("aria-label", b.title); b.textContent = "📨";
+      b.style.cssText = "background:#25a244;color:#fff;border:none;border-radius:8px;padding:4px 8px;font-size:15px;height:38px;width:auto;cursor:pointer";
+      b.onclick = window.openMsgCenter_;
+      anchor.parentNode.insertBefore(b, anchor.nextSibling);
+    }
+    b.style.display = (TABS.indexOf(sheetName) >= 0 && canSend(sheetName)) ? "inline-block" : "none";
+  }
+  if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { msgBtn_(n); } catch (e) {} return r; }; }
 })();
 </script>
 <script>
