@@ -8564,7 +8564,7 @@ New / Update Member पर क्लिक करें। For Help call 8866338
     return ((d ? d + " — " : "") + (t || "(बिना शीर्षक)")).slice(0, 90);
   }
   /* preset: { k, label, text, grp (kaun se samooh par khud lage), plain (Boli/Donation: bank/vaada apne aap na jode) } */
-  function presets(tab, r) {
+  function presetsBuiltin(tab, r) {
     const hi = "🙏 जय श्रीयादे माता की {{Name}} जी!\n\n";
     if (tab === "Members") return [
       { k: "sammelan", label: "✨ स्नेह सम्मेलन निमंत्रण", text: SAMMELAN_INVITE },
@@ -8599,6 +8599,25 @@ New / Update Member पर क्लिक करें। For Help call 8866338
       return [{ k: "post", label: (tab === "News" ? "📰 खबर" : "📢 घोषणा"), text: hi + (tab === "News" ? "📰 *" : "📢 *") + (t || (tab === "News" ? "समाज की खबर" : "समाज की सूचना")) + "*\n" + m + "\n\n" + SIGN }];
     }
     return [];
+  }
+  /* Google Sheet ke "Templates" tab se bhi sandesh: Type = "<Tab>: <naam>" (jaise  Members: दिवाली शुभकामना  ya  Boli: कल पधारें),
+     Message = sandesh ({{Member}} {{For}} {{Date}} aadi chalte hain). Built-in jaisa hi naam ho to usse badal deta hai, nahi to naya jud jata hai. */
+  const stripEmoji = t => String(t || "").replace(/^[^A-Za-z0-9\u0900-\u097F]+/, "").trim();
+  function presets(tab, r) {
+    const arr = presetsBuiltin(tab, r);
+    const pre = (tab + ":").toLowerCase();
+    Object.keys(TEMPLATES || {}).forEach(k => {
+      const key = String(k).trim();
+      if (key.toLowerCase().indexOf(pre) !== 0) return;
+      const label = key.slice(pre.length).trim();
+      const text = String(TEMPLATES[k] || "").replace(/\\n/g, "\n");
+      if (!label || !text.trim()) return;
+      const it = { k: "sheet:" + label, label: "📄 " + label, text: text, grp: "all", plain: true, meet: tab === "Meetings" };
+      const i = arr.findIndex(p => stripEmoji(p.label) === stripEmoji(label));
+      if (i >= 0) { it.label = arr[i].label; it.grp = arr[i].grp || "all"; arr[i] = it; }
+      else { const b = arr.findIndex(p => p.k === "blank"); if (b >= 0) arr.splice(b, 0, it); else arr.push(it); }
+    });
+    return arr;
   }
   const NAMEPH = /\{\{\s*(Name|Member)\s*\}\}/gi;
 

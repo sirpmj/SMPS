@@ -849,7 +849,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
     <div id="fReg2">Reg No: A/1221</div>
     <div class="fl"><a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a></div>
     <div id="fAddr" style="margin-bottom:6px"></div>
-    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.290</div>
+    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.291</div>
     <div class="vis" id="visBox" hidden title="सिर्फ़ गिनती — किसी की कोई निजी जानकारी नहीं ली जाती">👁 कुल दर्शक: <b id="visN">–</b></div>
   </div>
 </footer>
@@ -915,12 +915,15 @@ function showFailBar() {
   d.onclick = () => location.reload();
   document.body.appendChild(d);
 }
-function pubFetchOnce() {
+function pubFetchOnce(viaGet) {
   const ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
   const to = ctl ? setTimeout(() => ctl.abort(), 25000) : 0;      // 25 second se zyada nahi rukna
-  // names bhi bhejte hain — purana server ho to bhi chale; naya server "bundle" se ek hi cache-blob deta hai
-  return fetch(WEB_APP_URL, { method: "POST", signal: ctl ? ctl.signal : undefined,
-      body: JSON.stringify({ action: "readSheets", bundle: "public", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
+  // POST: names bhi bhejte hain — purana server ho to bhi chale. Dobara koshish GET se (kuch network POST rokte hain).
+  const req = viaGet
+    ? fetch(WEB_APP_URL + "?action=publicBundle", { signal: ctl ? ctl.signal : undefined })
+    : fetch(WEB_APP_URL, { method: "POST", signal: ctl ? ctl.signal : undefined,
+        body: JSON.stringify({ action: "readSheets", bundle: "public", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) });
+  return req
     .then(r => r.json())
     .then(j => (j && j.success && j.sheets && Object.keys(j.sheets).length) ? j : null)
     .catch(() => null)
@@ -930,7 +933,7 @@ function pubBundle() {
   if (_pub) return _pub;
   let cachedStr = null, cached = null;
   try { cachedStr = localStorage.getItem(PUB_KEY); cached = cachedStr ? JSON.parse(cachedStr) : null; } catch (e) { cached = null; }
-  const fresh = pubFetchOnce().then(j => j || new Promise(r => setTimeout(r, 2500)).then(pubFetchOnce));   // ek baar apne aap dobara
+  const fresh = pubFetchOnce(false).then(j => j || new Promise(r => setTimeout(r, 2000)).then(() => pubFetchOnce(true)));   // ek baar apne aap dobara
   fresh.then(j => {                                   // taaza data aane par agli baar ke liye save; pehle se alag ho to bar dikhao
     if (!j) { if (!cached) showFailBar(); return; }
     const str = JSON.stringify(j);
