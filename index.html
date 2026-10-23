@@ -4,27 +4,18 @@
 <title>मेवाड़ प्रजापत समाज वापी</title>
 <meta name="description" content="श्री मेवाड़ प्रजापत समाज-वापी (Reg No: A/1221): बैठक, कार्यक्रम, सूचनाएँ, कार्यकारिणी, फोटो और सहयोग की जानकारी।">
 <meta name="theme-color" content="#0a2a5e">
-<meta property="og:type" content="website"><meta property="og:locale" content="hi_IN"><meta property="og:locale:alternate" content="en_IN">
-<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज-वापी">
-<meta property="og:url" content="https://sirpmj.github.io/SMPS/">
-<link rel="canonical" href="https://sirpmj.github.io/SMPS/">
+<meta property="og:type" content="website"><meta property="og:locale" content="hi_IN">
 <meta property="og:title" content="तृतीय स्नेह सम्मेलन · रविवार, 10 जनवरी 2027 — श्री मेवाड़ प्रजापत समाज-वापी">
-<meta property="og:description" content="सपरिवार पधारें · अनाविल भवन (आर.एस.), ओरवाड़, उडवाड़ा · सुबह 8:00 से शाम 4:00 बजे तक। | Third Sneh Sammelan, Sun 10 Jan 2027 — Anavil Bhavan, Udvada.">
-<meta property="og:image" content="https://sirpmj.github.io/SMPS/og-image.jpg">
-<meta property="og:image:secure_url" content="https://sirpmj.github.io/SMPS/og-image.jpg">
-<meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:description" content="सपरिवार पधारें · अनाविल भवन (आर.एस.), ओरवाड़, उडवाड़ा · सुबह 8:00 से शाम 4:00 बजे तक। बैठक, सूचनाएँ और सहयोग, सब एक जगह।">
+<meta property="og:image" content="https://sirpmj.github.io/SMPS/poster-1.png">
 <meta property="og:image:alt" content="तृतीय स्नेह सम्मेलन का पोस्टर">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="तृतीय स्नेह सम्मेलन · 10 जनवरी 2027 — श्री मेवाड़ प्रजापत समाज-वापी">
-<meta name="twitter:description" content="सपरिवार पधारें · अनाविल भवन (आर.एस.), उडवाड़ा · Third Sneh Sammelan, 10 Jan 2027.">
-<meta name="twitter:image" content="https://sirpmj.github.io/SMPS/og-image.jpg">
 <link rel="icon" href="Logo-192.png">
 <link rel="manifest" href="manifest.json">
 <script>window.__dp=null;addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__dp=e;window.dispatchEvent(new Event("smps-installable"));});if("serviceWorker"in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
 <link rel="apple-touch-icon" href="Logo-192.png">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<script src="i18n.js"></script>
 <script>if(/[?&](pay|debug)(=|&|$)/.test(location.search))location.replace("app.html"+location.search+location.hash);</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -886,7 +877,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
 <script>
 /* ====== समाज की वेबसाइट: जानकारी सीधे समाज की Google Sheet से आती है (वही जो पोर्टल में है) ====== */
 const SHEET_ID = "1Ws2WH9ZT7-aBSlJAKqBHCWqTO57Ayxvj2ZPQxSSVUiI";
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP5M44_rAkq9qV0kLcbRY3nEkaZW7LQ7kFE_8viSJNyIG0s5OY7smqBgyjBs1WFTgThA/exec";
 const PORTAL = "app.html";
 const BANK = { name: "SHREE MEWAD PRAJAPAT SAMAJ VAPI", bank: "HDFC Bank Ltd.", acc: "50200121768661", ifsc: "HDFC0000737", upi: "50200121768661@HDFC0000737.ifsc.npci" };
 
@@ -1237,7 +1228,7 @@ function applyContent(S) {
 }
 
 /* ================= सम्मेलन: उलटी गिनती, फ़ॉर्म, नक्शा, कैलेंडर ================= */
-const API_URL = "https://script.google.com/macros/s/AKfycbyxeS1QrS6h19gZ7zG5zbpx25PH51n0NURECmG0IZ-O3Uj7ZGUW7fLdrmQR_Nu3dxxUlA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyP5M44_rAkq9qV0kLcbRY3nEkaZW7LQ7kFE_8viSJNyIG0s5OY7smqBgyjBs1WFTgThA/exec";
 let EV = null, SET = {};
 function evData(S) {
   const d = (S.EventDate && (parseDate(S.EventDate) || findDate(S.EventDate))) || new Date(2027, 0, 10);
