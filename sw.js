@@ -1,6 +1,6 @@
-// SMPS service worker — v12: HTML/manifest network-first (naya version turant dikhe), baaki cache-first
-const CACHE = "smps-app-v12";
-const PRE = ["./", "./index.html", "./app.html", "./manifest.json", "./Logo-192.png", "./Logo-512.png"];
+// SMPS service worker — v13 (i18n.js jodi, JS bhi network-first): HTML/manifest network-first (naya version turant dikhe), baaki cache-first
+const CACHE = "smps-app-v13";
+const PRE = ["./", "./index.html", "./app.html", "./i18n.js", "./og-image.jpg", "./manifest.json", "./Logo-192.png", "./Logo-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(PRE.map(u => c.add(u)))));
@@ -11,7 +11,7 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const r = e.request;
   if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
-  const isDoc = r.mode === "navigate" || /\.(html|json|webmanifest)$/.test(new URL(r.url).pathname);
+  const isDoc = r.mode === "navigate" || /\.(html|json|webmanifest|js)$/.test(new URL(r.url).pathname);
   if (isDoc) {
     e.respondWith(fetch(r).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)); return res; })
       .catch(() => caches.match(r).then(m => m || caches.match("./index.html"))));

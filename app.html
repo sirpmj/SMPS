@@ -197,6 +197,17 @@
   v1.225  (previous base version)
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="i18n.js"></script>
+<meta name="description" content="श्री मेवाड़ प्रजापत समाज-वापी — सदस्य लॉगिन पोर्टल (बैठक, सूचनाएँ, खाता, बोली / दान)। Member login portal.">
+<meta property="og:type" content="website"><meta property="og:locale" content="hi_IN"><meta property="og:locale:alternate" content="en_IN">
+<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज-वापी">
+<meta property="og:url" content="https://sirpmj.github.io/SMPS/app.html">
+<meta property="og:title" content="सदस्य लॉगिन — श्री मेवाड़ प्रजापत समाज-वापी">
+<meta property="og:description" content="अपने मोबाइल नंबर और PIN से लॉगिन करें · बैठक, सूचनाएँ, अपना खाता और भुगतान। | Member login — Shree Mewad Prajapat Samaj, Vapi.">
+<meta property="og:image" content="https://sirpmj.github.io/SMPS/og-image.jpg">
+<meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://sirpmj.github.io/SMPS/og-image.jpg">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
 <script>window.APP_VERSION = "v1.240"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
@@ -2603,6 +2614,11 @@ const DEFAULT_TEMPLATES = {
 // Templates sheet ka nahi. Sheet wala chahiye to false kar dein.
 const USE_BUILTIN_REMINDER_TEMPLATES = true;
 
+// 🆕 true = 📨 मैसेज भेजें mein sandesh SIRF Google Sheet ke "Templates" tab se aayenge (ek hi Type kai baar ho sakta hai;
+//          ya  Members-Invite / Boli: कल पधारें  jaise naam). Us tab ka koi template sheet mein na ho to hi app ke apne chalenge.
+//          false = purane built-in sandesh bhi saath dikhenge.
+const SHEET_TEMPLATES_ONLY = true;
+
 // Boli / Donation message ke hisse: dhanyavaad line, bakaya line
 function buildReminderParts_(type, row) {
   const inr = n => "₹" + Number(n).toLocaleString("en-IN");
@@ -2941,9 +2957,14 @@ async function loadUsers(){
 async function loadTemplates(){
   const data = await fetchSheet("Templates");
   const templates = {};
+  const list = [];
   data.forEach(row=>{
-    if(row.Type) templates[row.Type] = row.Message || "";
+    if(row.Type){
+      templates[row.Type] = row.Message || "";                       // purana tareeka (ek Type = ek msg, aakhri wala)
+      if(String(row.Message || "").trim()) list.push({ type: String(row.Type).trim(), message: String(row.Message) });  // 🆕 saari rows — ek Type kai baar ho sakta hai
+    }
   });
+  window.TEMPLATE_LIST = list;
   return templates;
 }
 async function loadSettings(){
@@ -3841,7 +3862,7 @@ async function renderMainDashboard(forceFresh){
 //   (order sirf CSS variable --o se, mobile CSS hi use karti hai — desktop par DOM order jyon ka tyon)
 const DASH_ORDER_ = [
   [/total members/i, 1], [/fund balance/i, 2], [/cash balance/i, 3], [/bank balance/i, 4],
-  [/total income/i, 5], [/total expense/i, 6], [/pending boli/i, 7], [/pending donation/i, 8], [/आज के वादे/, 99]
+  [/total income/i, 5], [/total expense/i, 6], [/pending boli/i, 7], [/pending donation/i, 8], [/आज के वादे|today.s commitments/i, 99]
 ];
 const DASH_TAB_ = [
   [/total members/i, "Members"], [/fund balance/i, "Fund Ledger"], [/cash balance/i, "Cash Book"], [/bank balance/i, "Bank Book"],
@@ -8600,24 +8621,65 @@ New / Update Member पर क्लिक करें। For Help call 8866338
     }
     return [];
   }
-  /* Google Sheet ke "Templates" tab se bhi sandesh: Type = "<Tab>: <naam>" (jaise  Members: दिवाली शुभकामना  ya  Boli: कल पधारें),
-     Message = sandesh ({{Member}} {{For}} {{Date}} aadi chalte hain). Built-in jaisa hi naam ho to usse badal deta hai, nahi to naya jud jata hai. */
+  /* Google Sheet ke "Templates" tab se sandesh (SAARI rows — ek Type kai baar bhi ho sakta hai).
+     Tab se match:  Type = Members | Members-Invite | Members: दिवाली | Boli-Sammelan | Birthday | Anniversary | Announcement ...
+     Naam (dropdown mein):  "-" ya ":" ke baad wala hissa; na ho to sandesh ki pehli kaam ki line.  {{Member}} {{Name}} {{For}} {{Date}} aadi chalte hain. */
   const stripEmoji = t => String(t || "").replace(/^[^A-Za-z0-9\u0900-\u097F]+/, "").trim();
-  function presets(tab, r) {
-    const arr = presetsBuiltin(tab, r);
-    const pre = (tab + ":").toLowerCase();
-    Object.keys(TEMPLATES || {}).forEach(k => {
-      const key = String(k).trim();
-      if (key.toLowerCase().indexOf(pre) !== 0) return;
-      const label = key.slice(pre.length).trim();
-      const text = String(TEMPLATES[k] || "").replace(/\\n/g, "\n");
-      if (!label || !text.trim()) return;
-      const it = { k: "sheet:" + label, label: "📄 " + label, text: text, grp: "all", plain: true, meet: tab === "Meetings" };
-      const i = arr.findIndex(p => stripEmoji(p.label) === stripEmoji(label));
-      if (i >= 0) { it.label = arr[i].label; it.grp = arr[i].grp || "all"; arr[i] = it; }
-      else { const b = arr.findIndex(p => p.k === "blank"); if (b >= 0) arr.splice(b, 0, it); else arr.push(it); }
+  const TPL_ALIAS_ = { members: ["members", "member", "birthday", "anniversary"], meetings: ["meetings", "meeting"], announcements: ["announcements", "announcement"],
+                       news: ["news"], boli: ["boli"], donation: ["donation"], receipts: ["receipts", "receipt"], expenses: ["expenses", "expense"] };
+  function tplLabel_(msg, i) {
+    const good = String(msg).split("\n").map(x => x.replace(/[*_~]/g, "").trim())
+      .filter(x => x && x.indexOf("{{") < 0).map(stripEmoji)
+      .filter(x => x.length > 3 && !/जय श्रीयादे|नमस्ते|आशा है|हृदय से|^धन्यवाद|समाज के समाज बंधुओं/.test(x)).slice(0, 6);
+    const t = good.sort((a, b) => b.length - a.length)[0] || ("संदेश " + (i + 1));
+    return t.length > 36 ? t.slice(0, 34) + "…" : t;
+  }
+  function sheetPresets_(tab) {
+    const list = window.TEMPLATE_LIST || [];
+    const al = TPL_ALIAS_[String(tab).toLowerCase()] || [String(tab).toLowerCase()];
+    const out = [], seenText = new Map(), seenLabel = new Map();
+    list.forEach((it, idx) => {
+      const type = String(it.type || "").trim();
+      const m = type.match(/^([^:\-–—]+?)\s*[:\-–—]\s*(.+)$/);
+      const base = (m ? m[1] : type).trim().toLowerCase();
+      if (al.indexOf(base) < 0) return;
+      const text = String(it.message || "").replace(/\\n/g, "\n").replace(/{{\s*Titile\s*}}/gi, "{{Title}}");
+      if (!text.trim()) return;
+      let label = m ? m[2].trim() : (/^(birthday|anniversary)$/i.test(type) ? type : "");
+      const named = !!label;
+      if (!label) label = tplLabel_(text, out.length);
+      const key = text.replace(/[\s*_]+/g, "");
+      if (seenText.has(key)) {                               // wahi sandesh dobara (jaise naam wala aur bina naam wala) — naam wala rakho
+        const j = seenText.get(key);
+        if (named && !out[j].named) { out[j].label = "📄 " + label; out[j].named = true; }
+        return;
+      }
+      const n = (seenLabel.get(label) || 0) + 1; seenLabel.set(label, n);
+      const money = tab === "Boli" || tab === "Donation";
+      const o = { k: "sheet:" + idx, label: "📄 " + label + (n > 1 ? " (" + n + ")" : ""), text: text, plain: true, meet: tab === "Meetings", named: named };
+      if (money) o.grp = /Pending|बकाया|बाकी/i.test(text) ? "pend" : "all";
+      else if (tab === "Meetings") o.grp = "all";
+      seenText.set(key, out.length);
+      out.push(o);
     });
-    return arr;
+    return out;
+  }
+  function presets(tab, r) {
+    const built = presetsBuiltin(tab, r);
+    const sh = sheetPresets_(tab);
+    if (!sh.length) return built;
+    if (SHEET_TEMPLATES_ONLY) { const bl = built.find(p => p.k === "blank"); return sh.concat(bl ? [bl] : []); }
+    return sh.concat(built);
+  }
+  // Announcements / News / Notices ke sheet-template mein {{Title}} {{Message}} {{Date}} aadi us row se bharo
+  function fillRowPh_(t, row) {
+    if (!row) return t;
+    return String(t).replace(/{{\s*([^}]+?)\s*}}/g, (m0, k) => {
+      if (/^(member|name)$/i.test(k)) return m0;
+      const rk = Object.keys(row).find(x => x.trim().toLowerCase() === k.toLowerCase());
+      if (rk == null) return m0;
+      return /^date$/i.test(k) ? formatDate(row[rk]) : (row[rk] == null ? "" : String(row[rk]));
+    });
   }
   const NAMEPH = /\{\{\s*(Name|Member)\s*\}\}/gi;
 
@@ -8673,6 +8735,7 @@ New / Update Member पर क्लिक करें। For Help call 8866338
       let t = $("mcTxt").value;
       if (money) t = getMessageFromTemplate(tab, list[i].row, t, { plain: !!curTpl().plain });   // {{For}}, {{Pledged Boli}}, bank / vaada engine se
       else if (curTpl().meet) t = getMessageFromTemplate("Meetings", curRow(), t, { plain: true }); // {{Date}} {{Time}} {{Place}} {{Details}}
+      else if (rowTab && curTpl().plain) t = fillRowPh_(t, curRow());                                 // 🆕 Announcement / News: {{Title}} {{Message}} {{Date}}
       return t.replace(NAMEPH, money ? list[i].name : first(list[i].name));
     };
     const refreshInfo = () => {
