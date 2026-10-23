@@ -907,40 +907,35 @@ function showUpdateBar() {
   d.onclick = () => location.reload();
   document.body.appendChild(d);
 }
-/* 🆕 v1.284: data ek baar fail ho to dobara koshish; backend ne jo sheet padh nahi payi use purane (cache) data se bharo */
-const PUB_NAMES = ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"];
-function fetchPubOnce_() {
-  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 25000);
-  return fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "readSheets", names: PUB_NAMES, membersSummary: true }), signal: ctl.signal })
-    .then(r => r.json()).then(j => { clearTimeout(to); return (j && j.success && j.sheets) ? j : null; }).catch(() => { clearTimeout(to); return null; });
+function showFailBar() {
+  if (document.getElementById("failBar") || !document.body) return;
+  const d = document.createElement("div"); d.id = "failBar";
+  d.textContent = "⚠️ जानकारी लोड नहीं हो पाई — दोबारा कोशिश करने के लिए यहाँ दबाएँ";
+  d.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9999;background:#8a3b00;color:#fff;padding:10px 16px;border-radius:24px;font:600 14px system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer;max-width:92vw;text-align:center";
+  d.onclick = () => location.reload();
+  document.body.appendChild(d);
 }
-const pubWait_ = ms => new Promise(r => setTimeout(r, ms));
-function fetchPub_() {
-  return fetchPubOnce_().then(j => j || pubWait_(1500).then(fetchPubOnce_)).then(j => j || pubWait_(3000).then(fetchPubOnce_));
-}
-function mergePub_(fresh, old) {
-  if (!fresh) return null;
-  const failed = Array.isArray(fresh.failed) ? fresh.failed : [];
-  if (old && old.sheets) failed.forEach(n => { if (Array.isArray(old.sheets[n]) && old.sheets[n].length) fresh.sheets[n] = old.sheets[n]; });
-  if (!fresh.membersSummary && old && old.membersSummary) fresh.membersSummary = old.membersSummary;
-  delete fresh.failed;
-  return fresh;
+function pubFetchOnce() {
+  const ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  const to = ctl ? setTimeout(() => ctl.abort(), 25000) : 0;      // 25 second se zyada nahi rukna
+  // names bhi bhejte hain — purana server ho to bhi chale; naya server "bundle" se ek hi cache-blob deta hai
+  return fetch(WEB_APP_URL, { method: "POST", signal: ctl ? ctl.signal : undefined,
+      body: JSON.stringify({ action: "readSheets", bundle: "public", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) })
+    .then(r => r.json())
+    .then(j => (j && j.success && j.sheets && Object.keys(j.sheets).length) ? j : null)
+    .catch(() => null)
+    .then(j => { if (to) clearTimeout(to); return j; });
 }
 function pubBundle() {
   if (_pub) return _pub;
   let cachedStr = null, cached = null;
   try { cachedStr = localStorage.getItem(PUB_KEY); cached = cachedStr ? JSON.parse(cachedStr) : null; } catch (e) { cached = null; }
-  const fresh = fetchPub_().then(j => mergePub_(j, cached));
+  const fresh = pubFetchOnce().then(j => j || new Promise(r => setTimeout(r, 2500)).then(pubFetchOnce));   // ek baar apne aap dobara
   fresh.then(j => {                                   // taaza data aane par agli baar ke liye save; pehle se alag ho to bar dikhao
-    if (!j) return;
+    if (!j) { if (!cached) showFailBar(); return; }
     const str = JSON.stringify(j);
     try { localStorage.setItem(PUB_KEY, str); } catch (e) {}
-    if (cachedStr && str !== cachedStr) {
-      const core = ["Settings", "HomeStructure", "Meetings", "News"];
-      const oldBad = !cached || !cached.sheets || core.some(n => !(cached.sheets[n] && cached.sheets[n].length) && j.sheets[n] && j.sheets[n].length);
-      if (oldBad && typeof load === "function") { _pub = Promise.resolve(j); load().catch(e => console.error("reload:", e)); }   // purana adhoora data tha → seedha naya dikhao
-      else showUpdateBar();
-    }
+    if (cachedStr && str !== cachedStr) showUpdateBar();
   });
   _pub = (cached && cached.sheets) ? Promise.resolve(cached) : fresh;   // pichhli baar ka data turant dikhao, peeche se naya laao
   return _pub;
@@ -1413,12 +1408,6 @@ function drawJourney(rows) {
 
 /* ---- Sab data load karke render ---- */
 async function load() {
-  if (!(await pubBundle())) {   // 🆕 v1.284: data nahi aaya → "लोड हो रहा है…" par atke nahi, saaf bata do
-    const msg = EMPTY('डेटा लोड नहीं हो सका। <a href="#" onclick="location.reload();return false">फिर कोशिश करें</a>');
-    ["mts", "news", "offList", "gal"].forEach(id => { if ($(id)) $(id).innerHTML = msg; });
-    if ($("hcList")) $("hcList").innerHTML = '<div class="hc-it"><div class="hc-m">लोड नहीं हो सका — <a href="#" onclick="location.reload();return false">फिर कोशिश करें</a></div></div>';
-    return;
-  }
   const [home, meet, ann, news, _mUnused, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
   const B0 = await pubBundle(), MS = (B0 && B0.membersSummary) || null;      // poori member list nahi: sirf aane wale janmdin + ginti
   const members = MS ? MS.bday : [];

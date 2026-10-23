@@ -8,11 +8,6 @@
 <meta charset="utf-8">
 <!--
   ===== VERSION HISTORY =====
-  v1.284  (Templates sheet: Tab + Title column)
-   - Templates sheet ke "Tab" column se template us tab ka ho jata hai; "Title" list mein naam dikhata hai
-   - Ek tab ke 2+ templates ho to WhatsApp icon dabane par list khulti hai (preview ke saath), chuno aur WhatsApp khul jata hai
-   - Members tab: Invite / Greeting / Intro / Thanks / Portal / Birthday / Anniversary — sab list mein; Boli tab: reminder + Sammelan yaad
-   - {{Member}} ab Members sheet ke naam wale column se bhi bharta hai
   v1.281  (mobile fit)
    - Header: अ / 🌙 / 📲 buttons ab title ke upar nahi chadhte (title ke liye jagah chhodi)
    - Bank card: UPI ID ki line label ke neeche poori chaudai mein — beech se nahi tutti (mobile + desktop)
@@ -203,7 +198,7 @@
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
-<script>window.APP_VERSION = "v1.284"; console.info("SMPS app", window.APP_VERSION);
+<script>window.APP_VERSION = "v1.240"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
 document.addEventListener("DOMContentLoaded", function () {
   var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -2716,15 +2711,16 @@ function buildBankBlock_(row) {
   return t;
 }
 
-function getMessageFromTemplate(type, row, tplOv) {
-  const forceBuiltin = !tplOv && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
+function getMessageFromTemplate(type, row, overrideText, opts) {
+  const hasOv = typeof overrideText === "string";                 // 🆕 message-center se diya hua text (placeholder yahin bharte hain)
+  const forceBuiltin = !hasOv && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
   // "सहयोग राशि" wali row: message mein Member ki jagah Notes ka naam
   if (row && isAnonMember_(row[SETTINGS?.MemberColumn] || row["Member"])) {
     const mk = (SETTINGS?.MemberColumn && SETTINGS.MemberColumn in row) ? SETTINGS.MemberColumn : "Member";
     row = { ...row, [mk]: displayMemberFromRow_(row) };
   }
-  const usedDefault = !tplOv && (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
-  let template = (tplOv ? tplOv.message : (forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type]))) || "";
+  const usedDefault = !hasOv && (forceBuiltin || !TEMPLATES[type]) && !!DEFAULT_TEMPLATES[type];
+  let template = hasOv ? overrideText : ((forceBuiltin ? DEFAULT_TEMPLATES[type] : (TEMPLATES[type] || DEFAULT_TEMPLATES[type])) || "");
   if (!template) return "";
   const hadCommitPlaceholder = /{{\s*(Commitments|NextCommitment|CommitBlock)\s*}}/.test(template);
   const hadBankPh = /{{\s*BankDetails\s*}}/.test(template);
@@ -2749,6 +2745,7 @@ function getMessageFromTemplate(type, row, tplOv) {
     })
     .replace(/{{\s*UPILink\s*}}/g, () => buildPayLink_(row))
     .replace(/{{\s*PendingAmount\s*}}/g, () => String(getPendingAmount_(row)))
+    .replace(/{{\s*Pledged\s*}}/g, () => { const pk = Object.keys(row).find(x => /^pledged/i.test(x.trim())); return pk ? String(row[pk] == null ? "" : row[pk]) : ""; })
     .replace(/{{\s*PendingLine\s*}}/g, () => {
       const pa = getPendingAmount_(row);
       return pa > 0 ? "💰 *बाकी राशि: ₹" + pa.toLocaleString("en-IN") + "*" : "";
@@ -2758,8 +2755,6 @@ function getMessageFromTemplate(type, row, tplOv) {
     const val = row[key] || "";
     template = template.replace(new RegExp(`{{${key}}}`, "g"), () => val);
   }
-  // 🆕 v1.284: {{Member}} ka column naam alag ho to bhi naam bhar do
-  template = template.replace(/{{\s*Member\s*}}/g, () => getRowMemberName_(row));
   template = template.replace(/{{Date}}/g, () => formatDate(row["Date"]));
   template = template.replace(/{{Amount}}/g, () => toNumber(row["Amount"]).toLocaleString());
 
@@ -2782,7 +2777,7 @@ function getMessageFromTemplate(type, row, tplOv) {
   }
 
   // 🆕 Boli/Donation reminder: वादा + bank details apne aap jod do (agar template mein pehle se nahi)
-  if ((type === "Boli" || type === "Donation") && !(tplOv && tplOv.type !== type)) {
+  if ((type === "Boli" || type === "Donation") && !(opts && opts.plain)) {
     if (!hadCommitPlaceholder && commits.length) {
       const cBlock = "🗓️ *आपके द्वारा दी गई तारीख:*\n" + commits.map(formatCommitmentLine_).join("\n");
       const ls0 = template.split("\n");
@@ -2807,58 +2802,8 @@ function getMessageFromTemplate(type, row, tplOv) {
       }
     }
   }
-  if (tplOv) template = template.replace(/{{[^}]+}}/g, "").replace(/\n{3,}/g, "\n\n").trim();
   return template;
 }
-
-/* ===========================
-   🆕 v1.284: Templates sheet — Tab + Title column se ek tab ke KAI templates.
-   Tab mein WhatsApp icon dabane par list khulti hai, wahan se message chuno.
-   =========================== */
-function templatesForTab_(tab) {
-  const t = String(tab || "").trim().toLowerCase();
-  return (window.TEMPLATE_LIST || []).filter(x => x.tab.toLowerCase() === t && String(x.message || "").trim());
-}
-function findRowByEnc_(encId) {
-  const incoming = decodeURIComponent(encId || "");
-  let rec = tableData.find(r => (resolveRecordId_(r).recordId || "") === incoming);
-  if (!rec) rec = tableData.find(r => (r["ID"] || "") === incoming);
-  const mc = SETTINGS && SETTINGS["MemberColumn"];
-  if (!rec && mc) rec = tableData.find(r => (r[mc] || "") === incoming);
-  if (!rec) rec = tableData.find(r => Object.values(r).some(v => String(v) === incoming));
-  return rec;
-}
-function openTemplatePicker_(encId, e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const row = findRowByEnc_(encId);
-  if (!row) { alert("रिकॉर्ड नहीं मिला।"); return; }
-  const mobile = getRowMobile_(row);
-  const m = openModal_("💬 WhatsApp संदेश चुनें" + (getRowMemberName_(row) ? " — " + getRowMemberName_(row) : ""));
-  if (!mobile) {
-    const w = document.createElement("div");
-    w.style.cssText = "background:#fef3c7;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px;color:#92400e;";
-    w.textContent = "इस रिकॉर्ड में mobile नंबर नहीं है।";
-    m.body.appendChild(w);
-  }
-  templatesForTab_(currentTab).forEach(tp => {
-    // Boli/Donation ka apna reminder: app ka built-in (bank + वादा ke saath) hi chale
-    const builtinRem = USE_BUILTIN_REMINDER_TEMPLATES && tp.type === currentTab && (tp.type === "Boli" || tp.type === "Donation");
-    const ov = builtinRem ? null : tp;
-    const msg = getMessageFromTemplate(tp.type, row, ov) || "";
-    const card = document.createElement("div");
-    card.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;";
-    const h = document.createElement("div"); h.style.cssText = "font-weight:700;font-size:14px;margin-bottom:4px;"; h.textContent = tp.title;
-    const p = document.createElement("div"); p.style.cssText = "font-size:12px;color:#64748b;white-space:pre-line;max-height:3.6em;overflow:hidden;"; p.textContent = msg;
-    card.appendChild(h); card.appendChild(p);
-    card.onclick = () => {
-      if (!mobile) { alert("इस रिकॉर्ड में mobile नंबर नहीं है।"); return; }
-      m.close(); window.open(buildWaUrl_(mobile, msg), "_blank");
-    };
-    m.body.appendChild(card);
-  });
-  m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
-}
-
 /* ===========================
    Fetch helper (OpenSheet)
    =========================== */
@@ -2996,15 +2941,9 @@ async function loadUsers(){
 async function loadTemplates(){
   const data = await fetchSheet("Templates");
   const templates = {};
-  const list = [];
   data.forEach(row=>{
-    if(row.Type) {
-      templates[row.Type] = row.Message || "";
-      // 🆕 v1.284: Tab + Title column — ek tab ke kai templates (WhatsApp par dabate hi list se chuno)
-      list.push({ type: String(row.Type).trim(), tab: String(row.Tab || row.Type).trim(), title: String(row.Title || row.Type).trim(), message: row.Message || "" });
-    }
+    if(row.Type) templates[row.Type] = row.Message || "";
   });
-  window.TEMPLATE_LIST = list;
   return templates;
 }
 async function loadSettings(){
@@ -6102,16 +6041,11 @@ function renderActionButtons(row, encId) {
     if(mobile.length === 10){ 
       mobile = defaultCountryCode + mobile; 
     }
-    const _tl = templatesForTab_(currentTab);
-    if (_tl.length > 1 || (_tl.length === 1 && _tl[0].type !== currentTab)) {   // 🆕 v1.284: kai templates → list se chuno
-      btns.push(abBtn_("ab-wa", "wa", "WhatsApp (संदेश चुनें)", "", `href="#" onclick="openTemplatePicker_('${encId}', event)"`));
-    } else {
     const message = getMessageFromTemplate(currentTab, row) || "";
     const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
       .replace("{{Mobile}}", encodeURIComponent(mobile))
       .replace("{{Message}}", encodeURIComponent(message));
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
-    }
   }
   return layoutActionRows_(btns);
 }
@@ -6645,6 +6579,7 @@ function openCommitSummary_() {
    =========================== */
 function openBulkReminders_() {
   if (currentTab !== "Boli" && currentTab !== "Donation") return;
+  if (typeof window.openMsgCenter_ === "function") { window.openMsgCenter_(); return; }   // naya: kai tarah ke sandesh chunne wala
   const all = lastFilteredRows_ || [];
   const items = all.filter(r => getPendingAmount_(r) > 0 && getRowMobile_(r));
   const skipped = all.filter(r => getPendingAmount_(r) > 0 && !getRowMobile_(r)).length;
@@ -8453,9 +8388,10 @@ if ('serviceWorker' in navigator) {
 </script>
 <script>
 /* =========================================================================
-   📨 मैसेज केंद्र — Members / Meetings / Announcements / News से कई सदस्यों को WhatsApp संदेश
+   📨 मैसेज केंद्र — Members / Meetings / Announcements / News / Boli / Donation se कई सदस्यों को WhatsApp संदेश
    WhatsApp ek बार में ek hi chat kholta hai, isliye yahan "queue" hai: सूची में हर सदस्य के आगे WhatsApp बटन
-   (ya ▶ अगला भेजें) — हर बार उसी सदस्य का नाम लगा हुआ संदेश खुलता है, aap bas "Send" dabate jao.
+   (ya ▶ अगला भेजें) — हर बार उसी सदस्य का (नाम / बोली / राशि लगा हुआ) संदेश खुलता है, aap bas "Send" dabate jao.
+   संदेश: नीचे PRESETS में बदलें, या app mein संदेश-डिब्बे में सीधे बदल दें.
    ========================================================================= */
 (function () {
   const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -8469,9 +8405,147 @@ if ('serviceWorker' in navigator) {
   const fmtD = v => { try { const d = parseRowDate_(v); if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); } catch (e) {} return String(v || ""); };
   const members = () => Object.values(MEMBERS || {}).map(r => ({ name: String(r.Member || r.Name || "").trim(), mobile: String(r.Mobile || r.mobile || "").replace(/\D/g, "").slice(-10), st: r }))
     .filter(m => m.name && m.mobile.length === 10 && isAct(m.st));
-  const TABS = ["Members", "Meetings", "Announcements", "News"];
+  const TABS = ["Members", "Meetings", "Announcements", "News", "Boli", "Donation"];
   const SIGN = "🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
   const NOTES_RE = /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i;
+
+  /* ---------------- आपके तैयार संदेश (यहीं बदल सकते हैं) ---------------- */
+  const BANK = `• खाता नाम: SHREE MEWAD PRAJAPAT SAMAJ VAPI
+• बैंक नाम: HDFC Bank Ltd.
+• खाता संख्या: 50200121768661
+• IFSC Code: HDFC0000737
+• UPI ID : 50200121768661@HDFC0000737.ifsc.npci`;
+  const BOLI_REMIND = `💰 जय श्रीयादे माता की 🙏
+
+नमस्ते {{Member}},
+
+आपके द्वारा {{For}} की बोली ₹{{Pledged Boli}} में लेने के लिए
+श्री मेवाड़ प्रजापत समाज, वापी आपका हृदय से आभार एवं धन्यवाद करता है।
+
+आपकी बोली की राशि {{For}} के लिए ₹{{Pledged Boli}} में से ₹{{Pending Dues Boli}} अभी बकाया है।
+
+कृपया बाकी राशि समय पर जमा करें।
+
+${BANK}
+
+आपके सहयोग से समाज के कार्यों को नई ऊर्जा एवं मजबूती मिलती है।
+
+🙏 धन्यवाद
+श्री मेवाड़ प्रजापत समाज, वापी`;
+  const DON_REMIND = `💰 जय श्रीयादे माता की 🙏
+
+नमस्ते {{Member}},
+
+आपके द्वारा {{For}} हेतु ₹{{Pledged}} के सहयोग के लिए
+श्री मेवाड़ प्रजापत समाज, वापी आपका हृदय से आभार एवं धन्यवाद करता है।
+
+आपकी सहयोग राशि {{For}} के लिए ₹{{Pledged}} में से ₹{{PendingAmount}} अभी बकाया है।
+
+कृपया बाकी राशि समय पर जमा करें।
+
+${BANK}
+
+आपके सहयोग से समाज के कार्यों को नई ऊर्जा एवं मजबूती मिलती है।
+
+🙏 धन्यवाद
+श्री मेवाड़ प्रजापत समाज, वापी`;
+  const BOLI_EVENT = `नमस्ते {{Member}}
+आपने {{For}} की बोली ली है,
+जो दिनांक 10/01/2027 को संपन्न होगी।
+इसके लिए आपका हृदय से धन्यवाद। 🙏
+कृपया आप कल सुबह समय से (जल्दी) पधारें।
+—
+श्री मेवाड़ प्रजापत समाज, वापी`;
+  const SAMMELAN_INVITE = `👋 जय श्रीयादे माता की 🙏
+
+नमस्ते *{{Member}}*,
+आशा है आप सभी स्वस्थ और प्रसन्न होंगे।
+
+आपको सपरिवार
+✨ *तृतीय वार्षिक स्नेह सम्मेलन – 2027* ✨
+में सादर आमंत्रित किया जाता है।
+
+📅 *रविवार | 10 जनवरी 2027*
+📍 स्थान: अनाविल भवन (आर.एस.), उदवाडा
+https://maps.app.goo.gl/61Xg8H6qgAHUYNC97
+
+🙏 आपसे सपरिवार पधारने का
+विनम्र निवेदन 🙏
+
+— *श्री मेवाड़ प्रजापत समाज, वापी*`;
+  const SAMMELAN_THANKS = `🙏 जय श्रीयादे माता की 🙏
+
+नमस्ते {{Member}} जी,
+
+तृतीय वार्षिक स्नेह सम्मेलन – 2027 में
+आपकी उपस्थिति / सहयोग के लिए
+श्री मेवाड़ प्रजापत समाज, वापी की ओर से
+आपका हृदय से आभार एवं धन्यवाद 🙏
+
+आपके समय, स्नेह, सहयोग एवं सहभागिता से
+कार्यक्रम को सफल बनाने में
+समाज को विशेष ऊर्जा एवं प्रेरणा प्राप्त हुई।
+
+इसी प्रकार आगे भी
+समाज के प्रत्येक कार्य में
+आपका सहयोग अपेक्षित है।
+
+🌸 धन्यवाद – आभार – कृतज्ञता 🌸
+
+— श्री मेवाड़ प्रजापत समाज, वापी`;
+  const NAMASTE = `👋 जय श्रीयादे माता की !
+समाज के समाज बंधुओं को नमस्ते।
+आशा है आप सभी स्वस्थ और प्रसन्न होंगे।
+🙏श्री मेवाड़ प्रजापत समाज-वापी`;
+  const INTRO = `👋 जय श्रीयादे माता की !
+नमस्ते।
+आशा है आप स्वस्थ और प्रसन्न होंगे।
+आप अपना पूरा परिचय 8000932893 पर भेजे-
+पूरा नाम :
+मोबाइल :
+गोत्र :
+व्यवसाय / फर्म :
+गाँव का नाम / जिला :
+वर्तमान शहर :
+🙏श्री मेवाड़ प्रजापत समाज-वापी`;
+  const PORTAL = `👋 जय श्रीयादे माता की!
+नमस्ते,
+
+🙏 श्री मेवाड़ प्रजापत समाज – वापी में अपने रिकॉर्ड को देखने, अपडेट करने और नया जोड़ने हेतु, कृपया नीचे दिए गए लिंक पर क्लिक करें 👇
+
+🔗 https://sirpmj.github.io/SMPS/
+
+👇 उसके बाद देखने के लिए
+📱 अपना मोबाइल नंबर और समाज से मिला PIN डालकर लॉगिन करें।
+🔑 PIN न मिला हो तो कार्यकारिणी से लें। पहली बार लॉगिन पर नया PIN बनाना होगा।
+
+💡 अपडेट या नया जोड़ने के लिए
+New / Update Member पर क्लिक करें। For Help call 8866338793
+
+धन्यवाद 🙏
+श्री मेवाड़ प्रजापत समाज – वापी`;
+  const MEET_NOTICE = `📅 *मीटिंग सूचना*
+
+🙏 जय श्रीयादे माता की! 🙏
+
+*श्री मेवाड़ प्रजापत समाज, वापी*
+
+सभी *मेवाड़ प्रजापत समाज-वापी* के सम्मानित समाज बंधुओं को सूचित किया जाता है कि —
+
+📅 *दिनांक:* {{Date}}
+🕒 *समय:* {{Time}}
+📍 *स्थान:* {{Place}}
+
+📌 {{Details}}
+
+आप सभी से *विनम्र अनुरोध* है कि समय पर पधारकर समाज के प्रति अपनी भागीदारी निभाएं एवं समाज के कार्यों में अपना सहयोग प्रदान करें।
+
+📢 *कृपया अपनी उपस्थिति कन्फर्म करें।*
+
+🙏 *धन्यवाद* 🙏
+*मेवाड़ प्रजापत समाज – वापी*
+
+*जय श्रीयादे माता की!* 🙏`;
 
   function minutesBody(rec, text, att) {
     const sm = splitMinutes_(text);
@@ -8489,23 +8563,35 @@ if ('serviceWorker' in navigator) {
     const d = fmtD(val(r, /^date$/i)), t = val(r, /^(subject|title|topic|agenda|विषय|शीर्षक)/i) || val(r, /detail|description|message|विवरण/i);
     return ((d ? d + " — " : "") + (t || "(बिना शीर्षक)")).slice(0, 90);
   }
+  /* preset: { k, label, text, grp (kaun se samooh par khud lage), plain (Boli/Donation: bank/vaada apne aap na jode) } */
   function presets(tab, r) {
     const hi = "🙏 जय श्रीयादे माता की {{Name}} जी!\n\n";
     if (tab === "Members") return [
-      { k: "invite", label: "🔗 समाज पोर्टल लिंक + PIN से लॉगिन", text:
-        "👋 जय श्रीयादे माता की {{Name}} जी!\n\n🙏 श्री मेवाड़ प्रजापत समाज – वापी में अपने रिकॉर्ड को देखने, अपडेट करने और नया जोड़ने हेतु, कृपया नीचे दिए गए लिंक पर क्लिक करें 👇\n\n🔗 https://sirpmj.github.io/SMPS/\n\n👇 उसके बाद देखने के लिए\n📱 अपना मोबाइल नंबर और समाज से मिला PIN डालकर लॉगिन करें।\n🔑 PIN न मिला हो तो कार्यकारिणी से लें। पहली बार लॉगिन पर नया PIN बनाना होगा।\n\n💡 अपडेट या नया जोड़ने के लिए\nNew / Update Member पर क्लिक करें। For Help call 8866338793\n\nधन्यवाद 🙏\nश्री मेवाड़ प्रजापत समाज – वापी" },
+      { k: "sammelan", label: "✨ स्नेह सम्मेलन निमंत्रण", text: SAMMELAN_INVITE },
+      { k: "thanks", label: "🌸 सम्मेलन आभार / धन्यवाद", text: SAMMELAN_THANKS },
+      { k: "portal", label: "🔗 समाज पोर्टल लिंक + PIN से लॉगिन", text: PORTAL },
+      { k: "intro", label: "📝 परिचय भेजने का अनुरोध", text: INTRO },
+      { k: "namaste", label: "👋 सामान्य नमस्ते", text: NAMASTE },
       { k: "blank", label: "✍️ खुद लिखें", text: hi + "\n\n" + SIGN }
     ];
+    if (tab === "Boli") return [
+      { k: "remind", label: "💰 बकाया राशि याद दिलाएँ", text: BOLI_REMIND, grp: "pend" },
+      { k: "event", label: "📅 बोली दिवस सूचना (कल पधारें)", text: BOLI_EVENT, grp: "all", plain: true },
+      { k: "blank", label: "✍️ खुद लिखें", text: "🙏 जय श्रीयादे माता की {{Member}} जी!\n\n\n\n" + SIGN, grp: "all", plain: true }
+    ];
+    if (tab === "Donation") return [
+      { k: "remind", label: "💰 बकाया राशि याद दिलाएँ", text: DON_REMIND, grp: "pend" },
+      { k: "blank", label: "✍️ खुद लिखें", text: "🙏 जय श्रीयादे माता की {{Member}} जी!\n\n\n\n" + SIGN, grp: "all", plain: true }
+    ];
     if (tab === "Meetings") {
-      const subj = val(r, /^(subject|title|topic|agenda|विषय)/i), tm = val(r, /time|समय/i), ve = val(r, /venue|place|location|स्थान/i), d = fmtD(val(r, /^date$/i));
+      const subj = val(r, /^(subject|title|topic|agenda|विषय)/i), d = fmtD(val(r, /^date$/i));
       const notes = val(r, NOTES_RE), att = attNames(r);
-      const notice = hi + "📢 *" + (subj || "समाज की मीटिंग") + "*\n📅 तारीख: " + d + (tm ? "\n⏰ समय: " + tm : "") + (ve ? "\n📍 स्थान: " + ve : "") + "\n\nकृपया समय पर पधारें। 🙏\n\n" + SIGN;
       const mb = minutesBody(r, notes, att.length);
       return [
-        { k: "notice", label: "📢 मीटिंग की सूचना", text: notice },
-        { k: "minutes", label: "📋 मिनट्स (मीटिंग में क्या हुआ)", text: hi + "📋 *मीटिंग मिनट्स*\n📅 " + d + (subj ? "\n📌 " + subj : "") + (mb ? "\n\n" + mb : "\n\n(मिनट्स अभी नहीं लिखे गए)") + "\n\n" + SIGN },
-        { k: "thanks", label: "🙏 उपस्थित सदस्यों को धन्यवाद + मिनट्स", text: hi + d + " की मीटिंग में उपस्थित रहने के लिए हार्दिक धन्यवाद। 🙏" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN },
-        { k: "absent", label: "🕊️ अनुपस्थित सदस्यों को सूचना + मिनट्स", text: hi + d + " की मीटिंग में आप उपस्थित नहीं हो पाए। कोई बात नहीं 🙏 मीटिंग की जानकारी नीचे है।" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN }
+        { k: "notice", label: "📅 मीटिंग सूचना", text: MEET_NOTICE, grp: "all", meet: true },
+        { k: "minutes", label: "📋 मिनट्स (मीटिंग में क्या हुआ)", grp: "all", text: hi + "📋 *मीटिंग मिनट्स*\n📅 " + d + (subj ? "\n📌 " + subj : "") + (mb ? "\n\n" + mb : "\n\n(मिनट्स अभी नहीं लिखे गए)") + "\n\n" + SIGN },
+        { k: "thanks", label: "🙏 उपस्थित सदस्यों को धन्यवाद + मिनट्स", grp: "pres", text: hi + d + " की मीटिंग में उपस्थित रहने के लिए हार्दिक धन्यवाद। 🙏" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN },
+        { k: "absent", label: "🕊️ अनुपस्थित सदस्यों को सूचना + मिनट्स", grp: "abs", text: hi + d + " की मीटिंग में आप उपस्थित नहीं हो पाए। कोई बात नहीं 🙏 मीटिंग की जानकारी नीचे है।" + (mb ? "\n\n📋 *मीटिंग मिनट्स*\n" + mb : "") + "\n\n" + SIGN }
       ];
     }
     if (tab === "Announcements" || tab === "News") {
@@ -8514,15 +8600,17 @@ if ('serviceWorker' in navigator) {
     }
     return [];
   }
+  const NAMEPH = /\{\{\s*(Name|Member)\s*\}\}/gi;
 
   window.openMsgCenter_ = function () {
     const tab = currentTab;
     if (TABS.indexOf(tab) < 0) return;
     if (!canSend(tab)) { alert("इस टैब पर संदेश भेजने की अनुमति नहीं है (RoleAccess में WHATSAPP चाहिए)।"); return; }
     const mem = members();
-    const rowTab = tab !== "Members";
+    const money = tab === "Boli" || tab === "Donation";
+    const rowTab = tab === "Meetings" || tab === "Announcements" || tab === "News";
     let rows = (tableData || []).slice();
-    rows.sort((a, b) => { const x = parseRowDate_(val(a, /^date$/i)), y = parseRowDate_(val(b, /^date$/i)); return (y ? +y : 0) - (x ? +x : 0); });
+    if (rowTab) rows.sort((a, b) => { const x = parseRowDate_(val(a, /^date$/i)), y = parseRowDate_(val(b, /^date$/i)); return (y ? +y : 0) - (x ? +x : 0); });
     const m = openModal_("📨 मैसेज भेजें — " + tab);
     const L = (t) => `<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">${t}</label>`;
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
@@ -8530,20 +8618,26 @@ if ('serviceWorker' in navigator) {
       (rowTab ? L(tab === "Meetings" ? "कौन सी मीटिंग" : "कौन सी पोस्ट") + `<select id="mcRow" ${sty}>${rows.map((r, i) => `<option value="${i}">${esc(rowLabel(tab, r))}</option>`).join("")}</select>` : "") +
       L("किन्हें भेजना है") + `<select id="mcGrp" ${sty}></select>` +
       L("संदेश का प्रकार") + `<select id="mcTpl" ${sty}></select>` +
-      L("संदेश — {{Name}} की जगह हर सदस्य का नाम अपने आप लगेगा (आप बदल भी सकते हैं)") + `<textarea id="mcTxt" rows="9" ${sty}></textarea>` +
+      L("संदेश — {{Member}} / {{Name}} की जगह हर सदस्य का नाम" + (money ? ", {{For}}, राशि आदि हर बोली/दान की पंक्ति से" : "") + " अपने आप लगेगा (आप बदल भी सकते हैं)") + `<textarea id="mcTxt" rows="11" ${sty}></textarea>` +
       `<div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div><div id="mcList"></div>`;
     const $ = id => m.body.querySelector("#" + id);
     if (rowTab && !rows.length) { m.body.innerHTML = "<p class='muted'>इस टैब में अभी कोई रिकॉर्ड नहीं है।</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close)); return; }
 
     let list = [], done = new Set(), sel = new Set(), tpls = [];
     const curRow = () => rowTab ? rows[+$("mcRow").value] : null;
+    const curTpl = () => tpls[$("mcTpl").selectedIndex] || {};
     const groups = () => {
       if (tab === "Members") return [{ k: "list", t: "इस list के सदस्य (search / filter के अनुसार)" }, { k: "all", t: "सभी सक्रिय सदस्य" }];
       if (tab === "Meetings") return [{ k: "all", t: "सभी सक्रिय सदस्य" }, { k: "pres", t: "सिर्फ़ उपस्थित सदस्य" }, { k: "abs", t: "सिर्फ़ अनुपस्थित सदस्य" }];
+      if (money) return [{ k: "pend", t: "जिनका बाकी राशि > 0 है (इस list में)" }, { k: "all", t: "इस list के सभी (mobile वाले)" }];
       return [{ k: "all", t: "सभी सक्रिय सदस्य" }];
     };
     const recipients = () => {
       const g = $("mcGrp").value;
+      if (money) {
+        return (lastFilteredRows_ || []).map(r => ({ name: getRowMemberName_(r), mobile: getRowMobile_(r).slice(-10), row: r, pend: getPendingAmount_(r), forWhat: val(r, /^(for|seva|सेवा)$/i) }))
+          .filter(x => x.name && x.mobile.length === 10 && (g === "all" || x.pend > 0));
+      }
       if (tab === "Members" && g === "list") {
         const seen = new Set();
         return (lastFilteredRows_ || []).map(r => ({ name: getRowMemberName_(r), mobile: getRowMobile_(r).slice(-10) }))
@@ -8555,7 +8649,13 @@ if ('serviceWorker' in navigator) {
       }
       return mem;
     };
-    const textFor = i => $("mcTxt").value.replace(/\{\{\s*Name\s*\}\}/gi, first(list[i].name));
+    // har sadasya ke liye final sandesh
+    const textFor = i => {
+      let t = $("mcTxt").value;
+      if (money) t = getMessageFromTemplate(tab, list[i].row, t, { plain: !!curTpl().plain });   // {{For}}, {{Pledged Boli}}, bank / vaada engine se
+      else if (curTpl().meet) t = getMessageFromTemplate("Meetings", curRow(), t, { plain: true }); // {{Date}} {{Time}} {{Place}} {{Details}}
+      return t.replace(NAMEPH, money ? list[i].name : first(list[i].name));
+    };
     const refreshInfo = () => {
       const s = Array.from(sel);
       $("mcInfo").textContent = "चुने गए: " + s.length + " / " + list.length + "  •  भेजे गए: " + s.filter(i => done.has(i)).length;
@@ -8572,10 +8672,10 @@ if ('serviceWorker' in navigator) {
       $("mcList").innerHTML = list.length ? list.map((x, i) =>
         `<div data-i="${i}" style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eee;padding:7px 0">
            <input type="checkbox" class="ck" checked style="width:auto">
-           <div style="flex:1;min-width:0;font-size:13px"><b>${esc(x.name)}</b> <span style="color:#64748b">${esc(x.mobile)}</span></div>
+           <div style="flex:1;min-width:0;font-size:13px"><b>${esc(x.name)}</b> <span style="color:#64748b">${esc(x.mobile)}</span>${money ? `<br><span style="color:#64748b">${esc(x.forWhat || "")}${x.pend > 0 ? " — बाकी ₹" + x.pend.toLocaleString("en-IN") : ""}</span>` : ""}</div>
            <span class="tick" style="color:#1a9c4b;font-weight:700"></span>
            <button type="button" class="go" style="background:#25a244;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;width:auto">WhatsApp</button>
-         </div>`).join("") : "<p class='muted'>इस समूह में mobile वाला कोई सक्रिय सदस्य नहीं मिला।</p>";
+         </div>`).join("") : "<p class='muted'>इस समूह में mobile वाला कोई सदस्य नहीं मिला।</p>";
       $("mcList").querySelectorAll("[data-i]").forEach(d => {
         const i = +d.dataset.i;
         d.querySelector(".ck").onchange = e => { e.target.checked ? sel.add(i) : sel.delete(i); refreshInfo(); };
@@ -8583,24 +8683,21 @@ if ('serviceWorker' in navigator) {
       });
       refreshInfo();
     };
-    const fillTpl = () => { const t = tpls[$("mcTpl").selectedIndex]; if (t) $("mcTxt").value = t.text; };
-    const rebuild = () => {
-      list = recipients(); drawList();
-    };
+    const fillTpl = () => { const t = curTpl(); if (t.text != null) $("mcTxt").value = t.text; };
+    const rebuild = () => { list = recipients(); drawList(); };
     const rebuildTpl = () => {
       tpls = presets(tab, curRow());
       $("mcTpl").innerHTML = tpls.map(t => `<option>${esc(t.label)}</option>`).join("");
       fillTpl();
+      const g = curTpl().grp; if (g && [...$("mcGrp").options].some(o => o.value === g)) $("mcGrp").value = g;
     };
     $("mcGrp").innerHTML = groups().map(g => `<option value="${g.k}">${esc(g.t)}</option>`).join("");
     if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); };
     $("mcGrp").onchange = rebuild;
-    $("mcTpl").onchange = () => {
+    $("mcTpl").onchange = () => {            // preset ke saath sahi samooh khud chun lo (jaise dhanyavaad → उपस्थित)
       fillTpl();
-      if (tab === "Meetings") {                 // thanks → उपस्थित, absent → अनुपस्थित, baaki → सभी
-        const k = tpls[$("mcTpl").selectedIndex].k, g = k === "thanks" ? "pres" : k === "absent" ? "abs" : "all";
-        if ($("mcGrp").value !== g) { $("mcGrp").value = g; rebuild(); }
-      }
+      const g = curTpl().grp;
+      if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; rebuild(); }
     };
     rebuildTpl(); rebuild();
 
@@ -8619,7 +8716,7 @@ if ('serviceWorker' in navigator) {
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
   };
 
-  /* ---- toolbar button ---- */
+  /* ---- toolbar button (Boli / Donation par purana 📨 Reminders button hi ab yahi kholta hai) ---- */
   function msgBtn_(sheetName) {
     const anchor = document.getElementById("dirBtn") || document.getElementById("addNewBtn"); if (!anchor || !anchor.parentNode) return;
     let b = document.getElementById("msgCenterBtn");
@@ -8629,7 +8726,8 @@ if ('serviceWorker' in navigator) {
       b.onclick = window.openMsgCenter_;
       anchor.parentNode.insertBefore(b, anchor.nextSibling);
     }
-    b.style.display = (TABS.indexOf(sheetName) >= 0 && canSend(sheetName)) ? "inline-block" : "none";
+    const money = sheetName === "Boli" || sheetName === "Donation";
+    b.style.display = (!money && TABS.indexOf(sheetName) >= 0 && canSend(sheetName)) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { msgBtn_(n); } catch (e) {} return r; }; }
 })();
