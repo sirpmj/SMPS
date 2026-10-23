@@ -849,7 +849,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
     <div id="fReg2">Reg No: A/1221</div>
     <div class="fl"><a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a></div>
     <div id="fAddr" style="margin-bottom:6px"></div>
-    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.291</div>
+    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.292</div>
     <div class="vis" id="visBox" hidden title="सिर्फ़ गिनती — किसी की कोई निजी जानकारी नहीं ली जाती">👁 कुल दर्शक: <b id="visN">–</b></div>
   </div>
 </footer>
@@ -899,6 +899,11 @@ const ICON = {
 /* 🔒 Data ab Google Sheet se seedha nahi (sheet private hai) — Apps Script se, ek hi call mein, sirf public/saaf kiya hua */
 let _pub = null;
 const PUB_KEY = "smps_pub_v1";
+/* Page ke SAARE scripts chal jane ke baad hi data se page banao. Pichhli baar ka data turant mil jata hai, aur tab loader
+   aise waqt chal padta tha jab neeche ke script (jaise visDraw) abhi bane hi nahi hote — isse refresh par page atak jata tha. */
+const domReady = new Promise(function (r) {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { r(); }, { once: true }); else r();
+});
 function showUpdateBar() {
   if (document.getElementById("updBar") || !document.body) return;
   const d = document.createElement("div"); d.id = "updBar";
@@ -940,7 +945,7 @@ function pubBundle() {
     try { localStorage.setItem(PUB_KEY, str); } catch (e) {}
     if (cachedStr && str !== cachedStr) showUpdateBar();
   });
-  _pub = (cached && cached.sheets) ? Promise.resolve(cached) : fresh;   // pichhli baar ka data turant dikhao, peeche se naya laao
+  _pub = domReady.then(() => (cached && cached.sheets) ? cached : fresh);   // pichhli baar ka data turant dikhao, peeche se naya laao
   return _pub;
 }
 async function sheet(name) {
