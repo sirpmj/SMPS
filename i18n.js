@@ -893,8 +893,8 @@
     if (document.getElementById("smpsLangBtn")) return;
     var st = document.createElement("style");
     st.textContent =
-      "#smpsLangBtn{position:fixed;left:10px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:9990;display:flex;align-items:center;gap:6px;" +
-      "height:36px;padding:0 12px;border-radius:18px;border:1px solid rgba(10,42,94,.35);background:rgba(255,255,255,.94);color:#0a2a5e;" +
+      "#smpsLangBtn{position:fixed;right:10px;top:calc(8px + env(safe-area-inset-top,0px));z-index:9990;display:flex;align-items:center;gap:6px;" +
+      "height:30px;padding:0 10px;border-radius:15px;border:1px solid rgba(10,42,94,.35);background:rgba(255,255,255,.94);color:#0a2a5e;" +
       "font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;-webkit-tap-highlight-color:transparent}" +
       "#smpsLangBtn b{font-weight:600;opacity:.55;padding:2px 6px;border-radius:10px}#smpsLangBtn b.on{opacity:1;background:#0a2a5e;color:#fff}" +
       "#smpsLangBtn span{opacity:.35}" +

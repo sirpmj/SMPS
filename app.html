@@ -197,6 +197,20 @@
   v1.225  (previous base version)
 -->
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज – वापी">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="hi_IN">
+<meta property="og:url" content="https://sirpmj.github.io/SMPS/app.html">
+<meta property="og:title" content="सदस्य पोर्टल — श्री मेवाड़ प्रजापत समाज – वापी">
+<meta property="og:description" content="अपना रिकॉर्ड देखें/अपडेट करें, बैठक, सूचनाएँ और समाज की जानकारी — मोबाइल नंबर और PIN से लॉगिन।">
+<meta property="og:image" content="https://sirpmj.github.io/SMPS/Logo-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="श्री मेवाड़ प्रजापत समाज – वापी का लोगो">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="सदस्य पोर्टल — श्री मेवाड़ प्रजापत समाज – वापी">
+<meta name="twitter:description" content="अपना रिकॉर्ड देखें/अपडेट करें, बैठक, सूचनाएँ और समाज की जानकारी — मोबाइल नंबर और PIN से लॉगिन।">
+<meta name="twitter:image" content="https://sirpmj.github.io/SMPS/Logo-512.png">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
 <script>window.APP_VERSION = "v1.240"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
@@ -1557,7 +1571,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.297"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.298"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -6446,7 +6460,7 @@ function buildWaUrl_(mobileRaw, message) {
   const base = useWeb
     ? (SETTINGS?.WhatsAppDesktopURL || "https://web.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
     : (isMobile ? (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
-                // computer + App: News tab jaisa api.whatsapp.com link (emoji sahi jate hain); wa.me/<number> par Desktop app emoji " " kar deta hai
+                // computer + App: News tab jaisa api.whatsapp.com link (emoji sahi jate hain); wa.me/<number> par Desktop app emoji "�" kar deta hai
                 : (/wa\.me/i.test(SETTINGS?.WhatsAppBaseURL || "") || !SETTINGS?.WhatsAppBaseURL ? "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}" : SETTINGS.WhatsAppBaseURL));
   return base
     .replace("{{Mobile}}", () => encodeURIComponent(mobile))
@@ -8538,6 +8552,51 @@ if ('serviceWorker' in navigator) {
     t = getMessageFromTemplate("Meetings", rec, t, { plain: true });
     return fillSettings_(t.replace(NAMEPH, "")).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   };
+  /* ===== v1.298: {{ }} bharne wale boxes + live preview (peela = bharna baaki, hara = aapne bhara) ===== */
+  const PH_RE_ = /\{\{[^{}\n]+\}\}/g;
+  function applyFills_(t, fills, mark) {
+    Object.keys(fills || {}).forEach(k => {
+      const v = fills[k]; if (v == null || String(v).trim() === "") return;
+      const re = new RegExp("\\{\\{\\s*" + String(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*\\}\\}", "gi");
+      t = t.replace(re, () => (mark ? "\u0001" : "") + v + (mark ? "\u0002" : ""));
+    });
+    return t;
+  }
+  function phHtml_(t) {
+    return esc(t).replace(/\u0001([\s\S]*?)\u0002/g, '<mark style="background:#bbf7d0;border-radius:3px;padding:0 2px">$1</mark>')
+      .replace(/\{\{[^{}\n]+\}\}/g, x => '<mark style="background:#fde047;font-weight:700;border-radius:3px;padding:0 2px">' + x + '</mark>');
+  }
+  /* host mein: bharne wali jagahon ke input (upar) + preview (neeche). getFinal(mark, nofill) -> text */
+  function mountPh_(host, getFinal, fills) {
+    host.innerHTML = '<div class="phIn"></div>' +
+      '<div style="font-size:12px;color:#475569;margin:8px 0 3px">👁️ पूर्वावलोकन — <mark style="background:#fde047">पीला = भरना बाकी</mark> · <mark style="background:#bbf7d0">हरा = आपने भरा</mark></div>' +
+      '<div class="phPv notranslate" translate="no" style="white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:8px;font-size:13.5px;max-height:220px;overflow:auto"></div>';
+    const inBox = host.querySelector(".phIn"), pv = host.querySelector(".phPv"); let sig = null;
+    function refresh() {
+      let raw = ""; try { raw = getFinal(false, true); } catch (e) {}
+      const keys = Array.from(new Set((raw.match(PH_RE_) || []).map(x => x.replace(/^\{\{\s*|\s*\}\}$/g, ""))));
+      const s2 = keys.join("|");
+      if (s2 !== sig) {
+        sig = s2;
+        inBox.innerHTML = keys.length ? '<div style="font-size:12px;color:#b45309;margin:8px 0 3px">✍️ ये जगह खुद भरें (नीचे पूर्वावलोकन में तुरंत बदलेगा):</div>' : "";
+        keys.forEach(k => {
+          const w = document.createElement("div"); w.style.cssText = "display:flex;gap:6px;align-items:center;margin:4px 0";
+          const l = document.createElement("span"); l.style.cssText = "background:#fde047;border-radius:4px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap"; l.textContent = "{{" + k + "}}";
+          const i = document.createElement("input"); i.type = "text"; i.value = fills[k] || ""; i.placeholder = k;
+          i.style.cssText = "flex:1;min-width:0;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px";
+          i.oninput = () => { fills[k] = i.value; refresh(); };
+          w.appendChild(l); w.appendChild(i); inBox.appendChild(w);
+        });
+      }
+      let h = ""; try { h = phHtml_(getFinal(true, false)); } catch (e) {}
+      pv.innerHTML = h;
+    }
+    refresh();
+    return { refresh: refresh };
+  }
+  const MEMDEF_KEY_ = "smps_mem_wa_def";
+  function memDefLabel_() { try { return localStorage.getItem(MEMDEF_KEY_) || ""; } catch (e) { return ""; } }
+
   /* Members row ka WhatsApp: message chunne / badalne ka popup */
   window.openRowWa_ = function (encId, e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -8546,21 +8605,34 @@ if ('serviceWorker' in navigator) {
     let mobile = getRowMobile_(row); if (!mobile && name) mobile = String(getUserMobileFromMembers(name) || "").replace(/\D/g, "");
     const m = openModal_("💬 WhatsApp — " + (name || tab));
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
-    const pr = presets(tab);
+    const pr = presets(tab), fills = {};
     m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">📱 ' + esc(mobile || "मोबाइल नंबर नहीं मिला") + '</div>' +
       '<label style="display:block;font-size:12px;color:#475569;margin:6px 0 3px">संदेश का प्रकार</label><select id="rwTpl" ' + sty + '>' + pr.map(p => '<option>' + esc(p.label) + '</option>').join("") + '</select>' +
-      '<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">संदेश (आप बदल भी सकते हैं)</label><textarea id="rwTxt" rows="11" ' + sty + '></textarea>';
+      '<div id="rwDef" style="font-size:12.5px;margin:6px 0"></div>' +
+      '<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">संदेश (आप बदल भी सकते हैं)</label><textarea id="rwTxt" rows="9" ' + sty + '></textarea><div id="rwPh"></div>';
     const $ = id => m.body.querySelector("#" + id);
-    const fill = () => {
-      const p = pr[$("rwTpl").selectedIndex] || {}; let t = p.text || "";
-      if (t) { try { t = getMessageFromTemplate(tab, row, t, { plain: true }); } catch (x) {} t = fillSettings_(t).replace(NAMEPH, name).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
-      $("rwTxt").value = t;
+    const base = () => {
+      const p = pr[$("rwTpl").selectedIndex] || {}; let t = $("rwTxt").value;
+      try { t = getMessageFromTemplate(tab, row, t, { plain: true }); } catch (x) {}
+      return t.replace(NAMEPH, name);
     };
-    const di = Math.max(0, pr.findIndex(p => /नमस्ते|सामान्य/.test(p.label)));
-    $("rwTpl").selectedIndex = di; $("rwTpl").onchange = fill; fill();
+    const finalTxt = (mark, nofill) => { let t = base(); if (!nofill) t = applyFills_(t, fills, mark); return fillSettings_(t).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); };
+    const ph = mountPh_($("rwPh"), finalTxt, fills);
+    const paintDef = () => {
+      const d = memDefLabel_(), cur = pr[$("rwTpl").selectedIndex] || {};
+      $("rwDef").innerHTML = (d ? '⭐ default: <b>' + esc(d) + '</b> — ' : 'कोई default नहीं चुना — ') +
+        (d === cur.label ? '<span style="color:#15803d">यही default है ✔</span>' : '<a href="#" id="rwSetDef" style="color:#1d4ed8">⭐ इसे default बनाएँ (सभी सदस्यों पर लागू)</a>') +
+        (d ? ' · <a href="#" id="rwClrDef" style="color:#b91c1c">हटाएँ</a>' : '');
+      const a = $("rwSetDef"); if (a) a.onclick = ev => { ev.preventDefault(); try { localStorage.setItem(MEMDEF_KEY_, cur.label); } catch (x) {} paintDef(); };
+      const c = $("rwClrDef"); if (c) c.onclick = ev => { ev.preventDefault(); try { localStorage.removeItem(MEMDEF_KEY_); } catch (x) {} paintDef(); };
+    };
+    const fill = () => { $("rwTxt").value = (pr[$("rwTpl").selectedIndex] || {}).text || ""; Object.keys(fills).forEach(k => delete fills[k]); paintDef(); ph.refresh(); };
+    const dl = memDefLabel_(); let di = pr.findIndex(p => p.label === dl);
+    if (di < 0) di = Math.max(0, pr.findIndex(p => /नमस्ते|सामान्य/.test(p.label)));
+    $("rwTpl").selectedIndex = di; $("rwTpl").onchange = fill; $("rwTxt").oninput = () => ph.refresh(); fill();
     m.foot.appendChild(modalBtn_("💬 WhatsApp भेजें", "#25a244", () => {
       if (!mobile) { alert("इस सदस्य का मोबाइल नंबर नहीं मिला।"); return; }
-      const t = $("rwTxt").value; const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
+      const t = finalTxt(false, false); const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
       if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return;
       window.open(buildWaUrl_(mobile, t), "_blank"); m.close();
     }));
@@ -8568,7 +8640,7 @@ if ('serviceWorker' in navigator) {
   };
   window.rowDefaultMsg_ = function (tab, rec) {
     const all = sheetPresets_(tab).filter(x => !x.share); if (!all.length) return "";
-    const p = all.find(x => /नमस्ते|सामान्य/.test(x.label)) || all[0];
+    const p = all.find(x => x.label === memDefLabel_()) || all.find(x => /नमस्ते|सामान्य/.test(x.label)) || all[0];
     let t = p.text;
     try { t = getMessageFromTemplate(tab, rec, t, { plain: true }); } catch (e) {}
     return fillSettings_(String(t)).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -8600,11 +8672,11 @@ if ('serviceWorker' in navigator) {
       L("किन्हें भेजना है") + `<select id="mcGrp" ${sty}></select>` +
       L("संदेश का प्रकार") + `<select id="mcTpl" ${sty}></select>` +
       L("संदेश (Google Sheet के Templates tab से) — {{Member}} / {{Name}} की जगह हर सदस्य का नाम" + (money ? ", {{For}}, राशि आदि हर बोली/दान की पंक्ति से" : "") + " अपने आप लगेगा (आप बदल भी सकते हैं)") + `<textarea id="mcTxt" rows="11" placeholder="यहाँ अपना संदेश लिखें…" ${sty}></textarea>` +
-      `<div id="mcWarn" style="font-size:12.5px;color:#b45309;margin-top:6px"></div><div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div><div id="mcList"></div>`;
+      `<div id="mcPh"></div><div id="mcWarn" style="font-size:12.5px;color:#b45309;margin-top:6px"></div><div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div><div id="mcList"></div>`;
     const $ = id => m.body.querySelector("#" + id);
     if (rowTab && !rows.length) { m.body.innerHTML = "<p class='muted'>इस टैब में अभी कोई रिकॉर्ड नहीं है।</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close)); return; }
 
-    let list = [], done = new Set(), sel = new Set(), tpls = [];
+    let list = [], done = new Set(), sel = new Set(), tpls = []; const fills = {}; let ph = null;
     const curRow = () => rowTab ? rows[+$("mcRow").value] : null;
     const curTpl = () => tpls[$("mcTpl").selectedIndex] || {};
     const groups = () => {
@@ -8631,7 +8703,7 @@ if ('serviceWorker' in navigator) {
       return mem;
     };
     // har sadasya ke liye final sandesh
-    const textFor = i => {
+    const textFor = (i, mark, nofill) => {
       let t = $("mcTxt").value;
       const row = curRow();
       if (rowTab) t = applyVars_(t, rowVars_(tab, row));                                                  // {{Date}} {{Subject}} {{Minutes}} {{Title}} {{Message}} ...
@@ -8639,11 +8711,13 @@ if ('serviceWorker' in navigator) {
       else if (tab === "Meetings") t = getMessageFromTemplate("Meetings", row, t, { plain: true });       // {{Time}} {{Place}} {{Details}}
       else if (rowTab) t = fillRowCols_(t, row);
       t = t.replace(NAMEPH, money ? list[i].name : first(list[i].name));
+      if (!nofill) t = applyFills_(t, fills, mark);
       return fillSettings_(t).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
     };
     const updWarn = () => {
-      let t = ""; try { t = list.length ? textFor(0) : $("mcTxt").value; } catch (e) { t = $("mcTxt").value; }
+      let t = ""; try { t = list.length ? textFor(0) : applyFills_($("mcTxt").value, fills, false); } catch (e) { t = $("mcTxt").value; }
       const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
+      if (ph) ph.refresh();
       $("mcWarn").innerHTML = left.length ? "⚠️ ये जगह भर नहीं पाई: <b>" + esc(left.join(", ")) + "</b> — इसे संदेश में खुद भर दें, या Settings sheet में इसी नाम की Key + Value जोड़ें।" : "";
     };
     const refreshInfo = () => {
@@ -8677,22 +8751,33 @@ if ('serviceWorker' in navigator) {
       refreshInfo();
     };
     const fillTpl = () => { const t = curTpl(); if (t.text != null) $("mcTxt").value = t.text; };
+    /* v1.298: group ke hisaab se ulta wala sandesh inactive (jaise "पूरी राशि जमा" chunne par "बकाया" wale sandesh band) */
+    const OPP = { pend: "paid", paid: "pend", pres: "abs", abs: "pres" };
+    const applyTplState = () => {
+      const g = $("mcGrp").value, opts = [...$("mcTpl").options];
+      opts.forEach((o, i) => { const tg = (tpls[i] || {}).grp; const bad = !!(OPP[g] && tg === OPP[g]); o.disabled = bad; o.title = bad ? "इस समूह के लिए नहीं" : ""; });
+      const cur = $("mcTpl").selectedIndex;
+      if (opts[cur] && opts[cur].disabled) { const k = opts.findIndex(o => !o.disabled); if (k >= 0) { $("mcTpl").selectedIndex = k; fillTpl(); } }
+    };
     const rebuild = () => { list = recipients(); drawList(); };
     const rebuildTpl = () => {
       tpls = presets(tab);
       $("mcTpl").innerHTML = tpls.map(t => `<option>${esc(t.label)}</option>`).join("");
       fillTpl();
       const g = curTpl().grp; if (g && [...$("mcGrp").options].some(o => o.value === g)) $("mcGrp").value = g;
+      applyTplState();
     };
     $("mcGrp").innerHTML = groups().map(g => `<option value="${g.k}">${esc(g.t)}</option>`).join("");
     if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); };
-    $("mcGrp").onchange = rebuild;
+    $("mcGrp").onchange = () => { applyTplState(); rebuild(); };
     $("mcTxt").oninput = updWarn;
     $("mcTpl").onchange = () => {            // preset ke saath sahi samooh khud chun lo (jaise dhanyavaad → उपस्थित)
       fillTpl();
       const g = curTpl().grp;
-      if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; rebuild(); }
+      if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; applyTplState(); rebuild(); }
+      Object.keys(fills).forEach(k => delete fills[k]); updWarn();
     };
+    ph = mountPh_($("mcPh"), (mk, nf) => (list.length ? textFor(0, mk, nf) : (nf ? $("mcTxt").value : applyFills_($("mcTxt").value, fills, mk))), fills);
     rebuildTpl(); rebuild();
 
     m.foot.appendChild(modalBtn_("☑ सभी / कोई नहीं", "#475569", () => {
@@ -8773,5 +8858,6 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mk); else mk();
 })();
 </script>
+<script src="i18n.js" defer></script>
 </body>
 </html>
