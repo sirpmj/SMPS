@@ -1557,7 +1557,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.296"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.297"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -6052,7 +6052,13 @@ function renderActionButtons(row, encId) {
     // v1.296: Members / Meetings jaise tabs mein sirf "Tab: naam" wale messages hote hain — pehla/saamanya message lagao
     const message = getMessageFromTemplate(currentTab, row) || (window.rowDefaultMsg_ ? window.rowDefaultMsg_(currentTab, row) : "") || "";
     const waUrl = buildWaUrl_(mobile, message);
-    btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
+    if (currentTab === "Members" && window.openRowWa_) {
+      // v1.297: Members mein button dabane par message chunne / badalne ka popup
+      window.__waRows_ = window.__waRows_ || {}; window.__waRows_[encId] = row;
+      btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `href="#" onclick="openRowWa_('${encId}', event)"`));
+    } else {
+      btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
+    }
   }
   return layoutActionRows_(btns);
 }
@@ -8531,6 +8537,34 @@ if ('serviceWorker' in navigator) {
     let t = applyVars_(p.text, rowVars_("Meetings", rec, notes, attCount));
     t = getMessageFromTemplate("Meetings", rec, t, { plain: true });
     return fillSettings_(t.replace(NAMEPH, "")).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+  /* Members row ka WhatsApp: message chunne / badalne ka popup */
+  window.openRowWa_ = function (encId, e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const row = (window.__waRows_ || {})[encId]; if (!row) return;
+    const tab = currentTab, name = String(getRowMemberName_(row) || row.Member || row.Name || "").trim();
+    let mobile = getRowMobile_(row); if (!mobile && name) mobile = String(getUserMobileFromMembers(name) || "").replace(/\D/g, "");
+    const m = openModal_("💬 WhatsApp — " + (name || tab));
+    const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
+    const pr = presets(tab);
+    m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">📱 ' + esc(mobile || "मोबाइल नंबर नहीं मिला") + '</div>' +
+      '<label style="display:block;font-size:12px;color:#475569;margin:6px 0 3px">संदेश का प्रकार</label><select id="rwTpl" ' + sty + '>' + pr.map(p => '<option>' + esc(p.label) + '</option>').join("") + '</select>' +
+      '<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">संदेश (आप बदल भी सकते हैं)</label><textarea id="rwTxt" rows="11" ' + sty + '></textarea>';
+    const $ = id => m.body.querySelector("#" + id);
+    const fill = () => {
+      const p = pr[$("rwTpl").selectedIndex] || {}; let t = p.text || "";
+      if (t) { try { t = getMessageFromTemplate(tab, row, t, { plain: true }); } catch (x) {} t = fillSettings_(t).replace(NAMEPH, name).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
+      $("rwTxt").value = t;
+    };
+    const di = Math.max(0, pr.findIndex(p => /नमस्ते|सामान्य/.test(p.label)));
+    $("rwTpl").selectedIndex = di; $("rwTpl").onchange = fill; fill();
+    m.foot.appendChild(modalBtn_("💬 WhatsApp भेजें", "#25a244", () => {
+      if (!mobile) { alert("इस सदस्य का मोबाइल नंबर नहीं मिला।"); return; }
+      const t = $("rwTxt").value; const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
+      if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return;
+      window.open(buildWaUrl_(mobile, t), "_blank"); m.close();
+    }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
   };
   window.rowDefaultMsg_ = function (tab, rec) {
     const all = sheetPresets_(tab).filter(x => !x.share); if (!all.length) return "";
