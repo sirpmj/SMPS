@@ -1557,7 +1557,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.293"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.294"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -6048,9 +6048,7 @@ function renderActionButtons(row, encId) {
       mobile = defaultCountryCode + mobile; 
     }
     const message = getMessageFromTemplate(currentTab, row) || "";
-    const waUrl = (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
-      .replace("{{Mobile}}", encodeURIComponent(mobile))
-      .replace("{{Message}}", encodeURIComponent(message));
+    const waUrl = buildWaUrl_(mobile, message);
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
   }
   return layoutActionRows_(btns);
@@ -6428,13 +6426,20 @@ function hintNotesForAnon_() {
   });
 }
 
+function waDesktopMode_() { try { return localStorage.getItem("smps_wa_mode") === "web" ? "web" : "app"; } catch (e) { return "app"; } }
 function buildWaUrl_(mobileRaw, message) {
   let mobile = String(mobileRaw || "").replace(/\D/g, "");
   const cc = SETTINGS?.DefaultCountryCode || "91";
   if (mobile.length === 10) mobile = cc + mobile;
-  return (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
-    .replace("{{Mobile}}", encodeURIComponent(mobile))
-    .replace("{{Message}}", encodeURIComponent(message || ""));
+  // v1.294: computer par App ya Web chunne ka option (neeche wala chhota button); mobile par hamesha pehle jaisa
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
+  const useWeb = !isMobile && waDesktopMode_() === "web";
+  const base = useWeb
+    ? (SETTINGS?.WhatsAppDesktopURL || "https://web.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
+    : (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}");
+  return base
+    .replace("{{Mobile}}", () => encodeURIComponent(mobile))
+    .replace("{{Message}}", () => encodeURIComponent(message || ""));
 }
 function getRowMemberName_(row) {
   return String(row?.[SETTINGS?.MemberColumn] || row?.["Member"] || row?.["Name"] || "").trim();
@@ -8705,6 +8710,21 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   addEventListener("beforeinstallprompt",function(e){e.preventDefault();dp=e;setTimeout(show,4000);});
   addEventListener("appinstalled",function(){shown=true;var b=document.getElementById("ipBg");if(b)b.remove();});
   if(ios) setTimeout(show,6000);
+})();
+</script>
+<script>
+/* v1.294: computer par WhatsApp "App" ya "Web" chunne ka chhota button (mobile par nahi dikhta) */
+(function(){
+  if (/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "")) return;
+  function mk(){
+    if (document.getElementById("waModeBtn")) return;
+    var b = document.createElement("button"); b.id = "waModeBtn"; b.type = "button";
+    b.style.cssText = "position:fixed;left:10px;bottom:10px;z-index:9000;background:#25a244;color:#fff;border:0;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);width:auto";
+    function lab(){ b.textContent = "💬 WhatsApp: " + (waDesktopMode_() === "web" ? "Web" : "App") + " ⇄"; b.title = "WhatsApp App ya WhatsApp Web — बदलने के लिए क्लिक करें"; }
+    b.onclick = function(){ try { localStorage.setItem("smps_wa_mode", waDesktopMode_() === "web" ? "app" : "web"); } catch (e) {} lab(); };
+    lab(); document.body.appendChild(b);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mk); else mk();
 })();
 </script>
 </body>
