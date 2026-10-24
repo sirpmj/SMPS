@@ -1557,7 +1557,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.295"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.296"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -6041,13 +6041,16 @@ function renderActionButtons(row, encId) {
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp भेजें", "", `target="_blank" href="https://api.whatsapp.com/send?text=${encodeURIComponent(_msg)}"`));
   } else if (actions.includes("WHATSAPP")) {
     let mobile = row[SETTINGS?.MobileColumn] || row["Mobile"] || "";
-    mobile = mobile.replace(/\D/g, ""); // remove any non-digit characters
+    // v1.296: row mein Mobile na ho (Fund Ledger / Expenses ...) to Members sheet se naam ke hisaab se number lo
+    if (!String(mobile).replace(/\D/g, "")) { try { const _n = displayMemberFromRow_(row) || getRowMemberName_(row); if (_n && !isAnonMember_(_n)) mobile = getUserMobileFromMembers(String(_n).trim()) || ""; } catch (e) {} }
+    mobile = String(mobile).replace(/\D/g, ""); // remove any non-digit characters
     // Auto prepend country code if missing (optional)
     const defaultCountryCode = SETTINGS?.DefaultCountryCode || "91";
     if(mobile.length === 10){ 
       mobile = defaultCountryCode + mobile; 
     }
-    const message = getMessageFromTemplate(currentTab, row) || "";
+    // v1.296: Members / Meetings jaise tabs mein sirf "Tab: naam" wale messages hote hain — pehla/saamanya message lagao
+    const message = getMessageFromTemplate(currentTab, row) || (window.rowDefaultMsg_ ? window.rowDefaultMsg_(currentTab, row) : "") || "";
     const waUrl = buildWaUrl_(mobile, message);
     btns.push(abBtn_("ab-wa", "wa", "WhatsApp", "", `target="_blank" href="${waUrl}"`));
   }
@@ -8528,6 +8531,13 @@ if ('serviceWorker' in navigator) {
     let t = applyVars_(p.text, rowVars_("Meetings", rec, notes, attCount));
     t = getMessageFromTemplate("Meetings", rec, t, { plain: true });
     return fillSettings_(t.replace(NAMEPH, "")).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+  window.rowDefaultMsg_ = function (tab, rec) {
+    const all = sheetPresets_(tab).filter(x => !x.share); if (!all.length) return "";
+    const p = all.find(x => /नमस्ते|सामान्य/.test(x.label)) || all[0];
+    let t = p.text;
+    try { t = getMessageFromTemplate(tab, rec, t, { plain: true }); } catch (e) {}
+    return fillSettings_(String(t)).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   };
   window.postMsg_ = function (tab, rec) {
     const all = sheetPresets_(tab); let p = all.find(x => x.share) || all[0];
