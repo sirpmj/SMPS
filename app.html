@@ -1571,7 +1571,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.298"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.299"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -6064,7 +6064,10 @@ function renderActionButtons(row, encId) {
       mobile = defaultCountryCode + mobile; 
     }
     // v1.296: Members / Meetings jaise tabs mein sirf "Tab: naam" wale messages hote hain — pehla/saamanya message lagao
-    const message = getMessageFromTemplate(currentTab, row) || (window.rowDefaultMsg_ ? window.rowDefaultMsg_(currentTab, row) : "") || "";
+    let message = "";
+    if (currentTab === "Meetings" && window.meetNoticeMsg_) message = window.meetNoticeMsg_(row);   // v1.299: Meetings row = 📅 मीटिंग सूचना (group mein bhejne layak)
+    if (!message) message = getMessageFromTemplate(currentTab, row) || (window.rowDefaultMsg_ ? window.rowDefaultMsg_(currentTab, row) : "") || "";
+    if (!message && window.genericRowMsg_) message = window.genericRowMsg_(row);                      // Assets jaise tabs: row ki jaankari
     const waUrl = buildWaUrl_(mobile, message);
     if (currentTab === "Members" && window.openRowWa_) {
       // v1.297: Members mein button dabane par message chunne / badalne ka popup
@@ -6456,6 +6459,7 @@ function buildWaUrl_(mobileRaw, message) {
   if (mobile.length === 10) mobile = cc + mobile;
   // v1.294: computer par App ya Web chunne ka option (neeche wala chhota button); mobile par hamesha pehle jaisa
   const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
+  if (!String(mobile || "").replace(/\D/g, "")) return "https://api.whatsapp.com/send?text=" + encodeURIComponent(message || "");   // v1.299: number nahi (Meetings / Assets ...) — chat khud chuno
   const useWeb = !isMobile && waDesktopMode_() === "web";
   const base = useWeb
     ? (SETTINGS?.WhatsAppDesktopURL || "https://web.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
@@ -8567,7 +8571,17 @@ if ('serviceWorker' in navigator) {
       .replace(/\{\{[^{}\n]+\}\}/g, x => '<mark style="background:#fde047;font-weight:700;border-radius:3px;padding:0 2px">' + x + '</mark>');
   }
   /* host mein: bharne wali jagahon ke input (upar) + preview (neeche). getFinal(mark, nofill) -> text */
-  function mountPh_(host, getFinal, fills) {
+  function phSample_(k) {
+    k = String(k);
+    if (/तारीख|दिनांक|date|दिन/i.test(k)) return "जैसे: 15 नवंबर 2026";
+    if (/समय|time/i.test(k)) return "जैसे: शाम 5:00 बजे";
+    if (/जगह|स्थान|place|पता/i.test(k)) return "जैसे: समाज भवन, वापी";
+    if (/कारण|reason/i.test(k)) return "जैसे: अपरिहार्य कारणों से";
+    if (/नाम|name/i.test(k)) return "जैसे: श्री रामलाल जी प्रजापत";
+    if (/अवसर|occasion/i.test(k)) return "जैसे: विवाह / गृह प्रवेश";
+    return "यहाँ लिखें — " + k;
+  }
+  function mountPh_(host, getFinal, fills, onChange) {
     host.innerHTML = '<div class="phIn"></div>' +
       '<div style="font-size:12px;color:#475569;margin:8px 0 3px">👁️ पूर्वावलोकन — <mark style="background:#fde047">पीला = भरना बाकी</mark> · <mark style="background:#bbf7d0">हरा = आपने भरा</mark></div>' +
       '<div class="phPv notranslate" translate="no" style="white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:8px;font-size:13.5px;max-height:220px;overflow:auto"></div>';
@@ -8582,9 +8596,9 @@ if ('serviceWorker' in navigator) {
         keys.forEach(k => {
           const w = document.createElement("div"); w.style.cssText = "display:flex;gap:6px;align-items:center;margin:4px 0";
           const l = document.createElement("span"); l.style.cssText = "background:#fde047;border-radius:4px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap"; l.textContent = "{{" + k + "}}";
-          const i = document.createElement("input"); i.type = "text"; i.value = fills[k] || ""; i.placeholder = k;
+          const i = document.createElement("input"); i.type = "text"; i.value = fills[k] || ""; i.placeholder = phSample_(k);
           i.style.cssText = "flex:1;min-width:0;box-sizing:border-box;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px";
-          i.oninput = () => { fills[k] = i.value; refresh(); };
+          i.oninput = () => { fills[k] = i.value; refresh(); if (onChange) onChange(); };
           w.appendChild(l); w.appendChild(i); inBox.appendChild(w);
         });
       }
@@ -8637,6 +8651,20 @@ if ('serviceWorker' in navigator) {
       window.open(buildWaUrl_(mobile, t), "_blank"); m.close();
     }));
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+  window.meetNoticeMsg_ = function (rec) {
+    const all = sheetPresets_("Meetings").filter(x => !x.share); if (!all.length) return "";
+    const p = all.find(x => /सूचना/.test(x.label) && !/बदलाव|मिनट्स/.test(x.label)) || all[0];
+    let t = applyVars_(p.text, rowVars_("Meetings", rec));
+    try { t = getMessageFromTemplate("Meetings", rec, t, { plain: true }); } catch (e) {}
+    return fillSettings_(t.replace(NAMEPH, "समाज बंधु")).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+  window.genericRowMsg_ = function (rec) {
+    const skip = /pass|pin|otp|secret|token|^id$|mobile|phone|photo|image|link|url|कॉलम|created|updated|edit/i;
+    const lines = Object.keys(rec || {}).filter(k => !skip.test(String(k).trim()) && String(rec[k] == null ? "" : rec[k]).trim() !== "").slice(0, 14)
+      .map(k => "• " + String(k).trim() + ": " + String(rec[k]).trim());
+    if (!lines.length) return "";
+    return "📌 *" + currentTab + "*\n\n" + lines.join("\n") + "\n\n🙏 *श्री मेवाड़ प्रजापत समाज, वापी*";
   };
   window.rowDefaultMsg_ = function (tab, rec) {
     const all = sheetPresets_(tab).filter(x => !x.share); if (!all.length) return "";
@@ -8718,7 +8746,7 @@ if ('serviceWorker' in navigator) {
       let t = ""; try { t = list.length ? textFor(0) : applyFills_($("mcTxt").value, fills, false); } catch (e) { t = $("mcTxt").value; }
       const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
       if (ph) ph.refresh();
-      $("mcWarn").innerHTML = left.length ? "⚠️ ये जगह भर नहीं पाई: <b>" + esc(left.join(", ")) + "</b> — इसे संदेश में खुद भर दें, या Settings sheet में इसी नाम की Key + Value जोड़ें।" : "";
+      $("mcWarn").innerHTML = left.length ? "⚠️ ये जगह अभी खाली है: <b>" + esc(left.join(", ")) + "</b> — ऊपर के पीले बॉक्स में भरें (या Settings sheet में इसी नाम की Key + Value जोड़ें)।" : "✅ सभी जगह भरी हुई हैं।";
     };
     const refreshInfo = () => {
       const s = Array.from(sel);
@@ -8777,7 +8805,7 @@ if ('serviceWorker' in navigator) {
       if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; applyTplState(); rebuild(); }
       Object.keys(fills).forEach(k => delete fills[k]); updWarn();
     };
-    ph = mountPh_($("mcPh"), (mk, nf) => (list.length ? textFor(0, mk, nf) : (nf ? $("mcTxt").value : applyFills_($("mcTxt").value, fills, mk))), fills);
+    ph = mountPh_($("mcPh"), (mk, nf) => (list.length ? textFor(0, mk, nf) : (nf ? $("mcTxt").value : applyFills_($("mcTxt").value, fills, mk))), fills, () => updWarn());
     rebuildTpl(); rebuild();
 
     m.foot.appendChild(modalBtn_("☑ सभी / कोई नहीं", "#475569", () => {
@@ -8859,5 +8887,31 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 })();
 </script>
 <script src="i18n.js" defer></script>
+<script>
+/* v1.299: mobile ka Back button — popup khula ho to sirf popup band ho, app se bahar na jaye */
+(function(){
+  var SEL = "#appModal,.xo,#dirBox,#receiptPopup,#editPopup,#regModal,#rsvpBox", HIDE = "display";
+  var stack = [], ignore = 0, raf = 0;
+  function vis(el){ if (!el || !el.isConnected || el.hidden) return false; var cs = getComputedStyle(el); return cs.display !== "none" && cs.visibility !== "hidden"; }
+  function closeEl(el){
+    var bs = el.querySelectorAll("button,a,[role=button]");
+    for (var i = 0; i < bs.length; i++) {
+      var t = (bs[i].textContent || "").trim(), c = (bs[i].className || "") + " " + (bs[i].id || "");
+      if (/^(✕|✖|×|x|बंद करें|बंद|close|cancel)$/i.test(t) || /(^|[\s_-])(close|dir-x|xx)([\s_-]|$)/i.test(c)) { try { bs[i].click(); } catch (e) {} break; }
+    }
+    if (vis(el)) { if (el.id === "appModal" || el.id === "dirBox" || el.classList.contains("xo")) el.remove(); else if (HIDE === "hidden") el.hidden = true; else el.style.display = "none"; }
+  }
+  function sync(){
+    raf = 0;
+    document.querySelectorAll(SEL).forEach(function(el){ if (vis(el) && stack.indexOf(el) < 0) { stack.push(el); try { history.pushState({ smpsOv: 1 }, ""); } catch (e) {} } });
+    for (var i = stack.length - 1; i >= 0; i--) {
+      if (!vis(stack[i])) { stack.splice(i, 1); if (i === stack.length) { ignore++; try { history.back(); } catch (e) { ignore--; } } }
+    }
+  }
+  addEventListener("popstate", function(){ if (ignore > 0) { ignore--; return; } var el = stack.pop(); if (el) closeEl(el); });
+  function start(){ new MutationObserver(function(){ if (!raf) raf = requestAnimationFrame(sync); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "hidden"] }); }
+  if (document.body) start(); else addEventListener("DOMContentLoaded", start);
+})();
+</script>
 </body>
 </html>

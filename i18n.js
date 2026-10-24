@@ -889,6 +889,11 @@
   window.smpsSetLang = setLang;
   window.smpsLang = function () { return lang; };
 
+  function place() {
+    var host = document.querySelector(".hdr-tools") || document.querySelector("header.nav .in") || document.querySelector("header");
+    if (host) { btn.className = "inl"; if (host.matches(".hdr-tools")) host.insertBefore(btn, host.firstChild); else host.appendChild(btn); }
+    else { btn.className = ""; document.body.appendChild(btn); }
+  }
   function mount() {
     if (document.getElementById("smpsLangBtn")) return;
     var st = document.createElement("style");
@@ -901,12 +906,14 @@
       "[data-theme=dark] #smpsLangBtn,html.dark #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}" +
       "[data-theme=dark] #smpsLangBtn b.on,html.dark #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}" +
       "@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}:root:not([data-theme=light]) #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}}" +
+      "#smpsLangBtn.inl{width:auto;position:static;margin-left:auto;z-index:auto;height:28px;padding:0 8px;box-shadow:none;flex:0 0 auto}" +
       "@media print{#smpsLangBtn{display:none!important}}";
     document.head.appendChild(st);
     btn = document.createElement("button");
     btn.id = "smpsLangBtn"; btn.type = "button";
     btn.onclick = function () { setLang(lang === "en" ? "hi" : "en"); };
-    document.body.appendChild(btn);
+    place();
+    setInterval(function () { if (btn && !btn.isConnected) place(); }, 1500);   // header dobara bane to button wapas lagao
     paint();
   }
 

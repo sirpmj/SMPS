@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="hi">
 <head>
+<meta charset="utf-8">
 <title>मेवाड़ प्रजापत समाज वापी</title>
 <meta name="description" content="श्री मेवाड़ प्रजापत समाज-वापी (Reg No: A/1221): बैठक, कार्यक्रम, सूचनाएँ, कार्यकारिणी, फोटो और सहयोग की जानकारी।">
 <meta name="theme-color" content="#0a2a5e">
@@ -22,7 +23,6 @@
 <link rel="manifest" href="manifest.json">
 <script>window.__dp=null;addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__dp=e;window.dispatchEvent(new Event("smps-installable"));});if("serviceWorker"in navigator){addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}</script>
 <link rel="apple-touch-icon" href="Logo-192.png">
-<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>if(/[?&](pay|debug)(=|&|$)/.test(location.search))location.replace("app.html"+location.search+location.hash);</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1465,10 +1465,13 @@ async function load() {
   const pastM = meetRows.filter(x => x.d < t0).sort((a, b) => b.d - a.d);
   const up = meetRows.filter(x => x.d >= t0).map(x => ({ meeting: true, mo: x.mo, d: x.d, t: String(x.r.Subject || "बैठक").trim(), time: String(x.r.Time || "").trim(), place: String(x.r.Place || "").trim(),
     ag: String(x.r.Details || x.r.Agenda || x.r.Description || "").split(/\n+/).map(a => a.trim()).filter(Boolean) }));
-  if (S.EventDate) { const d = parseDate(S.EventDate) || findDate(S.EventDate); if (d && d >= t0) up.push({ meeting: false, d, t: S.EventName || "आगामी कार्यक्रम", time: "", place: "", ag: [] }); }
+  if (S.EventDate) { const d = parseDate(S.EventDate) || findDate(S.EventDate); if (d && d >= t0) up.push({ meeting: false, se: true, d, t: S.EventName || "आगामी कार्यक्रम", time: S.EventTime ? "" : "", place: "", ag: [] }); }
   (ann || []).filter(r => isTrue(r.ShowOnHome)).forEach(r => { const d = findDate(r.Message) || findDate(r.Title); if (d && d >= t0) up.push({ meeting: false, d, t: r.Title || "कार्यक्रम", time: "", place: "", ag: [] }); });
-  const seen = new Set();
-  const items = up.filter(e => { const k = e.t + e.d.getTime(); if (seen.has(k)) return false; seen.add(k); return true; }).map(e => ({ ...e, at: atTime(e.d, e.time) })).sort((a, b) => a.at - b.at).slice(0, 4);
+  /* v1.299: ek hi din ka ek hi kaarykram (Settings EventName + Announcement / Meetings alag naam se) do baar na dikhe */
+  const _tk = t => new Set(String(t || "").toLowerCase().replace(/[0-9\u0966-\u096F]+/g, " ").split(/[^\u0900-\u097Fa-z]+/).filter(w => w.length >= 4 && !/^(तृतीय|द्वितीय|प्रथम|चतुर्थ|पंचम|वार्षिक|annual|third|second|first|समाज|वापी)$/.test(w)));
+  up.sort((a, b) => (b.se ? 1 : 0) - (a.se ? 1 : 0));   // Settings wala event pehle (wahi rakha jaye)
+  const kept = [];
+  const items = up.filter(e => { const tk = _tk(e.t); const dup = kept.some(k => k.d.getTime() === e.d.getTime() && (k.t === e.t || [...tk].some(w => k.tk.has(w)))); if (dup) return false; kept.push({ d: e.d, t: e.t, tk }); return true; }).map(e => ({ ...e, at: atTime(e.d, e.time) })).sort((a, b) => a.at - b.at).slice(0, 4);
   drawMeetings(items, pastM.slice(0, 3));
 
   /* सूचनाएँ / समाचार */
@@ -1675,5 +1678,31 @@ function visDraw() {
 })();
 </script>
 <script src="i18n.js" defer></script>
+<script>
+/* v1.299: mobile ka Back button — popup khula ho to sirf popup band ho, app se bahar na jaye */
+(function(){
+  var SEL = "#lightbox,#qrModal,#plModal", HIDE = "hidden";
+  var stack = [], ignore = 0, raf = 0;
+  function vis(el){ if (!el || !el.isConnected || el.hidden) return false; var cs = getComputedStyle(el); return cs.display !== "none" && cs.visibility !== "hidden"; }
+  function closeEl(el){
+    var bs = el.querySelectorAll("button,a,[role=button]");
+    for (var i = 0; i < bs.length; i++) {
+      var t = (bs[i].textContent || "").trim(), c = (bs[i].className || "") + " " + (bs[i].id || "");
+      if (/^(✕|✖|×|x|बंद करें|बंद|close|cancel)$/i.test(t) || /(^|[\s_-])(close|dir-x|xx)([\s_-]|$)/i.test(c)) { try { bs[i].click(); } catch (e) {} break; }
+    }
+    if (vis(el)) { if (el.id === "appModal" || el.id === "dirBox" || el.classList.contains("xo")) el.remove(); else if (HIDE === "hidden") el.hidden = true; else el.style.display = "none"; }
+  }
+  function sync(){
+    raf = 0;
+    document.querySelectorAll(SEL).forEach(function(el){ if (vis(el) && stack.indexOf(el) < 0) { stack.push(el); try { history.pushState({ smpsOv: 1 }, ""); } catch (e) {} } });
+    for (var i = stack.length - 1; i >= 0; i--) {
+      if (!vis(stack[i])) { stack.splice(i, 1); if (i === stack.length) { ignore++; try { history.back(); } catch (e) { ignore--; } } }
+    }
+  }
+  addEventListener("popstate", function(){ if (ignore > 0) { ignore--; return; } var el = stack.pop(); if (el) closeEl(el); });
+  function start(){ new MutationObserver(function(){ if (!raf) raf = requestAnimationFrame(sync); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "hidden"] }); }
+  if (document.body) start(); else addEventListener("DOMContentLoaded", start);
+})();
+</script>
 </body>
 </html>
