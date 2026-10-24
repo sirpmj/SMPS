@@ -1557,7 +1557,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.290"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.293"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2676,7 +2676,7 @@ function getCommitmentKey_(row) {
 // Pending/Balance wala amount: pehle "Pending/Due" column, warna Pledged - Paid
 function getPendingAmount_(row) {
   const keys = Object.keys(row || {});
-  const pk = keys.find(x => /pending|\bdue\b|baki|bakaya|बाकी|शेष/i.test(x));
+  const pk = keys.find(x => /pending|\bdue\b|baki|bakaya|बाकी|शेष/i.test(x) && !/date|तारीख|दिनांक|commit|वादा/i.test(x));
   if (pk && String(row[pk]).trim() !== "") return Math.max(0, toNumber(row[pk]));
   const pledged = keys.find(x => /^pledged/i.test(x.trim()));
   const paid = keys.find(x => /^paid/i.test(x.trim()));
@@ -2751,12 +2751,16 @@ function getMessageFromTemplate(type, row, overrideText, opts) {
       return pa > 0 ? "💰 *बाकी राशि: ₹" + pa.toLocaleString("en-IN") + "*" : "";
     });
 
+  // v1.293: Date/Amount pehle (warna raw ISO date bhar jaati thi)
+  template = template.replace(/{{\s*Date\s*}}/g, () => formatDate(row["Date"]));
+  template = template.replace(/{{\s*Amount\s*}}/g, () => toNumber(row["Amount"]).toLocaleString());
+  template = template.replace(/{{\s*Pending\s*}}/g, () => String(getPendingAmount_(row)));
   for (let key in row) {
-    const val = row[key] || "";
-    template = template.replace(new RegExp(`{{${key}}}`, "g"), () => val);
+    if (!key) continue;
+    const val = row[key] == null ? "" : row[key];   // 0 bhi dikhe
+    const ek = String(key).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    template = template.replace(new RegExp("{{\\s*" + ek + "\\s*}}", "g"), () => val);
   }
-  template = template.replace(/{{Date}}/g, () => formatDate(row["Date"]));
-  template = template.replace(/{{Amount}}/g, () => toNumber(row["Amount"]).toLocaleString());
 
   // Meetings: column ke naam thode alag hon to bhi bhar do
   if (type === "Meetings") {
@@ -5754,6 +5758,7 @@ if(searchVal){
 
 
 
+  lastFilteredRowsPreCommit_ = filteredData; // v1.293: Message center ke "पूरा जमा / बाकी" group isi se bante hain (वादा filter se nahi ghatte)
   // 📅 वादा filter (Boli / Donation)
   if ((currentTab === "Boli" || currentTab === "Donation") && commitFilter) {
     filteredData = filteredData.filter(r => matchCommitFilter_(r, commitFilter));
@@ -5784,7 +5789,7 @@ if(searchVal){
       filteredData = [...bday, ...others];
     }
   }
-  if (!sortColumn && (currentTab === "Boli" || currentTab === "Donation") && commitFilter) {
+  if (!sortColumn && (currentTab === "Boli" || currentTab === "Donation")) {
     const ranked = filteredData.map((r, i) => ({ r, i, k: commitSortRank_(r) }));
     ranked.sort((a, b) => (a.k[0] - b.k[0]) || (a.k[1] - b.k[1]) || (a.i - b.i)); // stable
     filteredData = ranked.map(x => x.r);
@@ -6027,7 +6032,7 @@ function renderActionButtons(row, encId) {
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
   }
-  if ((currentTab === "News" || currentTab === "Announcements") && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
+  if ((currentTab === "News" || currentTab === "Announcements" || currentTab === "Notices") && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
     const _k = Object.keys(row), _f = re => _k.find(k => re.test(String(k).trim()));
     const _isAnn = currentTab === "Announcements";
     const _t = String(row[_f(/^(title|subject|heading|शीर्षक|विषय)/i)] || "").trim(), _m = String(row[_f(/message|detail|description|विवरण|समाचार|सूचना|text/i)] || "").trim();
@@ -6483,6 +6488,7 @@ function modalBtn_(text, bg, onclick) {
 let commitFilter = "";
 let commitFilterInit_ = ""; // kis tab ke liye default filter lag chuka hai
 let lastFilteredRows_ = [];
+let lastFilteredRowsPreCommit_ = [];
 
 function commitInfo_(row) {
   const list = parseCommitments_(row[getCommitmentKey_(row)] || "");
@@ -6500,7 +6506,8 @@ function hasPendingInfo_(row) {
 }
 // वादा-wali rows ka order: aaj/aane wale (sabse paas wali date pehle) → nikle hue → bina वादा
 function commitSortRank_(row) {
-  const { diffs } = commitInfo_(row);
+  const { diffs, pending } = commitInfo_(row);
+  if (hasPendingInfo_(row) && pending <= 0) return [3, 0];   // v1.293: poora jama wale sabse neeche
   if (!diffs.length) return [2, 0];
   const upcoming = diffs.filter(d => d >= 0);
   if (upcoming.length) return [0, Math.min(...upcoming)];
@@ -6539,7 +6546,7 @@ function setCommitFilter_(v) {
 function updateCommitToolbar_(sheetName) {
   const on = (sheetName === "Boli" || sheetName === "Donation");
   if (!on) commitFilterInit_ = "";
-  else if (commitFilterInit_ !== sheetName) { commitFilter = "pending"; commitFilterInit_ = sheetName; } // 🆕 default: बाकी + वादा वाले ऊपर
+  else if (commitFilterInit_ !== sheetName) { commitFilter = ""; commitFilterInit_ = sheetName; } // v1.293: default = सभी रिकॉर्ड (poora jama wale bhi dikhen); बाकी+वादा wale upar, poora jama neeche
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
@@ -6548,7 +6555,7 @@ function updateCommitToolbar_(sheetName) {
 }
 function openCommitView_(sheetName, mode) {
   setActiveTab(sheetName);
-  commitFilter = mode || "pending";
+  commitFilter = mode || "";
   commitFilterInit_ = sheetName; // default filter isse override na ho
 }
 
@@ -8516,7 +8523,9 @@ if ('serviceWorker' in navigator) {
     return fillSettings_(t.replace(NAMEPH, "")).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   };
   window.postMsg_ = function (tab, rec) {
-    const all = sheetPresets_(tab), p = all.find(x => x.share) || all[0]; if (!p) return "";
+    const all = sheetPresets_(tab); let p = all.find(x => x.share) || all[0];
+    if (!p && TEMPLATES && TEMPLATES[tab]) p = { text: String(TEMPLATES[tab]).replace(/\\n/g, "\n"), share: false };   // v1.293: plain "Notices" / "News" template bhi chale
+    if (!p) return "";
     let t = fillRowCols_(applyVars_(p.text, rowVars_(tab, rec)), rec);
     t = t.replace(NAMEPH, p.share ? "" : "समाज बंधु");
     return fillSettings_(t).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -8556,7 +8565,7 @@ if ('serviceWorker' in navigator) {
     const recipients = () => {
       const g = $("mcGrp").value;
       if (money) {
-        return (lastFilteredRows_ || []).map(r => ({ name: getRowMemberName_(r), mobile: getRowMobile_(r).slice(-10), row: r, pend: getPendingAmount_(r), forWhat: val(r, /^(for|seva|सेवा)$/i) }))
+        return (lastFilteredRowsPreCommit_ && lastFilteredRowsPreCommit_.length ? lastFilteredRowsPreCommit_ : (lastFilteredRows_ || [])).map(r => ({ name: getRowMemberName_(r), mobile: getRowMobile_(r).slice(-10), row: r, pend: getPendingAmount_(r), forWhat: val(r, /^(for|seva|सेवा)$/i) }))
           .filter(x => x.name && x.mobile.length === 10 && (g === "all" || (g === "paid" ? (hasPendingInfo_(x.row) && x.pend <= 0) : x.pend > 0)));
       }
       if (tab === "Members" && g === "list") {
