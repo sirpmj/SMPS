@@ -203,14 +203,15 @@
 <meta property="og:url" content="https://sirpmj.github.io/SMPS/app.html">
 <meta property="og:title" content="सदस्य पोर्टल — श्री मेवाड़ प्रजापत समाज – वापी">
 <meta property="og:description" content="अपना रिकॉर्ड देखें/अपडेट करें, बैठक, सूचनाएँ और समाज की जानकारी — मोबाइल नंबर और PIN से लॉगिन।">
-<meta property="og:image" content="https://sirpmj.github.io/SMPS/Logo-512.png">
-<meta property="og:image:width" content="512">
-<meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="श्री मेवाड़ प्रजापत समाज – वापी का लोगो">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://sirpmj.github.io/SMPS/og-card.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:alt" content="श्री मेवाड़ प्रजापत समाज – वापी — लोगो, नाम और परिचय">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="सदस्य पोर्टल — श्री मेवाड़ प्रजापत समाज – वापी">
 <meta name="twitter:description" content="अपना रिकॉर्ड देखें/अपडेट करें, बैठक, सूचनाएँ और समाज की जानकारी — मोबाइल नंबर और PIN से लॉगिन।">
-<meta name="twitter:image" content="https://sirpmj.github.io/SMPS/Logo-512.png">
+<meta name="twitter:image" content="https://sirpmj.github.io/SMPS/og-card.jpg">
 <title>Shree Mevad Prajapat Samaj-Vapi</title>
 <script>window.APP_VERSION = "v1.240"; console.info("SMPS app", window.APP_VERSION);
 // iPhone/iPad: input par tap karte hi page zoom na ho (pinch-zoom phir bhi chalta hai)
@@ -1573,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.301"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.302"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8726,7 +8727,7 @@ if ('serviceWorker' in navigator) {
       const g = $("mcGrp").value, opts = [...$("mcTpl").options];
       opts.forEach((o, i) => { const tg = (tpls[i] || {}).grp; const bad = !!(OPP[g] && tg === OPP[g]); o.disabled = bad; o.title = bad ? "इस समूह के लिए नहीं" : ""; });
       const cur = $("mcTpl").selectedIndex;
-      if (opts[cur] && opts[cur].disabled) { const k = opts.findIndex(o => !o.disabled); if (k >= 0) { $("mcTpl").selectedIndex = k; fillTpl(); } }
+      if (opts[cur] && opts[cur].disabled) { let k = opts.findIndex((o, i) => !o.disabled && (tpls[i] || {}).grp === g); if (k < 0) k = opts.findIndex(o => !o.disabled); if (k >= 0) { $("mcTpl").selectedIndex = k; fillTpl(); } }
     };
     const rebuild = () => { list = recipients(); drawList(); };
     const rebuildTpl = () => {
