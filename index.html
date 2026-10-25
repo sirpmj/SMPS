@@ -643,8 +643,17 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
 </style>
 
 <style>
-/* v1.302: chhote mobile par header bahar na jaye (English mein naam lamba hota hai) */
-@media (max-width:480px){.brand b{display:none}.nav .in{gap:8px}#themeBtn{margin-left:auto}}
+/* v1.303: chhote mobile par naam wapas + side padding kam + language button chhota */
+@media (max-width:480px){
+  .nav.gut{padding-inline:10px}
+  .nav .in{gap:6px}
+  .brand{gap:6px}
+  .brand i{width:32px;height:32px}
+  .brand b{display:block;font-size:12.5px;line-height:1.15;max-width:78px}
+  .tgl{width:32px;height:32px}
+  .login-b{padding:7px 10px;font-size:13px}
+  #themeBtn{margin-left:auto}
+}
 </style>
 </head>
 <body>
@@ -862,7 +871,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
     <div id="fReg2">Reg No: A/1221</div>
     <div class="fl"><a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#gallery">फोटो</a><a href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a></div>
     <div id="fAddr" style="margin-bottom:6px"></div>
-    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.302</div>
+    <div style="font-size:14px">© <span id="yr"></span> श्री मेवाड़ प्रजापत समाज-वापी। सर्वाधिकार सुरक्षित। · वेबसाइट v1.303</div>
     <div class="vis" id="visBox" hidden title="सिर्फ़ गिनती — किसी की कोई निजी जानकारी नहीं ली जाती">👁 कुल दर्शक: <b id="visN">–</b></div>
   </div>
 </footer>

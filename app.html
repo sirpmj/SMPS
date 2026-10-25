@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.302"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.303"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8550,6 +8550,19 @@ if ('serviceWorker' in navigator) {
   const MEMDEF_KEY_ = "smps_mem_wa_def";
   function memDefLabel_() { try { return localStorage.getItem(MEMDEF_KEY_) || ""; } catch (e) { return ""; } }
 
+  /* ===== v1.303: khud likha message Templates sheet mein save ===== */
+  const GRP_TAG_ = { pend: "बाकी", paid: "पूर्ण", pres: "उपस्थित", abs: "अनुपस्थित", all: "सभी", list: "सूची" };
+  async function saveTemplateRemote_(tab, label, tags, text) {
+    const r = await callCrudBackend_({ action: "saveTemplate", tab: tab, label: label, tags: tags, text: text });
+    if (!r || !r.success) throw new Error((r && r.msg) || "Template सेव नहीं हो पाया");
+    const pre = (tab + ": " + label).toLowerCase();
+    Object.keys(TEMPLATES).forEach(k => { const kk = k.trim().toLowerCase(); if (kk === pre || kk.indexOf(pre + " |") === 0) delete TEMPLATES[k]; });
+    TEMPLATES[r.key || (tab + ": " + label + (tags.length ? " | " + tags.join(", ") : ""))] = text;
+    return r;
+  }
+  window.saveTemplateRemote_ = saveTemplateRemote_;
+  const lblKey_ = x => String(x || "").replace(/^[^\p{L}\p{N}]+/u, "").trim();   // emoji hata kar naam milao
+  const sameLbl_ = (p, n) => lblKey_(p.label) === lblKey_(n);
   /* Members row ka WhatsApp: message chunne / badalne ka popup */
   window.openRowWa_ = function (encId, e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -8589,6 +8602,22 @@ if ('serviceWorker' in navigator) {
       if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return;
       window.open(buildWaUrl_(mobile, t), "_blank"); m.close();
     }));
+    const svB = modalBtn_("💾 Template सेव", "#7c3aed", async () => {
+      const txt = $("rwTxt").value.trim(); if (!txt) { alert("पहले संदेश लिखें।"); return; }
+      const cur = pr[$("rwTpl").selectedIndex] || {};
+      let nm = prompt("इस संदेश का नाम लिखें (Members के Template list में यही दिखेगा):", cur.label || ""); if (nm == null) return;
+      nm = nm.replace(/[|:：\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60); if (!nm) { alert("नाम खाली है।"); return; }
+      if (pr.some(p => sameLbl_(p, nm)) && !confirm("“" + nm + "” नाम का Template पहले से है। इसे बदल दें?")) return;
+      svB.disabled = true; const old = svB.textContent; svB.textContent = "⏳ ...";
+      try {
+        const r = await saveTemplateRemote_(tab, nm, ["सभी"], $("rwTxt").value.replace(/\s+$/, ""));
+        const keep = $("rwTxt").value; pr.length = 0; presets(tab).forEach(p => pr.push(p));
+        $("rwTpl").innerHTML = pr.map(p => '<option>' + esc(p.label) + '</option>').join(""); const k = pr.findIndex(p => sameLbl_(p, nm)); $("rwTpl").selectedIndex = k >= 0 ? k : 0; $("rwTxt").value = keep; paintDef(); ph.refresh();
+        alert("✔ " + (r.msg || "Template सेव हो गया"));
+      } catch (e) { alert("❌ " + (e.message || e)); }
+      svB.disabled = false; svB.textContent = old;
+    });
+    m.foot.appendChild(svB);
     const cpB = modalBtn_("📋 कॉपी", "#0369a1", () => copyText_(finalTxt(false, false), cpB)); m.foot.appendChild(cpB);
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
   };
@@ -8756,6 +8785,22 @@ if ('serviceWorker' in navigator) {
       $("mcList").querySelectorAll(".ck").forEach(c => { c.checked = !all; });
       refreshInfo();
     }));
+    const svB = modalBtn_("💾 Template में सेव करें", "#7c3aed", async () => {
+      const txt = $("mcTxt").value.trim(); if (!txt) { alert("पहले संदेश लिखें।"); return; }
+      const cur = curTpl() || {}; const sug = /खुद लिखें/.test(cur.label || "") ? "" : (cur.label || "");
+      let name = prompt("इस संदेश का नाम लिखें (Template list में यही नाम दिखेगा):", sug); if (name == null) return;
+      name = name.replace(/[|:：\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60); if (!name) { alert("नाम खाली है।"); return; }
+      if (tpls.some(p => sameLbl_(p, name)) && !confirm("“" + name + "” नाम का Template पहले से है। इसे नए संदेश से बदल दें?")) return;
+      const g = $("mcGrp").value, tags = GRP_TAG_[g] ? [GRP_TAG_[g]] : [];
+      svB.disabled = true; const old = svB.textContent; svB.textContent = "⏳ सेव हो रहा है...";
+      try {
+        const r = await saveTemplateRemote_(tab, name, tags, $("mcTxt").value.replace(/\s+$/, ""));
+        rebuildTpl(); const k = tpls.findIndex(p => sameLbl_(p, name)); if (k >= 0) { $("mcTpl").selectedIndex = k; fillTpl(); applyTplState(); } updWarn();
+        alert("✔ " + (r.msg || "Template सेव हो गया") + "\n\nअब यह " + tab + " के Template list में दिखेगा।");
+      } catch (e) { alert("❌ " + (e.message || e)); }
+      svB.disabled = false; svB.textContent = old;
+    });
+    m.foot.appendChild(svB);
     if (!money) { const cpB = modalBtn_("📋 संदेश कॉपी (ग्रुप के लिए)", "#0369a1", () => copyText_(textFor(0, false, false, true), cpB)); m.foot.appendChild(cpB); }
     m.foot.appendChild(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => {
       const i = list.findIndex((_, k) => sel.has(k) && !done.has(k));
