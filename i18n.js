@@ -908,7 +908,7 @@
       "[data-theme=dark] #smpsLangBtn,html.dark #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}" +
       "[data-theme=dark] #smpsLangBtn b.on,html.dark #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}" +
       "@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}:root:not([data-theme=light]) #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}}" +
-      "@media (max-width:700px){html body header:has(#smpsLangBtn):has(#smpsLangBtn){padding-right:112px!important}html body header:has(#smpsLangBtn):has(#smpsLangBtn):has(#installBtn:not([style*=\"none\"])){padding-right:146px!important}}" +
+      "@media (max-width:700px){html body header:has(#smpsLangBtn):has(#smpsLangBtn){padding-right:130px!important}html body header:has(#smpsLangBtn):has(#smpsLangBtn) h1{white-space:normal!important}html body header:has(#smpsLangBtn):has(#smpsLangBtn):has(#installBtn:not([style*=\"none\"])){padding-right:166px!important}}" +
       "#smpsLangBtn.inl{width:auto;min-width:28px;position:static;margin-left:auto;z-index:auto;height:28px;padding:0 8px;box-shadow:none;flex:0 0 auto}" +
       "@media print{#smpsLangBtn{display:none!important}}";
     document.head.appendChild(st);
