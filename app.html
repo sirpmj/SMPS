@@ -1571,7 +1571,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.299"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.300"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -3567,6 +3567,7 @@ el("logoutBtn").onclick = () => {
 
   loginMsg.textContent = "";
   el("welcomeMsg").style.display = "none";
+  try { location.replace("index.html"); } catch (e) { location.href = "index.html"; }   // v1.300: logout ke baad website
 };
 
 
@@ -7981,7 +7982,7 @@ function autoLogout() {
   try { if (localStorage.getItem("smps_remember")) { resetIdleTimer(); return; } } catch (e) {}   // 🆕 v1.257: "याद रखें" wale device par idle logout nahi
   alert("लंबे समय से कोई activity नहीं हुई। सुरक्षा कारणों से logout किया गया है।");
   sessionStorage.removeItem("currentUser");
-  location.reload();
+  try { location.replace("index.html"); } catch (e) { location.reload(); }   // v1.300: website par
 }
 
 // 👂 User activity listeners
@@ -8241,55 +8242,6 @@ if ('serviceWorker' in navigator) {
     box.style.display = "";
   }
 
-  /* ---------- (2) Meeting RSVP ---------- */
-  async function decorateMeetingRsvp_() {
-    const host = document.getElementById("homeMeeting"); if (!host || document.getElementById("rsvpRow")) return;
-    const rows = (await fetchSheet("Meetings")) || [], t0 = today0();
-    const up = rows.filter(r => String(r.ShowOnHome).toUpperCase() === "TRUE")
-      .map(r => ({ r, d: dt_(r.Date) })).filter(x => x.d && x.d >= t0).sort((a, b) => a.d - b.d)[0];
-    if (document.getElementById("rsvpRow")) return;
-    if (!up) {   // agli meeting nahi — saaf note (sheet mein aane wali meeting ShowOnHome = TRUE ke saath daalo)
-      const n = document.createElement("div"); n.id = "rsvpRow"; n.className = "rsvp-note";
-      n.textContent = "📅 अगली मीटिंग तय होने पर यहाँ “आने की सूचना” का बटन आएगा।"; host.appendChild(n); return;
-    }
-    const r = up.r, mid = String(r.ID || (r.Date + "|" + r.Subject)).trim(), label = String(r.Date || "") + " – " + String(r.Subject || "");
-    const row = document.createElement("div"); row.id = "rsvpRow"; row.className = "rsvp-row";
-    row.innerHTML = `<span id="rsvpCnt" class="rsvp-c"></span><button type="button" id="rsvpBtn" class="rsvp-b">✋ आने की सूचना दें</button>`;
-    host.appendChild(row);
-    const setCnt = c => { const n = c && c.yes ? c.yes : 0; document.getElementById("rsvpCnt").textContent = n ? "👥 " + n + " सदस्य आ रहे हैं" : ""; };
-    fetch(WEB_APP_URL + "?action=rsvpCount").then(x => x.json()).then(j => { if (j && j.success && j.counts) setCnt(j.counts[mid]); }).catch(() => {});
-    document.getElementById("rsvpBtn").onclick = () => openRsvp_(mid, label, setCnt);
-  }
-  function openRsvp_(mid, label, setCnt) {
-    const old = document.getElementById("rsvpBox"); if (old) old.remove();
-    let saved = ""; try { saved = localStorage.getItem("smps_rsvp_mobile") || ""; } catch (e) {}
-    const ov = document.createElement("div"); ov.id = "rsvpBox"; ov.className = "xo";
-    ov.innerHTML = `<div class="xc"><div class="xt"><b>✋ मीटिंग में आने की सूचना</b><button type="button" class="xx" id="rsvpX">✕</button></div>
-      <div class="xs">${esc(label)}</div>
-      <input id="rsvpMob" type="tel" inputmode="numeric" maxlength="10" placeholder="अपना 10 अंकों का मोबाइल नंबर" value="${esc(saved)}">
-      <div class="xm" id="rsvpMsg"></div>
-      <div class="xr"><button type="button" id="rsvpYes" class="xy">✅ आऊँगा</button><button type="button" id="rsvpNo" class="xn">❌ नहीं आ पाऊँगा</button></div></div>`;
-    document.body.appendChild(ov);
-    const close = () => ov.remove(); ov.querySelector("#rsvpX").onclick = close; ov.addEventListener("click", e => { if (e.target === ov) close(); });
-    const msg = ov.querySelector("#rsvpMsg");
-    const send = async resp => {
-      const mob = String(ov.querySelector("#rsvpMob").value || "").replace(/\D/g, "").slice(-10);
-      if (mob.length !== 10) { msg.textContent = "कृपया सही 10 अंकों का मोबाइल नंबर डालें।"; msg.className = "xm xe"; return; }
-      msg.className = "xm"; msg.textContent = "⏳ भेजा जा रहा है…"; ov.querySelectorAll("button.xy,button.xn").forEach(b => b.disabled = true);
-      try {
-        const res = await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "rsvp", meetingId: mid, meeting: label, mobile: mob, response: resp }) });
-        const j = await res.json();
-        if (j && j.success) {
-          try { localStorage.setItem("smps_rsvp_mobile", mob); } catch (e) {}
-          msg.className = "xm xo2"; msg.textContent = "🙏 धन्यवाद " + (j.name ? String(j.name).replace(/\s*\(.*$/, "") : "") + " — आपका जवाब दर्ज हो गया (" + (resp === "YES" ? "आऊँगा" : "नहीं आ पाऊँगा") + ")।";
-          if (j.counts && setCnt) setCnt(j.counts);
-          setTimeout(close, 2200);
-        } else { msg.className = "xm xe"; msg.textContent = (j && j.msg) || "अभी दर्ज नहीं हो पाया।"; ov.querySelectorAll("button.xy,button.xn").forEach(b => b.disabled = false); }
-      } catch (e) { msg.className = "xm xe"; msg.textContent = "इंटरनेट की समस्या — दोबारा कोशिश करें।"; ov.querySelectorAll("button.xy,button.xn").forEach(b => b.disabled = false); }
-    };
-    ov.querySelector("#rsvpYes").onclick = () => send("YES"); ov.querySelector("#rsvpNo").onclick = () => send("NO");
-  }
-
   /* ---------- shared popup shell (existing #dirBox styles) ---------- */
   function shell_(title, filtersHtml) {
     const old = document.getElementById("dirBox"); if (old) old.remove();
@@ -8379,24 +8331,6 @@ if ('serviceWorker' in navigator) {
     sel.onchange = draw; draw();
   };
 
-  /* ---------- ✋ RSVP सूची (Meetings tab, admin) ---------- */
-  window.openRsvpList_ = async function () {
-    let rows = []; try { rows = (await fetchSheet("RSVP")) || []; } catch (e) {}
-    if (!rows.length) { alert("अभी किसी ने RSVP नहीं किया है।\n(पहली RSVP पर Google Sheet में “RSVP” tab अपने आप बनता है।)"); return; }
-    const kId = keyOf(rows, /^meetingid$/i), kMt = keyOf(rows, /^meeting$/i), kNm = keyOf(rows, /^name$/i), kMb = keyOf(rows, /^mobile$/i), kRs = keyOf(rows, /^response$/i);
-    const order = [], label = {}; rows.forEach(r => { const id = String(r[kId] || ""); if (!id) return; if (!(id in label)) order.push(id); label[id] = String(r[kMt] || id); });
-    order.reverse();
-    const ov = shell_("✋ RSVP सूची", `<select id="rvM">${order.map(id => `<option value="${esc(id)}">${esc(label[id])}</option>`).join("")}</select>`);
-    const body = ov.querySelector("#xBody"), sel = ov.querySelector("#rvM");
-    const draw = () => {
-      const mine = rows.filter(r => String(r[kId] || "") === sel.value), yes = mine.filter(r => String(r[kRs]).toUpperCase() === "YES"), no = mine.filter(r => String(r[kRs]).toUpperCase() !== "YES");
-      ov.querySelector("#xCnt").textContent = "✅ " + yes.length + "  ❌ " + no.length;
-      const list = (arr, t) => `<div class="mv-sum" style="margin:10px 0 4px"><b>${t} (${arr.length})</b></div>` + (arr.length ? arr.map((r, i) => `<div class="wi"><span class="wi-i" style="font-size:15px">${i + 1}.</span><div class="wi-t"><b>${esc(String(r[kNm] || "").replace(/\s*\(.*$/, ""))}</b><small>${esc(r[kMb] || "")}</small></div></div>`).join("") : `<div class="muted" style="padding:6px 4px">कोई नहीं</div>`);
-      body.innerHTML = list(yes, "✅ आऊँगा") + list(no, "❌ नहीं आ पाऊँगा");
-    };
-    sel.onchange = draw; draw();
-  };
-
   /* ---------- Tabs: sab ek line mein ---------- */
   function fitTabs_() {
     const t = document.getElementById("tabs"); if (!t || !t.children.length) return;
@@ -8421,16 +8355,14 @@ if ('serviceWorker' in navigator) {
     const acc = t => (ROLE_ACCESS && currentUser && ROLE_ACCESS[currentUser.role] && ROLE_ACCESS[currentUser.role][t]) || null;
     const mA = acc("Meetings"), mB = acc("Members");
     mk("attRepBtn", "📊", "उपस्थिति रिपोर्ट", window.openAttendanceReport_, "#7c3aed").style.display = (sheetName === "Meetings" && mA && mA.canView) ? "inline-block" : "none";
-    mk("rsvpListBtn", "✋", "RSVP सूची — कौन आ रहा है", window.openRsvpList_, "#16a34a").style.display = (sheetName === "Meetings" && mA && mA.canView && (mA.canAction || []).some(a => /ADD|EDIT/.test(a))) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
 
   /* ---------- hooks: login render ke baad ---------- */
   if (typeof renderGapBlocks_ === "function") { const _g = renderGapBlocks_; renderGapBlocks_ = async function () { const r = await _g.apply(this, arguments); try { await renderNotices_(); } catch (e) {} return r; }; }
-  if (typeof renderMeetingUpdates === "function") { const _m = renderMeetingUpdates; renderMeetingUpdates = async function () { const r = await _m.apply(this, arguments); try { await decorateMeetingRsvp_(); } catch (e) {} return r; }; }
   // safety: agar login render hamare wrap se pehle chal chuka ho
-  [2500, 6000].forEach(ms => setTimeout(() => { try { const b = document.getElementById("gpNotices"); if (b && !b.innerHTML) renderNotices_(); decorateMeetingRsvp_(); } catch (e) {} }, ms));
+  [2500, 6000].forEach(ms => setTimeout(() => { try { const b = document.getElementById("gpNotices"); if (b && !b.innerHTML) renderNotices_(); } catch (e) {} }, ms));
 })();
 </script>
 <script>

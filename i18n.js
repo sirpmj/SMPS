@@ -875,7 +875,8 @@
   var btn = null;
   function paint() {
     if (!btn) return;
-    btn.innerHTML = '<b class="' + (lang === "hi" ? "on" : "") + '">हिं</b><span>|</span><b class="' + (lang === "en" ? "on" : "") + '">EN</b>';
+    if (btn.className === "inl") btn.innerHTML = '<b class="on">' + (lang === "en" ? "हिं" : "EN") + '</b>';   // header mein chhota: sirf doosri bhasha
+    else btn.innerHTML = '<b class="' + (lang === "hi" ? "on" : "") + '">हिं</b><span>|</span><b class="' + (lang === "en" ? "on" : "") + '">EN</b>';
     btn.setAttribute("data-no-i18n", "");
     btn.title = lang === "en" ? "Switch to Hindi" : "Switch to English";
     btn.setAttribute("aria-label", lang === "en" ? "Language: English. Switch to Hindi" : "Language: Hindi. Switch to English");
@@ -893,6 +894,7 @@
     var host = document.querySelector(".hdr-tools") || document.querySelector("header.nav .in") || document.querySelector("header");
     if (host) { btn.className = "inl"; if (host.matches(".hdr-tools")) host.insertBefore(btn, host.firstChild); else host.appendChild(btn); }
     else { btn.className = ""; document.body.appendChild(btn); }
+    paint();
   }
   function mount() {
     if (document.getElementById("smpsLangBtn")) return;
@@ -906,7 +908,8 @@
       "[data-theme=dark] #smpsLangBtn,html.dark #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}" +
       "[data-theme=dark] #smpsLangBtn b.on,html.dark #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}" +
       "@media (prefers-color-scheme:dark){:root:not([data-theme=light]) #smpsLangBtn{background:rgba(20,28,45,.94);color:#e8eefc;border-color:rgba(255,255,255,.3)}:root:not([data-theme=light]) #smpsLangBtn b.on{background:#e8eefc;color:#0a2a5e}}" +
-      "#smpsLangBtn.inl{width:auto;position:static;margin-left:auto;z-index:auto;height:28px;padding:0 8px;box-shadow:none;flex:0 0 auto}" +
+      "@media (max-width:700px){html body header:has(#smpsLangBtn):has(#smpsLangBtn){padding-right:112px!important}html body header:has(#smpsLangBtn):has(#smpsLangBtn):has(#installBtn:not([style*=\"none\"])){padding-right:146px!important}}" +
+      "#smpsLangBtn.inl{width:auto;min-width:28px;position:static;margin-left:auto;z-index:auto;height:28px;padding:0 8px;box-shadow:none;flex:0 0 auto}" +
       "@media print{#smpsLangBtn{display:none!important}}";
     document.head.appendChild(st);
     btn = document.createElement("button");
