@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.305"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.306"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2170,6 +2170,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       📄 PDF
     </button>
 
+    <button id="myAcctBtn" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
     <button id="logoutBtn">🔙 Logout</button>
   </div>
 
@@ -8840,7 +8841,7 @@ if ('serviceWorker' in navigator) {
     const m = openModal_("💬 WhatsApp — " + (name || tab));
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
     const pr = presets(tab), fills = {};
-    m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">📱 ' + esc(mobile || "मोबाइल नंबर नहीं मिला") + '</div>' +
+    m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">📱 ' + esc(mobile || "मोबाइल नंबर नहीं मिला") + '</div><div id="rwLast" style="font-size:12.5px;margin:0 0 6px"></div>' +
       '<label style="display:block;font-size:12px;color:#475569;margin:6px 0 3px">संदेश का प्रकार</label><select id="rwTpl" ' + sty + '>' + pr.map(p => '<option>' + esc(p.label) + '</option>').join("") + '</select>' +
       '<div id="rwDef" style="font-size:12.5px;margin:6px 0"></div>' +
       '<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">संदेश (आप बदल भी सकते हैं)</label><textarea id="rwTxt" rows="9" ' + sty + '></textarea><div id="rwPh"></div>';
@@ -8852,6 +8853,13 @@ if ('serviceWorker' in navigator) {
     };
     const finalTxt = (mark, nofill) => { let t = base(); if (!nofill) t = applyFills_(t, fills, mark); return fillSettings_(t).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); };
     const ph = mountPh_($("rwPh"), finalTxt, fills);
+    let lastSent = [];
+    const paintLast = () => {
+      const mob = String(mobile || "").slice(-10), mine = lastSent.filter(r => r.mob === mob).sort((a, b) => Date.parse(b.t) - Date.parse(a.t));
+      const cur = (pr[$("rwTpl").selectedIndex] || {}).label || "", same = mine.find(r => tplNorm_(r.tpl) === tplNorm_(cur) && Date.now() - Date.parse(r.t) < 7 * 864e5);
+      $("rwLast").innerHTML = same ? '<span style="color:#b45309;font-weight:600">⚠️ यही संदेश ' + dAgo_(same.t) + ' भेजा था (' + esc(fmtT_(same.t)) + ')</span>' : (mine[0] ? '<span style="color:#64748b">📜 आख़िरी संदेश: ' + esc(mine[0].tpl) + ' · ' + dAgo_(mine[0].t) + '</span>' : "");
+    };
+    getSentLog_("Members").then(r => { lastSent = r; paintLast(); }).catch(() => {});
     const paintDef = () => {
       const d = memDefLabel_(), cur = pr[$("rwTpl").selectedIndex] || {};
       $("rwDef").innerHTML = (d ? '⭐ default: <b>' + esc(d) + '</b> — ' : 'कोई default नहीं चुना — ') +
@@ -8863,12 +8871,17 @@ if ('serviceWorker' in navigator) {
     const fill = () => { $("rwTxt").value = (pr[$("rwTpl").selectedIndex] || {}).text || ""; Object.keys(fills).forEach(k => delete fills[k]); paintDef(); ph.refresh(); };
     const dl = memDefLabel_(); let di = pr.findIndex(p => p.label === dl);
     if (di < 0) di = Math.max(0, pr.findIndex(p => /नमस्ते|सामान्य/.test(p.label)));
-    $("rwTpl").selectedIndex = di; $("rwTpl").onchange = fill; $("rwTxt").oninput = () => ph.refresh(); fill();
+    $("rwTpl").selectedIndex = di; $("rwTpl").onchange = () => { fill(); paintLast(); }; $("rwTxt").oninput = () => ph.refresh(); fill();
     m.foot.appendChild(modalBtn_("💬 WhatsApp भेजें", "#25a244", () => {
       if (!mobile) { alert("इस सदस्य का मोबाइल नंबर नहीं मिला।"); return; }
       const t = finalTxt(false, false); const left = Array.from(new Set(t.match(/\{\{[^{}\n]+\}\}/g) || []));
       if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return;
-      window.open(buildWaUrl_(mobile, t), "_blank"); m.close();
+      const lbl = (pr[$("rwTpl").selectedIndex] || {}).label || "";
+      const rec = lastSent.filter(r => r.mob === String(mobile).slice(-10) && tplNorm_(r.tpl) === tplNorm_(lbl) && Date.now() - Date.parse(r.t) < 7 * 864e5)[0];
+      if (rec && !confirm("⚠️ " + name + " को यही संदेश " + dAgo_(rec.t) + " (" + fmtT_(rec.t) + ") भेजा जा चुका है।\n\nफिर भी दोबारा भेजें?")) return;
+      window.open(buildWaUrl_(mobile, t), "_blank");
+      try { window.logSend_("Members", String(lbl).replace(/^[^\p{L}\p{N}]+/u, "").trim(), name, mobile, t); } catch (e) {}
+      m.close();
     }));
     const svB = modalBtn_("💾 Template सेव", "#7c3aed", async () => {
       const txt = $("rwTxt").value.trim(); if (!txt) { alert("पहले संदेश लिखें।"); return; }
@@ -9060,7 +9073,7 @@ if ('serviceWorker' in navigator) {
       $("mcList").innerHTML = list.length ? list.map((x, i) =>
         `<div data-i="${i}" style="display:flex;gap:8px;align-items:center;border-bottom:1px solid #eee;padding:7px 0">
            <input type="checkbox" class="ck" checked style="width:auto">
-           <div style="flex:1;min-width:0;font-size:13px"><b>${esc(x.name)}</b> <span style="color:#64748b">${esc(x.mobile)}</span>${money ? `<br><span style="color:#64748b">${esc(x.forWhat || "")}${x.pend > 0 ? " — बाकी ₹" + x.pend.toLocaleString("en-IN") : ""}</span>` : ""}</div>
+           <div style="flex:1;min-width:0;font-size:13px"><b>${esc(x.name)}</b> <span style="color:#64748b">${esc(x.mobile)}</span>${money ? `<br><span style="color:#64748b">${esc(x.forWhat || "")}${x.pend > 0 ? " — बाकी ₹" + x.pend.toLocaleString("en-IN") : ""}</span>` : ""}<div class="sent" style="font-size:11.5px;margin-top:2px"></div></div>
            <span class="tick" style="color:#1a9c4b;font-weight:700"></span>
            <button type="button" class="cp" title="संदेश कॉपी करें" style="background:#0369a1;color:#fff;border:none;border-radius:8px;padding:6px 9px;cursor:pointer;width:auto">📋</button>
            <button type="button" class="go" style="background:#25a244;color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;width:auto">WhatsApp</button>
@@ -9071,7 +9084,7 @@ if ('serviceWorker' in navigator) {
         d.querySelector(".go").onclick = () => send(i);
         d.querySelector(".cp").onclick = e => copyText_(textFor(i), e.currentTarget);
       });
-      refreshInfo();
+      paintSent(); refreshInfo();
     };
     const fillTpl = () => { const t = curTpl(); if (t.text != null) $("mcTxt").value = t.text; };
     /* v1.298: group ke hisaab se ulta wala sandesh inactive (jaise "पूरी राशि जमा" chunne par "बकाया" wale sandesh band) */
@@ -9091,17 +9104,18 @@ if ('serviceWorker' in navigator) {
       applyTplState();
     };
     $("mcGrp").innerHTML = groups().map(g => `<option value="${g.k}">${esc(g.t)}</option>`).join("");
-    if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); };
+    if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); paintSent(); };
     $("mcGrp").onchange = () => { applyTplState(); rebuild(); };
     $("mcTxt").oninput = updWarn;
     $("mcTpl").onchange = () => {            // preset ke saath sahi samooh khud chun lo (jaise dhanyavaad → उपस्थित)
       fillTpl();
       const g = curTpl().grp;
       if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; applyTplState(); rebuild(); }
-      Object.keys(fills).forEach(k => delete fills[k]); updWarn();
+      Object.keys(fills).forEach(k => delete fills[k]); paintSent(); updWarn();
     };
     ph = mountPh_($("mcPh"), (mk, nf) => (list.length ? textFor(0, mk, nf) : (nf ? $("mcTxt").value : applyFills_($("mcTxt").value, fills, mk))), fills, () => updWarn());
     rebuildTpl(); rebuild();
+    getSentLog_(tab).then(r => { sentRows = r; paintSent(); }).catch(() => {});
 
     m.foot.appendChild(modalBtn_("☑ सभी / कोई नहीं", "#475569", () => {
       const all = sel.size === list.length;
@@ -9127,12 +9141,8 @@ if ('serviceWorker' in navigator) {
     m.foot.appendChild(svB);
     m.foot.appendChild(modalBtn_("⚙️ Templates", "#475569", () => { m.close(); window.openTplManager_(tab, () => window.openMsgCenter_()); }));
     if (!money) { const cpB = modalBtn_("📋 संदेश कॉपी (ग्रुप के लिए)", "#0369a1", () => copyText_(textFor(0, false, false, true), cpB)); m.foot.appendChild(cpB); }
-    m.foot.appendChild(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => {
-      const i = list.findIndex((_, k) => sel.has(k) && !done.has(k));
-      if (i === -1) { alert("चुने हुए सभी को भेज दिया गया है।"); return; }
-      const row = $("mcList").querySelector(`[data-i="${i}"]`); if (row) row.scrollIntoView({ block: "center" });
-      send(i);
-    }));
+    m.foot.appendChild(modalBtn_("📜 भेजने का record", "#475569", () => { m.close(); window.openSendLog_(tab, () => window.openMsgCenter_()); }));
+    m.foot.appendChild(modalBtn_("▶ Queue शुरू करें", "#1a9c4b", () => { if (Q && Q.pos < Q.ids.length) { qGo(); } else { qStart(); } m.body.scrollTop = 0; }));
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
   };
 
