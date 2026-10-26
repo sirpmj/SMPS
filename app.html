@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.304"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.305"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2244,9 +2244,9 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 
   <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
   <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
+    <option value="">सभी रिकॉर्ड</option>
     <option value="pending">बाकी+वादा</option>
     <option value="paid">✅ पूरा जमा</option>
-    <option value="">सभी रिकॉर्ड</option>
     <option value="today">आज का वादा</option>
     <option value="tomorrow">कल का वादा</option>
     <option value="week">अगले 7 दिन</option>
@@ -8322,7 +8322,8 @@ if ('serviceWorker' in navigator) {
     const _opt = L => L.map((x, i) => `<option value="${i}">${esc(x.label)}</option>`).join("");
     const _bL = wishList_("birth"), _aL = wishList_("ann");
     const ov = shell_("🎂 बधाई", `<select id="wiR"><option value="7">अगले 7 दिन</option><option value="30">अगले 30 दिन</option><option value="90">अगले 90 दिन</option><option value="366">पूरा साल</option></select>` +
-      (_bL.length > 1 ? ` <select id="wiB" title="जन्मदिन का संदेश">${_opt(_bL)}</select>` : "") + (_aL.length > 1 ? ` <select id="wiA" title="वर्षगांठ का संदेश">${_opt(_aL)}</select>` : ""));
+      (_bL.length ? ` <label class="wl" style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;white-space:nowrap">🎂 जन्मदिन संदेश:<select id="wiB" title="जन्मदिन का संदेश">${_opt(_bL)}</select></label>` : ` <span style="font-size:12.5px;color:#b91c1c">🎂 Templates में “Birthday” संदेश नहीं है</span>`) +
+      (_aL.length ? ` <label class="wl" style="display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;white-space:nowrap">💍 वर्षगांठ संदेश:<select id="wiA" title="वर्षगांठ का संदेश">${_opt(_aL)}</select></label>` : ` <span style="font-size:12.5px;color:#b91c1c">💍 Templates में “Anniversary” संदेश नहीं है</span>`));
     const body = ov.querySelector("#xBody"), sel = ov.querySelector("#wiR");
     let range = 7; [7, 30, 90, 366].some(r => { range = r; return items.some(x => x.o <= r); });   // 7 din mein koi na ho to agla range
     sel.value = String(range);
@@ -8332,14 +8333,20 @@ if ('serviceWorker' in navigator) {
       if (!list.length) {
         body.innerHTML = `<div class="muted" style="padding:14px">${items.length ? "इस अवधि में कोई जन्मदिन / वर्षगांठ नहीं है।" : "Members sheet में जन्मदिन / वर्षगांठ की तारीख नहीं मिली।<br><small>मिले कॉलम: " + esc(Object.keys(mem[0] || {}).join(", ")) + "<br>जन्मदिन कॉलम: " + esc(kB || "—") + " · वर्षगांठ कॉलम: " + esc(kA || "—") + "</small>"}</div>`; return;
       }
-      body.innerHTML = list.map((x, i) => { const d = new Date(base); d.setDate(d.getDate() + x.o); return `<div class="wi"><span class="wi-i">${x.ty === "birth" ? "🎂" : "💍"}</span><div class="wi-t"><b>${esc(x.n)}</b><small>${x.ty === "birth" ? "जन्मदिन" : "वैवाहिक वर्षगांठ"} · ${x.o === 0 ? "आज" : x.o === 1 ? "कल" : x.o + " दिन बाद"} (${dmy(d)})</small></div>${x.m ? `<button type="button" class="wi-b" data-i="${i}">📤 बधाई भेजें</button>` : `<small style="color:#94a3b8">मोबाइल नहीं</small>`}</div>`; }).join("");
+      const pvBox = ty => {
+        const first = list.find(x => x.ty === ty); if (!first) return "";
+        const pk = ov.querySelector(ty === "birth" ? "#wiB" : "#wiA"), msg = wishMsg_(ty, first.n, pk ? +pk.value : 0);
+        return `<div style="margin:8px 10px;border:1px solid ${ty === "birth" ? "#fcd9b6" : "#e9d5ff"};background:${ty === "birth" ? "#fff7ed" : "#faf5ff"};border-radius:10px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px">👁️ ${ty === "birth" ? "🎂 जन्मदिन" : "💍 वर्षगांठ"} — ऐसा संदेश जाएगा <span style="font-weight:500;color:#64748b">(नमूना: ${esc(first.n)})</span></div><div class="notranslate" translate="no" style="white-space:pre-wrap;word-break:break-word;font-size:13.5px;line-height:1.5;max-height:150px;overflow:auto">${msg ? esc(msg) : "⚠️ Templates sheet में इस प्रकार का संदेश नहीं मिला"}</div></div>`;
+      };
+      const _pv = pvBox("birth") + pvBox("ann");
+      body.innerHTML = _pv + list.map((x, i) => { const d = new Date(base); d.setDate(d.getDate() + x.o); return `<div class="wi"><span class="wi-i">${x.ty === "birth" ? "🎂" : "💍"}</span><div class="wi-t"><b>${esc(x.n)}</b><small>${x.ty === "birth" ? "जन्मदिन" : "वैवाहिक वर्षगांठ"} · ${x.o === 0 ? "आज" : x.o === 1 ? "कल" : x.o + " दिन बाद"} (${dmy(d)})</small></div>${x.m ? `<button type="button" class="wi-b" data-i="${i}">📤 बधाई भेजें</button>` : `<small style="color:#94a3b8">मोबाइल नहीं</small>`}</div>`; }).join("");
       body.querySelectorAll(".wi-b").forEach(b => b.onclick = () => {
         const x = list[+b.dataset.i], pk = ov.querySelector(x.ty === "birth" ? "#wiB" : "#wiA"), msg = wishMsg_(x.ty, x.n, pk ? +pk.value : 0);
         if (!msg) { alert("Templates sheet में " + (x.ty === "birth" ? "'Birthday' ya 'Birthday: <naam>'" : "'Anniversary: <naam>'") + " संदेश नहीं मिला।"); return; }
         window.open(buildWaUrl_(x.m, msg), "_blank");
       });
     };
-    sel.onchange = draw; draw();
+    sel.onchange = draw; ["#wiB", "#wiA"].forEach(q => { const e = ov.querySelector(q); if (e) e.onchange = draw; }); draw();
   };
 
   /* ---------- Tabs: sab ek line mein ---------- */
@@ -8738,6 +8745,92 @@ if ('serviceWorker' in navigator) {
     saveBlob_(blob, fn);
   };
 
+  /* ===== v1.306: bheje gaye sandesh ka record (MessageLog) ===== */
+  const SENT_LS_ = "smps_sent_local";
+  const logQ_ = []; let logT_ = null; const sentCache_ = {};
+  function sentLocal_() { try { return JSON.parse(localStorage.getItem(SENT_LS_) || "[]"); } catch (e) { return []; } }
+  function sentLocalAdd_(items) { try { localStorage.setItem(SENT_LS_, JSON.stringify(sentLocal_().concat(items).slice(-1500))); } catch (e) {} }
+  async function flushLog_() {
+    if (!logQ_.length) return; const items = logQ_.splice(0, 60);
+    try {
+      const r = await callCrudBackend_({ action: "logMessages", items: items.map(x => ({ tab: x.tab, tpl: x.tpl, member: x.m, mobile: x.mob, preview: x.pv })) });
+      if (!r || !r.success) throw new Error("log");
+    } catch (e) { logQ_.unshift.apply(logQ_, items); }
+  }
+  window.logSend_ = function (tab, tpl, member, mobile, preview) {
+    const it = { t: new Date().toISOString(), tab: tab, tpl: String(tpl || ""), m: String(member || ""), mob: String(mobile || "").replace(/\D/g, "").slice(-10), pv: String(preview || "").replace(/\s+/g, " ").slice(0, 100), by: (currentUser && currentUser.name) || "" };
+    logQ_.push(it); sentLocalAdd_([{ t: it.t, tab: tab, tpl: it.tpl, m: it.m, mob: it.mob, by: it.by }]);
+    clearTimeout(logT_); logT_ = setTimeout(flushLog_, 2000); if (logQ_.length >= 15) flushLog_();
+  };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushLog_(); });
+  window.addEventListener("pagehide", flushLog_);
+  const tplNorm_ = x => String(x || "").replace(/^[^\p{L}\p{N}]+/u, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const dAgo_ = t => { const d = Math.floor((Date.now() - Date.parse(t)) / 864e5); return d <= 0 ? "आज" : d === 1 ? "कल" : d + " दिन पहले"; };
+  const fmtT_ = t => { const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleDateString("en-GB") + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); };
+  function dedupeLog_(rows) {
+    const a = rows.slice().sort((x, y) => Date.parse(x.t) - Date.parse(y.t)), out = [];
+    a.forEach(r => { const p = out[out.length - 1]; if (p && p.mob === r.mob && tplNorm_(p.tpl) === tplNorm_(r.tpl) && Math.abs(Date.parse(r.t) - Date.parse(p.t)) < 180000) { if (r.by && !p.by) p.by = r.by; return; } out.push(Object.assign({}, r)); });
+    return out;
+  }
+  async function getSentLog_(tab, fresh) {
+    const c = sentCache_[tab]; let rows;
+    if (c && !fresh && Date.now() - c.t < 90000) rows = c.rows;
+    else { try { const r = await callCrudBackend_({ action: "getMessageLog", tab: tab, days: 60 }); rows = (r && r.success && Array.isArray(r.rows)) ? r.rows : []; } catch (e) { rows = []; } sentCache_[tab] = { t: Date.now(), rows: rows }; }
+    const loc = sentLocal_().filter(x => x.tab === tab && Date.now() - Date.parse(x.t) < 60 * 864e5);
+    return dedupeLog_(rows.concat(loc));
+  }
+  window.getSentLog_ = getSentLog_;
+  window.openSendLog_ = async function (tab, onBack) {
+    const m = openModal_("📜 भेजने का record — " + tab);
+    m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    const rows = (await getSentLog_(tab, true)).sort((a, b) => Date.parse(b.t) - Date.parse(a.t));
+    m.body.innerHTML = '<input type="text" id="slQ" placeholder="🔍 नाम / मोबाइल / संदेश खोजें" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><div id="slC" style="font-size:12.5px;color:#64748b;margin:6px 0"></div><div id="slL"></div>';
+    const draw = () => {
+      const q = m.body.querySelector("#slQ").value.trim().toLowerCase(), f = rows.filter(r => !q || (r.m + " " + r.mob + " " + r.tpl + " " + r.by).toLowerCase().includes(q));
+      m.body.querySelector("#slC").textContent = f.length + " संदेश (पिछले 60 दिन)";
+      m.body.querySelector("#slL").innerHTML = f.length ? f.slice(0, 300).map(r => '<div style="border-bottom:1px solid #eee;padding:7px 2px;font-size:13px"><b>' + esc(r.m) + '</b> <span style="color:#64748b">' + esc(r.mob) + '</span><br><span>' + esc(r.tpl) + '</span><br><span style="color:#64748b;font-size:12px">🕒 ' + esc(fmtT_(r.t)) + (r.by ? " · द्वारा: " + esc(r.by) : "") + '</span></div>').join("") : '<p class="muted">अभी कोई record नहीं है।</p>';
+    };
+    m.body.querySelector("#slQ").oninput = draw; draw();
+    m.foot.appendChild(modalBtn_("📊 Excel", "#15803d", () => saveBlob_(xlsxBlob_("भेजे संदेश", ["समय", "सदस्य", "मोबाइल", "संदेश", "द्वारा"], rows.map(r => [fmtT_(r.t), r.m, r.mob, r.tpl, r.by || ""]), new Set(), [20, 28, 14, 40, 18]), "MessageLog_" + tab + "_" + new Date().toISOString().slice(0, 10) + ".xlsx")));
+    if (onBack) m.foot.appendChild(modalBtn_("← वापस", "#475569", () => { m.close(); onBack(); }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+
+  /* ===== v1.306: member ka apna hisaab ===== */
+  window.openMyAccount_ = async function () {
+    const m = openModal_("💳 मेरा हिसाब");
+    m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r = null; try { r = await callCrudBackend_({ action: "myAccount" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "हिसाब नहीं मिल पाया") + '</p>'; return; }
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
+    const get = (row, re) => { const k = Object.keys(row).find(x => re.test(x)); return k ? row[k] : ""; };
+    const calc = row => { const p = num(get(row, /^pledged/i)), a = num(get(row, /^paid/i)); const pr = get(row, /^pending/i); let b = String(pr).trim() !== "" ? num(pr) : p - a; if (b < 0) b = 0; return { p: p, a: a, b: b }; };
+    const sum = rows => rows.reduce((t, x) => { const c = calc(x); return { p: t.p + c.p, a: t.a + c.a, b: t.b + c.b }; }, { p: 0, a: 0, b: 0 });
+    const B = sum(r.boli || []), D = sum(r.donation || []), rcv = (r.receipts || []).reduce((t, x) => t + num(get(x, /^received$/i) || get(x, /^payment$/i)), 0), pend = B.b + D.b;
+    const card = (x, kind) => { const c = calc(x); return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13.5px"><b>' + esc(get(x, /^for$|^purpose$/i) || kind) + '</b> <span style="color:#64748b;font-size:12px">' + esc(get(x, /^date$/i)) + '</span><br>' + kind + ': ' + inr(c.p) + ' · जमा: ' + inr(c.a) + ' · <b style="color:' + (c.b > 0 ? "#b91c1c" : "#15803d") + '">' + (c.b > 0 ? "बाकी: " + inr(c.b) : "✅ पूरा जमा") + '</b></div>'; };
+    m.body.innerHTML = '<div style="font-weight:700;margin-bottom:6px">🙏 ' + esc(r.name || "") + '</div>' +
+      '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.8">🔔 <b>बोली:</b> कुल ' + inr(B.p) + ' · जमा ' + inr(B.a) + ' · बाकी ' + inr(B.b) + '<br>🤝 <b>दान / सहयोग:</b> कुल ' + inr(D.p) + ' · जमा ' + inr(D.a) + ' · बाकी ' + inr(D.b) + '<br>🧾 <b>रसीदों में कुल प्राप्त:</b> ' + inr(rcv) + '<div style="font-size:16px;margin-top:4px">💰 <b>कुल बाकी: ' + inr(pend) + '</b></div></div>' +
+      '<h4 style="margin:14px 0 4px">🔔 बोली</h4>' + ((r.boli || []).length ? r.boli.map(x => card(x, "बोली")).join("") : '<p class="muted">कोई रिकॉर्ड नहीं।</p>') +
+      '<h4 style="margin:14px 0 4px">🤝 दान / सहयोग</h4>' + ((r.donation || []).length ? r.donation.map(x => card(x, "सहयोग")).join("") : '<p class="muted">कोई रिकॉर्ड नहीं।</p>') +
+      '<h4 style="margin:14px 0 4px">🧾 रसीदें</h4><div id="maR"></div>';
+    const host = m.body.querySelector("#maR");
+    if (!(r.receipts || []).length) host.innerHTML = '<p class="muted">कोई रसीद नहीं।</p>';
+    (r.receipts || []).forEach(x => {
+      const amt = get(x, /^received$/i) || get(x, /^payment$/i), d = document.createElement("div");
+      d.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13.5px;display:flex;gap:8px;align-items:center";
+      d.innerHTML = '<div style="flex:1;min-width:0"><b>' + inr(num(amt)) + '</b> · ' + esc(get(x, /^for$|^purpose$/i)) + '<br><span style="color:#64748b;font-size:12px">' + esc(get(x, /^date$/i)) + (get(x, /^mode$/i) ? " · " + esc(get(x, /^mode$/i)) : "") + (get(x, /^id$/i) ? " · " + esc(get(x, /^id$/i)) : "") + '</span></div><button type="button" style="width:auto;background:#0369a1;color:#fff;border:0;border-radius:8px;padding:7px 10px;cursor:pointer">🖼️ रसीद</button>';
+      d.querySelector("button").onclick = () => {
+        const rw = (a, b) => b ? "<tr><td>" + esc(a) + "</td><td>" + esc(b) + "</td></tr>" : "";
+        window.receiptImage_("रसीद", rw("रसीद नंबर", get(x, /^id$/i)) + rw("तारीख", get(x, /^date$/i)) + rw("सदस्य का नाम", r.name) + rw("रसीद राशि (₹)", num(amt).toLocaleString("en-IN")) + rw("उद्देश्य (For)", get(x, /^for$|^purpose$/i)) + rw("भुगतान का तरीका", get(x, /^mode$/i)) + rw("नोट्स", get(x, /^notes?$|^remarks?$/i)));
+      };
+      host.appendChild(d);
+    });
+    if (pend > 0) { try { const bank = buildBankBlock_({ ID: r.name, "Pending Dues": pend }); m.body.insertAdjacentHTML("beforeend", '<h4 style="margin:14px 0 4px">🏦 बाकी राशि जमा करने के लिए</h4><div class="notranslate" translate="no" style="white-space:pre-wrap;font-size:13px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 10px">' + esc(bank) + '</div>'); } catch (e) {} }
+    const txt = () => ["🙏 " + (r.name || ""), "🔔 बोली: कुल " + inr(B.p) + " | जमा " + inr(B.a) + " | बाकी " + inr(B.b), "🤝 दान/सहयोग: कुल " + inr(D.p) + " | जमा " + inr(D.a) + " | बाकी " + inr(D.b), "🧾 कुल प्राप्त: " + inr(rcv), "💰 कुल बाकी: " + inr(pend)].join("\n");
+    const cp = modalBtn_("📋 कॉपी", "#0369a1", () => copyText_(txt(), cp)); m.foot.insertBefore(cp, m.foot.firstChild);
+  };
+
   /* Members row ka WhatsApp: message chunne / badalne ka popup */
   window.openRowWa_ = function (encId, e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -8841,15 +8934,19 @@ if ('serviceWorker' in navigator) {
     const L = (t) => `<label style="display:block;font-size:12px;color:#475569;margin:8px 0 3px">${t}</label>`;
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
     m.body.innerHTML =
+      '<div id="mcQ" style="display:none;position:sticky;top:0;z-index:6;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:10px;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,.12)"></div>' +
       (rowTab ? L(tab === "Meetings" ? "कौन सी मीटिंग" : "कौन सी पोस्ट") + `<select id="mcRow" ${sty}>${rows.map((r, i) => `<option value="${i}">${esc(rowLabel(tab, r))}</option>`).join("")}</select>` : "") +
       L("किन्हें भेजना है") + `<select id="mcGrp" ${sty}></select>` +
       L("संदेश का प्रकार") + `<select id="mcTpl" ${sty}></select>` +
       L("संदेश (Google Sheet के Templates tab से) — {{Member}} / {{Name}} की जगह हर सदस्य का नाम" + (money ? ", {{For}}, राशि आदि हर बोली/दान की पंक्ति से" : "") + " अपने आप लगेगा (आप बदल भी सकते हैं)") + `<textarea id="mcTxt" rows="11" placeholder="यहाँ अपना संदेश लिखें…" ${sty}></textarea>` +
-      `<div id="mcPh"></div><div id="mcWarn" style="font-size:12.5px;color:#b45309;margin-top:6px"></div><div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div><div id="mcList"></div>`;
+      `<div id="mcPh"></div><div id="mcWarn" style="font-size:12.5px;color:#b45309;margin-top:6px"></div><div id="mcInfo" style="margin:10px 0 4px;font-size:13px;color:#475569"></div>` +
+      `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:4px 0 6px;font-size:12.5px;color:#334155"><label>📤 एक बार में (queue): <select id="mcQn" style="padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;width:auto"><option>5</option><option>10</option><option>20</option><option>50</option><option value="9999">सभी</option></select></label><label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" id="mcSkip" checked style="width:auto"> जिन्हें यही संदेश 7 दिन में भेजा जा चुका है उन्हें छोड़ें</label></div><div id="mcList"></div>`;
     const $ = id => m.body.querySelector("#" + id);
     if (rowTab && !rows.length) { m.body.innerHTML = "<p class='muted'>इस टैब में अभी कोई रिकॉर्ड नहीं है।</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close)); return; }
 
     let list = [], done = new Set(), sel = new Set(), tpls = []; const fills = {}; let ph = null;
+    let sentRows = [], Q = null; const RECENT_MS = 7 * 864e5;
+    try { const sv = localStorage.getItem("smps_q_n"); if (sv && [...m.body.querySelector("#mcQn").options].some(o => o.value === sv)) m.body.querySelector("#mcQn").value = sv; else m.body.querySelector("#mcQn").value = "10"; } catch (e) {}
     const curRow = () => rowTab ? rows[+$("mcRow").value] : null;
     const curTpl = () => tpls[$("mcTpl").selectedIndex] || {};
     const groups = () => {
@@ -8898,15 +8995,66 @@ if ('serviceWorker' in navigator) {
       $("mcInfo").textContent = "चुने गए: " + s.length + " / " + list.length + "  •  भेजे गए: " + s.filter(i => done.has(i)).length;
       updWarn();
     };
-    const send = i => {
+    /* v1.306: record — kisko kaun sa sandesh kab gaya */
+    const tplName = i => { const b = String((curTpl() || {}).label || "खुद लिखें").replace(/^[^\p{L}\p{N}]+/u, "").trim(); return (b + (rowTab ? " · " + rowLabel(tab, curRow()) : (money ? " · " + (list[i].forWhat || "") : ""))).slice(0, 100); };
+    const recentSame = i => { const k = tplNorm_(tplName(i)); let best = null; sentRows.forEach(r => { if (r.mob === list[i].mobile && tplNorm_(r.tpl) === k && Date.now() - Date.parse(r.t) < RECENT_MS && (!best || Date.parse(r.t) > Date.parse(best.t))) best = r; }); return best; };
+    const lastAny = i => { let best = null; sentRows.forEach(r => { if (r.mob === list[i].mobile && (!best || Date.parse(r.t) > Date.parse(best.t))) best = r; }); return best; };
+    const paintSent = () => {
+      $("mcList").querySelectorAll("[data-i]").forEach(d => {
+        const i = +d.dataset.i, c = d.querySelector(".sent"); if (!c || !list[i]) return;
+        const a = recentSame(i), b = lastAny(i);
+        c.innerHTML = a ? '<span style="color:#b45309;font-weight:600">⚠️ यही संदेश ' + dAgo_(a.t) + ' भेजा था (' + esc(fmtT_(a.t)) + ')</span>' : (b ? '<span style="color:#64748b">आख़िरी संदेश: ' + esc(b.tpl) + ' · ' + dAgo_(b.t) + '</span>' : "");
+      });
+    };
+    const send = (i, fromQ) => {
       const left = Array.from(new Set(textFor(i).match(/\{\{[^{}\n]+\}\}/g) || []));
-      if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return;
-      window.open(buildWaUrl_(list[i].mobile, textFor(i)), "_blank");
+      if (left.length && !confirm("संदेश में अभी ये जगह खाली है:\n" + left.join(", ") + "\n\nफिर भी भेजें?")) return false;
+      const rec = recentSame(i);
+      if (rec && !fromQ && !confirm("⚠️ " + list[i].name + " को यही संदेश " + dAgo_(rec.t) + " (" + fmtT_(rec.t) + ") भेजा जा चुका है।\n\nफिर भी दोबारा भेजें?")) return false;
+      const msg = textFor(i);
+      window.open(buildWaUrl_(list[i].mobile, msg), "_blank");
       done.add(i);
+      try { window.logSend_(tab, tplName(i), list[i].name, list[i].mobile, msg); sentRows.push({ t: new Date().toISOString(), tab: tab, tpl: tplName(i), m: list[i].name, mob: list[i].mobile, by: (currentUser && currentUser.name) || "" }); } catch (e) {}
       const row = $("mcList").querySelector(`[data-i="${i}"]`);
       if (row) { row.style.opacity = ".5"; row.querySelector(".tick").textContent = "✔"; }
-      refreshInfo();
+      paintSent(); refreshInfo();
+      return true;
     };
+    /* v1.306: Queue — "agle N ko bhejo": ek ke baad ek, bas har baar ek tap */
+    const qBar = () => $("mcQ");
+    const qEligible = () => list.map((_, i) => i).filter(i => sel.has(i) && !done.has(i) && !($("mcSkip").checked && recentSame(i)));
+    const qPaint = () => {
+      const bar = qBar(); if (!Q) { bar.style.display = "none"; bar.innerHTML = ""; return; }
+      while (Q.pos < Q.ids.length && done.has(Q.ids[Q.pos])) Q.pos++;
+      const nxt = Q.pos < Q.ids.length ? list[Q.ids[Q.pos]] : null, pct = Q.total ? Math.round(Q.sent * 100 / Q.total) : 0, btn = "width:100%;border:0;border-radius:10px;padding:12px;font-size:16px;font-weight:700;cursor:pointer;color:#fff;";
+      bar.style.display = "block";
+      bar.innerHTML = '<div style="font-weight:700;margin-bottom:6px">📤 Queue — भेजे ' + Q.sent + ' / ' + Q.total + '</div><div style="height:7px;background:#d1fae5;border-radius:6px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:' + pct + '%;background:#16a34a"></div></div>' +
+        (nxt ? '<button type="button" id="mcQgo" style="' + btn + 'background:#16a34a">▶ अगला भेजें — ' + esc(nxt.name) + '</button><div style="display:flex;gap:8px;margin-top:8px"><button type="button" id="mcQskip" style="' + btn + 'background:#64748b;font-size:14px;padding:8px">⏭ छोड़ो</button><button type="button" id="mcQstop" style="' + btn + 'background:#b91c1c;font-size:14px;padding:8px">⏹ रोकें</button></div><div style="font-size:12px;color:#475569;margin-top:6px">WhatsApp में Send दबाकर वापस इस ऐप में आएँ, फिर ऊपर का हरा बटन दबाएँ।</div>'
+             : '<div style="margin-bottom:8px">✅ यह batch पूरा हुआ।</div>' + (qEligible().length ? '<button type="button" id="mcQmore" style="' + btn + 'background:#16a34a">▶ अगले ' + Math.min(+$("mcQn").value || 10, qEligible().length) + ' शुरू करें (' + qEligible().length + ' बाकी)</button>' : '<div style="color:#15803d;font-weight:600">🎉 चुने हुए सभी को भेज दिया।</div>') + '<button type="button" id="mcQstop" style="' + btn + 'background:#64748b;font-size:14px;padding:8px;margin-top:8px">बंद करें</button>');
+      const g = id => bar.querySelector("#" + id);
+      if (g("mcQgo")) g("mcQgo").onclick = qGo;
+      if (g("mcQskip")) g("mcQskip").onclick = () => { Q.pos++; qPaint(); };
+      if (g("mcQstop")) g("mcQstop").onclick = () => { Q = null; qPaint(); };
+      if (g("mcQmore")) g("mcQmore").onclick = qStart;
+    };
+    const qGo = () => {
+      if (!Q) return; while (Q.pos < Q.ids.length && done.has(Q.ids[Q.pos])) Q.pos++;
+      if (Q.pos >= Q.ids.length) { qPaint(); return; }
+      const i = Q.ids[Q.pos]; const row = $("mcList").querySelector(`[data-i="${i}"]`); if (row) row.scrollIntoView({ block: "center" });
+      if (send(i, true)) { Q.pos++; Q.sent++; }
+      qPaint();
+    };
+    const qStart = () => {
+      try { localStorage.setItem("smps_q_n", $("mcQn").value); } catch (e) {}
+      const n = +$("mcQn").value || 10, ids = qEligible().slice(0, n);
+      if (!ids.length) { alert("भेजने के लिए कोई सदस्य नहीं बचा (चुने हुए सभी को भेजा जा चुका है, या 7 दिन में यही संदेश जा चुका है)।"); return; }
+      Q = { ids: ids, pos: 0, sent: 0, total: ids.length }; qPaint(); qGo();
+    };
+    const onVis = () => {                       // WhatsApp se wapas aate hi hara button chamke
+      if (!document.body.contains(qBar())) { document.removeEventListener("visibilitychange", onVis); return; }
+      if (document.visibilityState === "visible" && Q && Q.pos < Q.ids.length) { try { qBar().animate([{ background: "#86efac" }, { background: "#ecfdf5" }], { duration: 1100 }); qBar().scrollIntoView({ block: "nearest" }); if (navigator.vibrate) navigator.vibrate(60); } catch (e) {} }
+    };
+    document.addEventListener("visibilitychange", onVis);
     const drawList = () => {
       done = new Set(); sel = new Set(list.map((_, i) => i));
       $("mcList").innerHTML = list.length ? list.map((x, i) =>

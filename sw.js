@@ -1,5 +1,5 @@
 // SMPS service worker — v13 (i18n.js jodi, JS bhi network-first): HTML/manifest network-first (naya version turant dikhe), baaki cache-first
-const CACHE = "smps-app-v18";
+const CACHE = "smps-app-v19";
 const PRE = ["./", "./index.html", "./app.html", "./i18n.js", "./og-image.jpg", "./manifest.json", "./Logo-192.png", "./Logo-512.png"];
 self.addEventListener("install", e => {
   self.skipWaiting();
