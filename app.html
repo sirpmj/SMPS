@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.303"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.304"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -7441,6 +7441,10 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
   el("popupPrintBtn").onclick = () => {
     printPopupReceiptContent(heading, `<table class="popup-table">${rows}</table>`);
   };
+  el("popupPrintBtn").textContent = "📄 प्रिंट / PDF";
+  { let ib = el("popupImgBtn"); if (!ib) { ib = document.createElement("button"); ib.id = "popupImgBtn"; ib.type = "button"; el("popupPrintBtn").parentNode.insertBefore(ib, el("popupPrintBtn")); }
+    ib.textContent = "🖼️ इमेज (शेयर)"; ib.style.display = currentTab === "Members" ? "none" : "";
+    ib.onclick = () => { if (window.receiptImage_) window.receiptImage_(heading, rows); }; }
   el("popupCloseBtn").onclick = () => {
     el("receiptPopup").style.display = "none";
   };
@@ -8362,6 +8366,7 @@ if ('serviceWorker' in navigator) {
     const acc = t => (ROLE_ACCESS && currentUser && ROLE_ACCESS[currentUser.role] && ROLE_ACCESS[currentUser.role][t]) || null;
     const mA = acc("Meetings"), mB = acc("Members");
     mk("attRepBtn", "📊", "उपस्थिति रिपोर्ट", window.openAttendanceReport_, "#7c3aed").style.display = (sheetName === "Meetings" && mA && mA.canView) ? "inline-block" : "none";
+    mk("duesRepBtn", "📥", "रिपोर्ट डाउनलोड (PDF / Excel)", window.openDuesReport_, "#0f766e").style.display = ((sheetName === "Boli" || sheetName === "Donation") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
@@ -8563,6 +8568,176 @@ if ('serviceWorker' in navigator) {
   window.saveTemplateRemote_ = saveTemplateRemote_;
   const lblKey_ = x => String(x || "").replace(/^[^\p{L}\p{N}]+/u, "").trim();   // emoji hata kar naam milao
   const sameLbl_ = (p, n) => lblKey_(p.label) === lblKey_(n);
+  /* ===== v1.304: Templates ka naam badalna / hatana ===== */
+  window.openTplManager_ = function (tab, onBack) {
+    const m = openModal_("⚙️ " + tab + " के Templates");
+    const draw = () => {
+      const keys = Object.keys(TEMPLATES).filter(k => { const p = parseKey_(k); return p && p.tab === tab; });
+      m.body.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-bottom:8px">✏️ नाम बदलें · 🗑️ हटाएँ — ये बदलाव Templates sheet में भी हो जाते हैं।</div>' +
+        (keys.length ? "" : '<div style="padding:14px;color:#64748b">इस टैब का कोई Template sheet में नहीं है।</div>');
+      keys.forEach(k => {
+        const p = parseKey_(k), bar = k.indexOf("|"), tags = bar >= 0 ? k.slice(bar + 1).trim() : "";
+        const row = document.createElement("div"); row.style.cssText = "display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0";
+        row.innerHTML = '<div style="flex:1;min-width:0"><div style="font-weight:600;word-break:break-word">' + esc(p.label) + '</div>' + (tags ? '<div style="font-size:12px;color:#64748b">' + esc(tags) + '</div>' : "") + '</div>' +
+          '<button type="button" class="tr" title="नाम बदलें" style="width:auto;background:#e0f2fe;border:1px solid #93c5fd;border-radius:8px;padding:6px 10px;cursor:pointer">✏️</button>' +
+          '<button type="button" class="td" title="हटाएँ" style="width:auto;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:6px 10px;cursor:pointer">🗑️</button>';
+        row.querySelector(".tr").onclick = async e => {
+          let nn = prompt("नया नाम लिखें:", p.label); if (nn == null) return;
+          nn = nn.replace(/[|:：\r\n\t]+/g, " ").replace(/\s+/g, " ").trim(); if (!nn) return;
+          e.currentTarget.disabled = true;
+          try {
+            const r = await callCrudBackend_({ action: "templateEdit", op: "rename", key: k, label: nn });
+            if (!r || !r.success) throw new Error((r && r.msg) || "नाम नहीं बदल पाया");
+            if (r.key && r.key !== k) { TEMPLATES[r.key] = TEMPLATES[k]; delete TEMPLATES[k]; }
+          } catch (er) { alert("❌ " + (er.message || er)); }
+          draw();
+        };
+        row.querySelector(".td").onclick = async e => {
+          if (!confirm("“" + p.label + "” Template हमेशा के लिए हटा दें?")) return;
+          e.currentTarget.disabled = true;
+          try {
+            const r = await callCrudBackend_({ action: "templateEdit", op: "delete", key: k });
+            if (!r || !r.success) throw new Error((r && r.msg) || "हट नहीं पाया");
+            delete TEMPLATES[k];
+          } catch (er) { alert("❌ " + (er.message || er)); }
+          draw();
+        };
+        m.body.appendChild(row);
+      });
+    };
+    draw();
+    m.foot.appendChild(modalBtn_("← वापस", "#475569", () => { m.close(); if (onBack) onBack(); }));
+  };
+
+  /* ===== v1.304: Boli / Donation रिपोर्ट — PDF (print) aur Excel (.xlsx) ===== */
+  function crc32_(u8) { let c, crc = 0xFFFFFFFF; if (!crc32_.t) { crc32_.t = []; for (let n = 0; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc32_.t[n] = c >>> 0; } } for (let i = 0; i < u8.length; i++) crc = crc32_.t[(crc ^ u8[i]) & 255] ^ (crc >>> 8); return (crc ^ 0xFFFFFFFF) >>> 0; }
+  function zipStore_(files) {
+    const enc = new TextEncoder(), parts = [], cds = []; let off = 0;
+    const u16 = v => [v & 255, (v >> 8) & 255], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+    files.forEach(f => {
+      const nm = enc.encode(f.name), d = f.data, crc = crc32_(d);
+      const lh = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(d.length), ...u32(d.length), ...u16(nm.length), 0, 0]);
+      parts.push(lh, nm, d);
+      cds.push(new Uint8Array([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(d.length), ...u32(d.length), ...u16(nm.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]), nm);
+      off += lh.length + nm.length + d.length;
+    });
+    let cdSize = 0; cds.forEach(x => cdSize += x.length);
+    const end = new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(files.length), ...u16(files.length), ...u32(cdSize), ...u32(off), 0, 0]);
+    return new Blob([...parts, ...cds, end], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+  function xmlEsc_(v) { return String(v == null ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ""); }
+  function colName_(i) { let s = ""; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+  /* header: ["नाम", ...], rows: [[...]], numCols: set of column indexes jo number hain, totalRow: optional array */
+  function xlsxBlob_(sheetName, header, rows, numCols, widths, totalRow) {
+    const all = [header].concat(rows).concat(totalRow ? [totalRow] : []);
+    let xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>' +
+      widths.map((w, i) => '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>').join("") + '</cols><sheetData>';
+    all.forEach((r, ri) => {
+      const isH = ri === 0, isT = totalRow && ri === all.length - 1;
+      xml += '<row r="' + (ri + 1) + '">';
+      r.forEach((v, ci) => {
+        const ref = colName_(ci) + (ri + 1), num = numCols.has(ci) && !isH && v !== "" && v != null && !isNaN(Number(v));
+        const st = isH ? 1 : (isT ? (num ? 4 : 3) : (num ? 2 : 0));
+        if (num) xml += '<c r="' + ref + '" s="' + st + '"><v>' + Number(v) + '</v></c>';
+        else xml += '<c r="' + ref + '" s="' + st + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEsc_(v) + '</t></is></c>';
+      });
+      xml += '</row>';
+    });
+    xml += '</sheetData></worksheet>';
+    const enc = new TextEncoder(), H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    const styles = H + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F7"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="5"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="3" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    const sn = xmlEsc_(String(sheetName).slice(0, 28));
+    return zipStore_([
+      { name: "[Content_Types].xml", data: enc.encode(H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>') },
+      { name: "_rels/.rels", data: enc.encode(H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>') },
+      { name: "xl/workbook.xml", data: enc.encode(H + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + sn + '" sheetId="1" r:id="rId1"/></sheets></workbook>') },
+      { name: "xl/_rels/workbook.xml.rels", data: enc.encode(H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>') },
+      { name: "xl/styles.xml", data: enc.encode(styles) },
+      { name: "xl/worksheets/sheet1.xml", data: enc.encode(xml) }
+    ]);
+  }
+  window.__xlsxBlob_ = xlsxBlob_;
+  function saveBlob_(blob, name) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+  window.openDuesReport_ = function () {
+    const tab = currentTab; if (tab !== "Boli" && tab !== "Donation") return;
+    const isB = tab === "Boli", nm = isB ? "बोली" : "दान";
+    const kP = (isB ? SETTINGS?.BoliPledgedColumn : SETTINGS?.DonationPledgedColumn) || (isB ? "Pledged Boli" : "Pledged Donation");
+    const kA = (isB ? SETTINGS?.BoliPaidColumn : SETTINGS?.DonationPaidColumn) || (isB ? "Paid Boli" : "Paid Donation");
+    const kB = isB ? "Pending Dues Boli" : "Pending Dues Donation";
+    const src = (lastFilteredRowsPreCommit_ && lastFilteredRowsPreCommit_.length) ? lastFilteredRowsPreCommit_ : (tableData || []);
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0;
+    const all = src.map(r => {
+      const p = num(r[kP]), a = num(r[kA]); const raw = r[kB];
+      let b = (raw !== undefined && raw !== null && String(raw).trim() !== "") ? num(raw) : (p - a); if (b < 0) b = 0;
+      return { name: String(displayMemberFromRow_(r) || getRowMemberName_(r) || "").trim(), mobile: String(getRowMobile_(r) || "").slice(-10), forTxt: String(r["For"] || r["Purpose"] || "").trim(), date: formatDate(r["Date"]) || "", p: p, a: a, b: b };
+    });
+    const m = openModal_("📥 " + nm + " रिपोर्ट");
+    m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:8px">कौन सी सूची चाहिए? (मौजूदा search / तारीख के हिसाब से)</div>' +
+      ["all|📋 सभी", "pend|⏳ सिर्फ बाकी वाले", "paid|✅ सिर्फ पूरा जमा"].map((x, i) => '<label style="display:block;padding:7px 4px"><input type="radio" name="drm" value="' + x.split("|")[0] + '"' + (i === 0 ? " checked" : "") + ' style="width:auto;margin-right:8px">' + x.split("|")[1] + '</label>').join("") +
+      '<div id="drSum" style="margin-top:10px;padding:10px;background:#f1f5f9;border-radius:10px;font-size:13.5px"></div>';
+    const pick = () => { const mode = m.body.querySelector('input[name=drm]:checked').value; return all.filter(x => mode === "all" ? true : (mode === "pend" ? x.b > 0 : x.b <= 0 && x.p > 0)); };
+    const label = () => ({ all: "सभी", pend: "सिर्फ बाकी", paid: "सिर्फ पूरा जमा" }[m.body.querySelector('input[name=drm]:checked').value]);
+    const tot = rs => rs.reduce((t, x) => ({ p: t.p + x.p, a: t.a + x.a, b: t.b + x.b }), { p: 0, a: 0, b: 0 });
+    const paint = () => { const rs = pick(), t = tot(rs); m.body.querySelector("#drSum").innerHTML = "सदस्य / रिकॉर्ड: <b>" + rs.length + "</b><br>कुल " + nm + ": <b>₹" + t.p.toLocaleString("en-IN") + "</b> · जमा: <b>₹" + t.a.toLocaleString("en-IN") + "</b> · बाकी: <b>₹" + t.b.toLocaleString("en-IN") + "</b>"; };
+    m.body.querySelectorAll("input[name=drm]").forEach(i => i.onchange = paint); paint();
+    const fname = () => (isB ? "Boli" : "Donation") + "_" + ({ all: "all", pend: "pending", paid: "paid" }[m.body.querySelector('input[name=drm]:checked').value]) + "_" + new Date().toISOString().slice(0, 10);
+    m.foot.appendChild(modalBtn_("📊 Excel (.xlsx)", "#15803d", () => {
+      const rs = pick(), t = tot(rs);
+      const rows = rs.map((x, i) => [i + 1, x.name, x.mobile, x.forTxt, x.date, x.p, x.a, x.b]);
+      saveBlob_(xlsxBlob_(nm + " रिपोर्ट", ["क्र.", "सदस्य", "मोबाइल", "उद्देश्य", "तारीख", nm + " राशि (₹)", "जमा (₹)", "बाकी (₹)"], rows, new Set([0, 5, 6, 7]), [6, 30, 14, 26, 12, 14, 12, 12], ["", "कुल", "", "", "", t.p, t.a, t.b]), fname() + ".xlsx");
+    }));
+    m.foot.appendChild(modalBtn_("📄 PDF / प्रिंट", "#b91c1c", () => {
+      const rs = pick(), t = tot(rs), logo = new URL("Logo-512.png", location.href).href, e = esc;
+      const body = rs.map((x, i) => "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "<br><small>" + e(x.mobile) + "</small></td><td>" + e(x.forTxt) + "</td><td class=r>" + x.p.toLocaleString("en-IN") + "</td><td class=r>" + x.a.toLocaleString("en-IN") + "</td><td class=r><b>" + x.b.toLocaleString("en-IN") + "</b></td></tr>").join("");
+      const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + e(nm) + ' रिपोर्ट</title><style>@page{size:A4;margin:12mm}body{font-family:"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{font-size:19px;margin:0}.h{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0a2a5e;padding-bottom:8px;margin-bottom:10px}.h img{width:54px;height:54px;border-radius:50%}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:5px 6px;vertical-align:top}th{background:#e8eefb}.r{text-align:right;white-space:nowrap}small{color:#555}tfoot td{font-weight:700;background:#f4f6fa}</style></head><body><div class="h"><img src="' + logo + '"><div><h1>श्री मेवाड़ प्रजापत समाज – वापी</h1><div>' + e(nm) + ' रिपोर्ट — ' + e(label()) + ' · दिनांक: ' + new Date().toLocaleDateString("en-GB") + '</div></div></div><table><thead><tr><th>क्र.</th><th>सदस्य</th><th>उद्देश्य</th><th>' + e(nm) + ' ₹</th><th>जमा ₹</th><th>बाकी ₹</th></tr></thead><tbody>' + body + '</tbody><tfoot><tr><td colspan="3">कुल (' + rs.length + ')</td><td class=r>' + t.p.toLocaleString("en-IN") + '</td><td class=r>' + t.a.toLocaleString("en-IN") + '</td><td class=r>' + t.b.toLocaleString("en-IN") + '</td></tr></tfoot></table></body></html>';
+      const w = window.open("", "_blank"); if (!w) { alert("Pop-up रुका हुआ है — browser में इस साइट के लिए pop-up की अनुमति दें।"); return; }
+      w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (x) {} }, 500);
+    }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+
+  /* ===== v1.304: रसीद की इमेज (PNG) — शेयर ya download ===== */
+  window.receiptImage_ = async function (heading, rowsHtml) {
+    const doc = new DOMParser().parseFromString("<table>" + rowsHtml + "</table>", "text/html");
+    const pairs = [...doc.querySelectorAll("tr")].map(tr => { const td = tr.querySelectorAll("td"); return [(td[0] ? td[0].textContent : "").replace(/\s+/g, " ").trim(), (td[1] ? td[1].textContent : "").replace(/\s+/g, " ").trim()]; }).filter(p => p[0] && p[1]);
+    const W = 900, PAD = 40, font = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+    const cv = document.createElement("canvas"), cx = cv.getContext("2d");
+    const wrap = (txt, maxW, f) => { cx.font = f; const out = []; let line = ""; String(txt).split(/(\s+)/).forEach(w => { const t = line + w; if (cx.measureText(t).width > maxW && line.trim()) { out.push(line.trim()); line = w.trimStart(); } else line = t; }); if (line.trim()) out.push(line.trim()); return out.length ? out : [""]; };
+    const colL = 330, colR = W - PAD * 2 - colL - 20;
+    const blocks = pairs.map(p => ({ k: wrap(p[0], colL - 20, "600 25px " + font), v: wrap(p[1], colR, "600 27px " + font) }));
+    let H = 330; blocks.forEach(b => H += Math.max(b.k.length, b.v.length) * 36 + 22); H += 190;
+    cv.width = W; cv.height = H;
+    cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H);
+    const g = cx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, "#0a2a5e"); g.addColorStop(1, "#1a56c4");
+    cx.fillStyle = g; cx.fillRect(0, 0, W, 190);
+    cx.fillStyle = "#f5a21b"; cx.fillRect(0, 190, W, 8);
+    try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = new URL("Logo-512.png", location.href).href; }); cx.save(); cx.beginPath(); cx.arc(PAD + 62, 95, 62, 0, 7); cx.closePath(); cx.clip(); cx.fillStyle = "#fff"; cx.fillRect(PAD, 33, 124, 124); cx.drawImage(img, PAD, 33, 124, 124); cx.restore(); } catch (e) {}
+    cx.fillStyle = "#fff"; cx.textBaseline = "alphabetic";
+    cx.font = "700 40px " + font; cx.fillText("श्री मेवाड़ प्रजापत समाज – वापी", PAD + 150, 92);
+    cx.font = "500 24px " + font; cx.fillStyle = "#dbe7ff"; cx.fillText("पंजीकृत संस्था · Reg No: " + (SETTINGS?.OrgReg || "A/1221"), PAD + 150, 134);
+    cx.fillStyle = "#0a2a5e"; cx.font = "700 38px " + font; cx.textAlign = "center"; cx.fillText(heading, W / 2, 262); cx.textAlign = "left";
+    let y = 300;
+    blocks.forEach((b, i) => {
+      const h = Math.max(b.k.length, b.v.length) * 36 + 22;
+      cx.fillStyle = i % 2 ? "#ffffff" : "#f3f6fc"; cx.fillRect(PAD, y, W - PAD * 2, h);
+      cx.fillStyle = "#475569"; cx.font = "600 25px " + font; b.k.forEach((t, j) => cx.fillText(t, PAD + 14, y + 36 + j * 36));
+      cx.fillStyle = "#0f172a"; cx.font = "600 27px " + font; b.v.forEach((t, j) => cx.fillText(t, PAD + colL + 14, y + 36 + j * 36));
+      y += h;
+    });
+    cx.strokeStyle = "#cbd5e1"; cx.strokeRect(PAD, 300, W - PAD * 2, y - 300);
+    cx.fillStyle = "#64748b"; cx.font = "500 22px " + font; cx.textAlign = "center";
+    cx.fillText("यह रसीद श्री मेवाड़ प्रजापत समाज, वापी की ऐप से बनाई गई है।", W / 2, y + 60);
+    cx.fillStyle = "#0a2a5e"; cx.font = "700 24px " + font; cx.fillText("🙏 जय श्रीयादे माता की 🙏", W / 2, y + 108);
+    const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+    const fn = "SMPS_receipt_" + new Date().toISOString().slice(0, 10) + ".png";
+    const file = new File([blob], fn, { type: "image/png" });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: heading }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    saveBlob_(blob, fn);
+  };
+
   /* Members row ka WhatsApp: message chunne / badalne ka popup */
   window.openRowWa_ = function (encId, e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -8618,6 +8793,7 @@ if ('serviceWorker' in navigator) {
       svB.disabled = false; svB.textContent = old;
     });
     m.foot.appendChild(svB);
+    m.foot.appendChild(modalBtn_("⚙️ Templates", "#475569", () => { m.close(); window.openTplManager_(tab, () => window.openRowWa_(encId)); }));
     const cpB = modalBtn_("📋 कॉपी", "#0369a1", () => copyText_(finalTxt(false, false), cpB)); m.foot.appendChild(cpB);
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
   };
@@ -8801,6 +8977,7 @@ if ('serviceWorker' in navigator) {
       svB.disabled = false; svB.textContent = old;
     });
     m.foot.appendChild(svB);
+    m.foot.appendChild(modalBtn_("⚙️ Templates", "#475569", () => { m.close(); window.openTplManager_(tab, () => window.openMsgCenter_()); }));
     if (!money) { const cpB = modalBtn_("📋 संदेश कॉपी (ग्रुप के लिए)", "#0369a1", () => copyText_(textFor(0, false, false, true), cpB)); m.foot.appendChild(cpB); }
     m.foot.appendChild(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => {
       const i = list.findIndex((_, k) => sel.has(k) && !done.has(k));

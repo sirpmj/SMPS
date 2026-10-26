@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>WhatsApp लिंक कार्ड बनाएँ — श्री मेवाड़ प्रजापत समाज</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Mukta","Noto Sans Devanagari","Segoe UI",system-ui,sans-serif;background:#eef3fb;color:#0f172a}
+.wrap{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:6px 0 4px;color:#0a2a5e}
+.sub{color:#475569;font-size:13.5px;margin-bottom:12px}
+.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 12px rgba(10,42,94,.08);margin-bottom:12px}
+label{display:block;font-size:12.5px;color:#475569;margin:10px 0 4px;font-weight:600}
+input[type=text],textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:15px}
+textarea{min-height:70px;resize:vertical}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 140px}
+.opt{display:flex;gap:8px;align-items:center;padding:6px 0}
+.opt input{width:auto}
+canvas{width:100%;height:auto;border-radius:10px;border:1px solid #dbe3f0;background:#e2e8f0;display:block}
+button{font:inherit;font-size:15px;font-weight:700;border:0;border-radius:10px;padding:11px 14px;cursor:pointer;color:#fff;background:#0a2a5e}
+button.g{background:#15803d}button.o{background:#b45309}button.l{background:#475569}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.btns button{flex:1 1 160px}
+ol{padding-left:20px;margin:6px 0;font-size:14px;line-height:1.7}
+code{background:#f1f5f9;padding:2px 6px;border-radius:6px;word-break:break-all;font-size:13px}
+.link{display:flex;gap:8px;align-items:center;margin-top:8px}.link code{flex:1}
+small{color:#64748b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔗 WhatsApp लिंक कार्ड बनाएँ</h1>
+  <div class="sub">हर कार्यक्रम / सूचना के लिए अलग नाम, फोटो और परिचय वाला लिंक — ग्रुप में डालते ही सुंदर कार्ड दिखेगा।</div>
+
+  <div class="card">
+    <label>कार्ड का शीर्षक</label>
+    <input type="text" id="t" value="तृतीय वार्षिक स्नेह सम्मेलन – 2027">
+    <label>छोटा परिचय (2–3 पंक्ति)</label>
+    <textarea id="d">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक · अनाविल भवन, उदवाडा। सभी समाज बंधु सपरिवार पधारें।</textarea>
+    <div class="row">
+      <div><label>लिंक का छोटा नाम (अंग्रेज़ी/अंक)</label><input type="text" id="s" value="sammelan-2027"></div>
+      <div><label>लिंक खुलने पर कहाँ जाए</label><input type="text" id="u" value="https://sirpmj.github.io/SMPS/"></div>
+    </div>
+    <label>फोटो</label>
+    <label class="opt"><input type="radio" name="m" value="auto" checked> अपने आप कार्ड (लोगो + शीर्षक + परिचय)</label>
+    <label class="opt"><input type="radio" name="m" value="photo"> अपनी फोटो / पोस्टर लगाएँ</label>
+    <div id="pbox" style="display:none">
+      <input type="file" id="f" accept="image/*">
+      <label class="opt"><input type="checkbox" id="bar" checked> नीचे शीर्षक की पट्टी लगाएँ</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <canvas id="cv" width="1200" height="630"></canvas>
+    <div class="btns">
+      <button class="g" id="dImg">📥 इमेज डाउनलोड (<span id="fi">card.jpg</span>)</button>
+      <button class="o" id="dHtml">📥 पेज डाउनलोड (<span id="fh">card.html</span>)</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <b>अब ये करें (सिर्फ एक बार हर कार्ड के लिए):</b>
+    <ol>
+      <li>ऊपर के दोनों बटन से <b>इमेज</b> और <b>पेज</b> डाउनलोड करें।</li>
+      <li>GitHub में अपनी साइट के <b>repository</b> में जाएँ → <b>Add file → Upload files</b> → दोनों फाइलें डालें (बेहतर: <code>s</code> नाम का folder बनाकर उसी में) → <b>Commit changes</b>।</li>
+      <li>1–2 मिनट बाद नीचे का लिंक WhatsApp ग्रुप में डालें। कार्ड अपने आप दिखेगा।</li>
+    </ol>
+    <div class="link"><code id="lk"></code><button class="l" id="cp" style="flex:none">कॉपी</button></div>
+    <small>लिंक में <code>s/</code> folder मान कर बना है। अगर आपने दोनों फाइलें सबसे ऊपर वाले folder में डालीं, तो नाम से पहले <code>s/</code> हटा दें।</small>
+    <label class="opt" style="margin-top:8px"><input type="checkbox" id="nofold"> फाइलें <b>s</b> folder में नहीं, सबसे ऊपर रखी हैं</label>
+  </div>
+</div>
+
+<script>
+var BASE = "https://sirpmj.github.io/SMPS/";
+var $ = function (i) { return document.getElementById(i); };
+var cv = $("cv"), cx = cv.getContext("2d"), photo = null, logo = null;
+var FONT = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+var li = new Image(); li.onload = function () { logo = li; draw(); }; li.src = "Logo-512.png";
+
+function wrap(txt, maxW, font, maxLines) {
+  cx.font = font; var words = String(txt).split(/(\s+)/), out = [], line = "";
+  words.forEach(function (w) { var t = line + w; if (cx.measureText(t).width > maxW && line.trim()) { out.push(line.trim()); line = w.trimStart(); } else line = t; });
+  if (line.trim()) out.push(line.trim());
+  if (maxLines && out.length > maxLines) { out = out.slice(0, maxLines); out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
+  return out;
+}
+function draw() {
+  var t = $("t").value.trim(), d = $("d").value.trim(), mode = document.querySelector("input[name=m]:checked").value;
+  cx.clearRect(0, 0, 1200, 630);
+  if (mode === "photo" && photo) {
+    var r = Math.max(1200 / photo.width, 630 / photo.height), w = photo.width * r, h = photo.height * r;
+    cx.drawImage(photo, (1200 - w) / 2, (630 - h) / 2, w, h);
+    if ($("bar").checked) {
+      var g = cx.createLinearGradient(0, 430, 0, 630); g.addColorStop(0, "rgba(10,42,94,0)"); g.addColorStop(.35, "rgba(10,42,94,.88)"); g.addColorStop(1, "rgba(10,42,94,.97)");
+      cx.fillStyle = g; cx.fillRect(0, 430, 1200, 200);
+      cx.fillStyle = "#fff"; cx.font = "700 52px " + FONT; var tl = wrap(t, 1040, "700 52px " + FONT, 2);
+      tl.forEach(function (x, i) { cx.fillText(x, 50, 590 - (tl.length - 1) * 58 + i * 58); });
+      if (logo) { cx.save(); cx.beginPath(); cx.arc(1120, 560, 52, 0, 7); cx.clip(); cx.fillStyle = "#fff"; cx.fillRect(1068, 508, 104, 104); cx.drawImage(logo, 1068, 508, 104, 104); cx.restore(); }
+    }
+  } else {
+    var gr = cx.createLinearGradient(0, 0, 1200, 630); gr.addColorStop(0, "#0a2a5e"); gr.addColorStop(.6, "#12408f"); gr.addColorStop(1, "#1a56c4");
+    cx.fillStyle = gr; cx.fillRect(0, 0, 1200, 630);
+    cx.strokeStyle = "rgba(255,255,255,.12)"; cx.lineWidth = 2; cx.beginPath(); cx.arc(1080, 60, 260, 0, 7); cx.stroke(); cx.beginPath(); cx.arc(1080, 60, 120, 0, 7); cx.stroke();
+    var lx = 70, tx = 70;
+    if (logo) { cx.save(); cx.beginPath(); cx.arc(180, 315, 120, 0, 7); cx.closePath(); cx.fillStyle = "#fff"; cx.fill(); cx.clip(); cx.drawImage(logo, 66, 201, 228, 228); cx.restore(); tx = 350; }
+    cx.fillStyle = "#f5a21b"; cx.font = "700 30px " + FONT; cx.fillText("🙏 जय श्रीयादे माता की", tx, 110);
+    var tl = wrap(t, 1200 - tx - 60, "700 60px " + FONT, 3); cx.fillStyle = "#fff"; cx.font = "700 60px " + FONT;
+    tl.forEach(function (x, i) { cx.fillText(x, tx, 190 + i * 72); });
+    var y = 190 + tl.length * 72 + 24;
+    cx.fillStyle = "#dbe7ff"; var dl = wrap(d, 1200 - tx - 60, "500 30px " + FONT, 4); cx.font = "500 30px " + FONT;
+    dl.forEach(function (x, i) { cx.fillText(x, tx, y + i * 44); });
+    cx.fillStyle = "#9fc0ff"; cx.font = "500 24px " + FONT; cx.fillText("श्री मेवाड़ प्रजापत समाज – वापी · sirpmj.github.io/SMPS", 70, 590);
+  }
+  var s = slug(); $("fi").textContent = s + ".jpg"; $("fh").textContent = s + ".html";
+  var fold = $("nofold").checked ? "" : "s/"; $("lk").textContent = BASE + fold + s + ".html";
+}
+function slug() { return ($("s").value || "card").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "card"; }
+function esc(x) { return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function save(blob, name) { var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
+function jpegBlob(cb) { var q = .9; (function tryQ() { cv.toBlob(function (b) { if (b.size > 290000 && q > .45) { q -= .1; tryQ(); } else cb(b); }, "image/jpeg", q); })(); }
+function pageHtml() {
+  var s = slug(), fold = $("nofold").checked ? "" : "s/", url = BASE + fold + s + ".html", img = BASE + fold + s + ".jpg";
+  var t = esc($("t").value.trim()), d = esc($("d").value.trim()), to = $("u").value.trim() || BASE;
+  return '<!doctype html>\n<html lang="hi"><head><meta charset="utf-8">\n<title>' + t + '</title>\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="description" content="' + d + '">\n' +
+    '<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज – वापी">\n<meta property="og:type" content="website">\n<meta property="og:locale" content="hi_IN">\n<meta property="og:url" content="' + url + '">\n<meta property="og:title" content="' + t + '">\n<meta property="og:description" content="' + d + '">\n' +
+    '<meta property="og:image" content="' + img + '">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n<meta property="og:image:type" content="image/jpeg">\n' +
+    '<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="' + t + '">\n<meta name="twitter:description" content="' + d + '">\n<meta name="twitter:image" content="' + img + '">\n' +
+    '<script>location.replace(' + JSON.stringify(to) + ');<\/script>\n</head><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>' + t + '</h2><p>' + d + '</p><p><a href="' + esc(to) + '">आगे बढ़ने के लिए यहाँ दबाएँ →</a></p></body></html>\n';
+}
+["t", "d", "s", "u", "bar", "nofold"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
+document.querySelectorAll("input[name=m]").forEach(function (r) { r.addEventListener("change", function () { $("pbox").style.display = r.value === "photo" && r.checked ? "block" : $("pbox").style.display; if (r.value === "auto") $("pbox").style.display = "none"; draw(); }); });
+$("f").addEventListener("change", function (e) { var f = e.target.files[0]; if (!f) return; var im = new Image(); im.onload = function () { photo = im; draw(); }; im.src = URL.createObjectURL(f); });
+$("dImg").onclick = function () { jpegBlob(function (b) { save(b, slug() + ".jpg"); }); };
+$("dHtml").onclick = function () { save(new Blob([pageHtml()], { type: "text/html;charset=utf-8" }), slug() + ".html"); };
+$("cp").onclick = function () { var t = $("lk").textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $("cp").textContent = "✔ हो गया"; setTimeout(function () { $("cp").textContent = "कॉपी"; }, 1400); }).catch(function () { prompt("लिंक कॉपी करें:", t); }); };
+draw();
+</script>
+</body>
+</html>
