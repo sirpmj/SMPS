@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.306"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.307"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2170,6 +2170,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       📄 PDF
     </button>
 
+    <button id="shareCardBtn" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
     <button id="myAcctBtn" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
     <button id="logoutBtn">🔙 Logout</button>
   </div>
@@ -2245,9 +2246,9 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 
   <!-- 📅 वादा filter + 📨 bulk reminders (sirf Boli / Donation) -->
   <select id="commitFilter" onchange="setCommitFilter_(this.value)" style="display:none;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;width:auto">
-    <option value="">सभी रिकॉर्ड</option>
     <option value="pending">बाकी+वादा</option>
     <option value="paid">✅ पूरा जमा</option>
+    <option value="">सभी रिकॉर्ड</option>
     <option value="today">आज का वादा</option>
     <option value="tomorrow">कल का वादा</option>
     <option value="week">अगले 7 दिन</option>
@@ -6589,7 +6590,7 @@ function setCommitFilter_(v) {
 function updateCommitToolbar_(sheetName) {
   const on = (sheetName === "Boli" || sheetName === "Donation");
   if (!on) commitFilterInit_ = "";
-  else if (commitFilterInit_ !== sheetName) { commitFilter = ""; commitFilterInit_ = sheetName; } // v1.293: default = सभी रिकॉर्ड (poora jama wale bhi dikhen); बाकी+वादा wale upar, poora jama neeche
+  else if (commitFilterInit_ !== sheetName) { commitFilter = "pending"; commitFilterInit_ = sheetName; } // v1.307: default = बाकी+वादा (पूरा जमा wale "✅ पूरा जमा" ya "सभी रिकॉर्ड" chunne par dikhte hain)
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
@@ -6598,7 +6599,7 @@ function updateCommitToolbar_(sheetName) {
 }
 function openCommitView_(sheetName, mode) {
   setActiveTab(sheetName);
-  commitFilter = mode || "";
+  commitFilter = mode || "pending";
   commitFilterInit_ = sheetName; // default filter isse override na ho
 }
 
@@ -8363,6 +8364,15 @@ if ('serviceWorker' in navigator) {
     if (t.scrollWidth > t.clientWidth + 1) t.classList.add("tabs-wrap");
   }
   window.fitTabs_ = fitTabs_;
+  /* v1.307: "🔗 लिंक कार्ड" — Admin ya jo Announcements/News/Meetings dekh sakta hai */
+  function shareCardBtn_() {
+    const b = document.getElementById("shareCardBtn"); if (!b) return;
+    const acc = t => (ROLE_ACCESS && currentUser && ROLE_ACCESS[currentUser.role] && ROLE_ACCESS[currentUser.role][t]) || null;
+    const ok = !!currentUser && (currentUser.role === "Admin" || ["Announcements", "News", "Meetings"].some(t => acc(t) && acc(t).canView));
+    b.style.display = ok ? "" : "none";
+  }
+  window.shareCardBtn_ = shareCardBtn_;
+  if (typeof buildTabs === "function") { const _b2 = buildTabs; buildTabs = function () { const r = _b2.apply(this, arguments); try { shareCardBtn_(); } catch (e) {} return r; }; }
   if (typeof buildTabs === "function") { const _b = buildTabs; buildTabs = function () { const r = _b.apply(this, arguments); try { fitTabs_(); setTimeout(fitTabs_, 250); setTimeout(fitTabs_, 1200); } catch (e) {} return r; }; }
   let _ft; window.addEventListener("resize", () => { clearTimeout(_ft); _ft = setTimeout(fitTabs_, 120); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { try { fitTabs_(); } catch (e) {} });

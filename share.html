@@ -34,13 +34,17 @@ small{color:#64748b}
   <div class="sub">हर कार्यक्रम / सूचना के लिए अलग नाम, फोटो और परिचय वाला लिंक — ग्रुप में डालते ही सुंदर कार्ड दिखेगा।</div>
 
   <div class="card">
-    <label>कार्ड का शीर्षक</label>
-    <input type="text" id="t" value="तृतीय वार्षिक स्नेह सम्मेलन – 2027">
+    <label>कार्ड का शीर्षक <small>(Enter दबाकर नई पंक्ति बना सकते हैं)</small></label>
+    <textarea id="t" rows="3">तृतीय वार्षिक स्नेह सम्मेलन – 2027</textarea>
     <label>छोटा परिचय (2–3 पंक्ति)</label>
     <textarea id="d">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक · अनाविल भवन, उदवाडा। सभी समाज बंधु सपरिवार पधारें।</textarea>
     <div class="row">
       <div><label>लिंक का छोटा नाम (अंग्रेज़ी/अंक)</label><input type="text" id="s" value="sammelan-2027"></div>
       <div><label>लिंक खुलने पर कहाँ जाए</label><input type="text" id="u" value="https://sirpmj.github.io/SMPS/"></div>
+    </div>
+    <div class="row">
+      <div><label>ऊपर की पंक्ति (खाली छोड़ें तो नहीं दिखेगी)</label><input type="text" id="top" value="🙏 जय श्रीयादे माता की"></div>
+      <div><label>नीचे की पंक्ति / footer (खाली छोड़ें तो नहीं दिखेगी)</label><input type="text" id="ft" value="श्री मेवाड़ प्रजापत समाज – वापी · sirpmj.github.io/SMPS"></div>
     </div>
     <label>फोटो</label>
     <label class="opt"><input type="radio" name="m" value="auto" checked> अपने आप कार्ड (लोगो + शीर्षक + परिचय)</label>
@@ -86,17 +90,25 @@ function wrap(txt, maxW, font, maxLines) {
   if (maxLines && out.length > maxLines) { out = out.slice(0, maxLines); out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
   return out;
 }
+function tLines(txt, maxW, font, maxLines) {
+  var out = []; String(txt).split(/\n/).forEach(function (p) { p = p.trim(); if (!p) return; out = out.concat(wrap(p, maxW, font, 0)); });
+  if (maxLines && out.length > maxLines) { out = out.slice(0, maxLines); out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
+  return out;
+}
 function draw() {
-  var t = $("t").value.trim(), d = $("d").value.trim(), mode = document.querySelector("input[name=m]:checked").value;
+  var t = $("t").value.trim(), d = $("d").value.trim(), mode = document.querySelector("input[name=m]:checked").value, topT = $("top").value.trim(), ftT = $("ft").value.trim();
   cx.clearRect(0, 0, 1200, 630);
   if (mode === "photo" && photo) {
     var r = Math.max(1200 / photo.width, 630 / photo.height), w = photo.width * r, h = photo.height * r;
     cx.drawImage(photo, (1200 - w) / 2, (630 - h) / 2, w, h);
     if ($("bar").checked) {
-      var g = cx.createLinearGradient(0, 430, 0, 630); g.addColorStop(0, "rgba(10,42,94,0)"); g.addColorStop(.35, "rgba(10,42,94,.88)"); g.addColorStop(1, "rgba(10,42,94,.97)");
-      cx.fillStyle = g; cx.fillRect(0, 430, 1200, 200);
-      cx.fillStyle = "#fff"; cx.font = "700 52px " + FONT; var tl = wrap(t, 1040, "700 52px " + FONT, 2);
-      tl.forEach(function (x, i) { cx.fillText(x, 50, 590 - (tl.length - 1) * 58 + i * 58); });
+      var tl = tLines(t, 1000, "700 52px " + FONT, 3), barH = tl.length * 58 + (ftT ? 80 : 50) + 50, y0 = 630 - barH;
+      var g = cx.createLinearGradient(0, y0, 0, 630); g.addColorStop(0, "rgba(10,42,94,0)"); g.addColorStop(.3, "rgba(10,42,94,.88)"); g.addColorStop(1, "rgba(10,42,94,.97)");
+      cx.fillStyle = g; cx.fillRect(0, y0, 1200, barH);
+      cx.fillStyle = "#fff"; cx.font = "700 52px " + FONT;
+      var base = (ftT ? 566 : 596) - (tl.length - 1) * 58;
+      tl.forEach(function (x, i) { cx.fillText(x, 50, base + i * 58); });
+      if (ftT) { cx.fillStyle = "#cfe0ff"; cx.font = "500 24px " + FONT; cx.fillText(ftT, 50, 606); }
       if (logo) { cx.save(); cx.beginPath(); cx.arc(1120, 560, 52, 0, 7); cx.clip(); cx.fillStyle = "#fff"; cx.fillRect(1068, 508, 104, 104); cx.drawImage(logo, 1068, 508, 104, 104); cx.restore(); }
     }
   } else {
@@ -105,13 +117,14 @@ function draw() {
     cx.strokeStyle = "rgba(255,255,255,.12)"; cx.lineWidth = 2; cx.beginPath(); cx.arc(1080, 60, 260, 0, 7); cx.stroke(); cx.beginPath(); cx.arc(1080, 60, 120, 0, 7); cx.stroke();
     var lx = 70, tx = 70;
     if (logo) { cx.save(); cx.beginPath(); cx.arc(180, 315, 120, 0, 7); cx.closePath(); cx.fillStyle = "#fff"; cx.fill(); cx.clip(); cx.drawImage(logo, 66, 201, 228, 228); cx.restore(); tx = 350; }
-    cx.fillStyle = "#f5a21b"; cx.font = "700 30px " + FONT; cx.fillText("🙏 जय श्रीयादे माता की", tx, 110);
-    var tl = wrap(t, 1200 - tx - 60, "700 60px " + FONT, 3); cx.fillStyle = "#fff"; cx.font = "700 60px " + FONT;
-    tl.forEach(function (x, i) { cx.fillText(x, tx, 190 + i * 72); });
-    var y = 190 + tl.length * 72 + 24;
-    cx.fillStyle = "#dbe7ff"; var dl = wrap(d, 1200 - tx - 60, "500 30px " + FONT, 4); cx.font = "500 30px " + FONT;
+    if (topT) { cx.fillStyle = "#f5a21b"; cx.font = "700 30px " + FONT; cx.fillText(topT, tx, 96); }
+    var fs = 60, tl = tLines(t, 1200 - tx - 60, "700 60px " + FONT, 0); if (tl.length > 3) { fs = 48; tl = tLines(t, 1200 - tx - 60, "700 48px " + FONT, 5); }
+    var lh = Math.round(fs * 1.2), y0 = topT ? 96 + 40 + fs : 80 + fs; cx.fillStyle = "#fff"; cx.font = "700 " + fs + "px " + FONT;
+    tl.forEach(function (x, i) { cx.fillText(x, tx, y0 + i * lh); });
+    var y = y0 + (tl.length - 1) * lh + 56;
+    cx.fillStyle = "#dbe7ff"; var dl = wrap(d, 1200 - tx - 60, "500 30px " + FONT, Math.max(2, Math.floor((560 - y) / 44))); cx.font = "500 30px " + FONT;
     dl.forEach(function (x, i) { cx.fillText(x, tx, y + i * 44); });
-    cx.fillStyle = "#9fc0ff"; cx.font = "500 24px " + FONT; cx.fillText("श्री मेवाड़ प्रजापत समाज – वापी · sirpmj.github.io/SMPS", 70, 590);
+    if (ftT) { cx.fillStyle = "#9fc0ff"; cx.font = "500 24px " + FONT; cx.fillText(ftT, 70, 596); }
   }
   var s = slug(); $("fi").textContent = s + ".jpg"; $("fh").textContent = s + ".html";
   var fold = $("nofold").checked ? "" : "s/"; $("lk").textContent = BASE + fold + s + ".html";
@@ -122,14 +135,14 @@ function save(blob, name) { var a = document.createElement("a"); a.href = URL.cr
 function jpegBlob(cb) { var q = .9; (function tryQ() { cv.toBlob(function (b) { if (b.size > 290000 && q > .45) { q -= .1; tryQ(); } else cb(b); }, "image/jpeg", q); })(); }
 function pageHtml() {
   var s = slug(), fold = $("nofold").checked ? "" : "s/", url = BASE + fold + s + ".html", img = BASE + fold + s + ".jpg";
-  var t = esc($("t").value.trim()), d = esc($("d").value.trim()), to = $("u").value.trim() || BASE;
+  var tRaw = $("t").value.trim(), t = esc(tRaw.replace(/\s*\n+\s*/g, " ")), tBr = esc(tRaw).replace(/\n+/g, "<br>"), d = esc($("d").value.trim()), to = $("u").value.trim() || BASE;
   return '<!doctype html>\n<html lang="hi"><head><meta charset="utf-8">\n<title>' + t + '</title>\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="description" content="' + d + '">\n' +
     '<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज – वापी">\n<meta property="og:type" content="website">\n<meta property="og:locale" content="hi_IN">\n<meta property="og:url" content="' + url + '">\n<meta property="og:title" content="' + t + '">\n<meta property="og:description" content="' + d + '">\n' +
     '<meta property="og:image" content="' + img + '">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n<meta property="og:image:type" content="image/jpeg">\n' +
     '<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="' + t + '">\n<meta name="twitter:description" content="' + d + '">\n<meta name="twitter:image" content="' + img + '">\n' +
-    '<script>location.replace(' + JSON.stringify(to) + ');<\/script>\n</head><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>' + t + '</h2><p>' + d + '</p><p><a href="' + esc(to) + '">आगे बढ़ने के लिए यहाँ दबाएँ →</a></p></body></html>\n';
+    '<script>location.replace(' + JSON.stringify(to) + ');<\/script>\n</head><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>' + tBr + '</h2><p>' + d + '</p><p><a href="' + esc(to) + '">आगे बढ़ने के लिए यहाँ दबाएँ →</a></p></body></html>\n';
 }
-["t", "d", "s", "u", "bar", "nofold"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
+["t", "d", "s", "u", "bar", "nofold", "top", "ft"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
 document.querySelectorAll("input[name=m]").forEach(function (r) { r.addEventListener("change", function () { $("pbox").style.display = r.value === "photo" && r.checked ? "block" : $("pbox").style.display; if (r.value === "auto") $("pbox").style.display = "none"; draw(); }); });
 $("f").addEventListener("change", function (e) { var f = e.target.files[0]; if (!f) return; var im = new Image(); im.onload = function () { photo = im; draw(); }; im.src = URL.createObjectURL(f); });
 $("dImg").onclick = function () { jpegBlob(function (b) { save(b, slug() + ".jpg"); }); };
