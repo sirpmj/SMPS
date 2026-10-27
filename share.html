@@ -36,8 +36,11 @@ small{color:#64748b}
   <div class="card">
     <label>कार्ड का शीर्षक <small>(Enter दबाकर नई पंक्ति बना सकते हैं)</small></label>
     <textarea id="t" rows="3">तृतीय वार्षिक स्नेह सम्मेलन – 2027</textarea>
-    <label>छोटा परिचय (2–3 पंक्ति)</label>
-    <textarea id="d">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक · अनाविल भवन, उदवाडा। सभी समाज बंधु सपरिवार पधारें।</textarea>
+    <label>परिचय / विवरण <small>(Enter = नई पंक्ति · खाली पंक्ति = अंतर / नया अनुच्छेद)</small></label>
+    <textarea id="d" rows="6">रविवार, 10 जनवरी 2027 · सुबह 8:00 से शाम 4:00 बजे तक ·
+अनाविल भवन, उदवाडा।
+
+सभी समाज बंधु सपरिवार पधारें।</textarea>
     <div class="row">
       <div><label>लिंक का छोटा नाम (अंग्रेज़ी/अंक)</label><input type="text" id="s" value="sammelan-2027"></div>
       <div><label>लिंक खुलने पर कहाँ जाए</label><input type="text" id="u" value="https://sirpmj.github.io/SMPS/"></div>
@@ -46,6 +49,15 @@ small{color:#64748b}
       <div><label>ऊपर की पंक्ति (खाली छोड़ें तो नहीं दिखेगी)</label><input type="text" id="top" value="🙏 जय श्रीयादे माता की"></div>
       <div><label>नीचे की पंक्ति / footer (खाली छोड़ें तो नहीं दिखेगी)</label><input type="text" id="ft" value="श्री मेवाड़ प्रजापत समाज – वापी · sirpmj.github.io/SMPS"></div>
     </div>
+    <label>कार्ड का design</label>
+    <select id="th" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:15px">
+      <option value="neela">🔵 नीला — हर तरह की सूचना (सुझाव)</option>
+      <option value="kesariya">🟠 केसरिया — उत्सव / त्योहार / सम्मेलन</option>
+      <option value="safed">⚪ सफ़ेद साफ़ — हल्का और सादा</option>
+      <option value="hara">🟢 हरा — बैठक / मीटिंग (ऊपर की पंक्ति टैग बनती है)</option>
+      <option value="shahi">🟡 शाही सोना — बड़े / खास आयोजन</option>
+      <option value="laal">🔴 लाल — अत्यावश्यक सूचना (ऊपर की पंक्ति टैग बनती है)</option>
+    </select>
     <label>फोटो</label>
     <label class="opt"><input type="radio" name="m" value="auto" checked> अपने आप कार्ड (लोगो + शीर्षक + परिचय)</label>
     <label class="opt"><input type="radio" name="m" value="photo"> अपनी फोटो / पोस्टर लगाएँ</label>
@@ -90,10 +102,44 @@ function wrap(txt, maxW, font, maxLines) {
   if (maxLines && out.length > maxLines) { out = out.slice(0, maxLines); out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
   return out;
 }
+function rr(x, y, w, hh, r) { cx.beginPath(); cx.moveTo(x + r, y); cx.arcTo(x + w, y, x + w, y + hh, r); cx.arcTo(x + w, y + hh, x, y + hh, r); cx.arcTo(x, y + hh, x, y, r); cx.arcTo(x, y, x + w, y, r); cx.closePath(); }
+function lin(c1, c2, c3) { var g = cx.createLinearGradient(0, 0, 1200, 630); g.addColorStop(0, c1); if (c3) { g.addColorStop(.6, c2); g.addColorStop(1, c3); } else g.addColorStop(1, c2); cx.fillStyle = g; cx.fillRect(0, 0, 1200, 630); }
+function ring(x, y, r, a) { cx.strokeStyle = "rgba(255,255,255," + a + ")"; cx.lineWidth = 2; cx.beginPath(); cx.arc(x, y, r, 0, 7); cx.stroke(); }
+var TH = {
+  neela: { top: "#f5a21b", title: "#fff", desc: "#dbe7ff", foot: "#9fc0ff", bg: function () { lin("#0a2a5e", "#12408f", "#1a56c4"); ring(1080, 60, 260, .12); ring(1080, 60, 120, .12); } },
+  kesariya: { top: "#fff7d6", title: "#fff", desc: "#fff1d6", foot: "#ffe8b8", shadow: 1, footY: 600, bg: function () {
+    lin("#9a3412", "#ea580c", "#f59e0b"); cx.fillStyle = "rgba(255,255,255,.14)"; for (var x = 22; x < 1200; x += 44) for (var y = 22; y < 630; y += 44) { cx.beginPath(); cx.arc(x, y, 3, 0, 7); cx.fill(); }
+    cx.fillStyle = "rgba(0,0,0,.18)"; cx.fillRect(0, 552, 1200, 78); } },
+  safed: { logo: "R", top: "#ea580c", title: "#0a2a5e", desc: "#475569", foot: "#64748b", footY: 574, bg: function () {
+    cx.fillStyle = "#fff"; cx.fillRect(0, 0, 1200, 630); var g = cx.createLinearGradient(0, 0, 0, 630); g.addColorStop(0, "#f5a21b"); g.addColorStop(1, "#ea580c"); cx.fillStyle = g; cx.fillRect(0, 0, 26, 630);
+    rr(52, 26, 1122, 578, 24); cx.strokeStyle = "#dbe3f0"; cx.lineWidth = 3; cx.stroke(); } },
+  hara: { pill: 1, pillText: "#065f46", title: "#fff", desc: "#d1fae5", foot: "#a7f3d0", bg: function () { lin("#064e3b", "#047857", "#10b981"); ring(1100, 600, 260, .14); } },
+  shahi: { top: "#f5c542", title: "#f8d56b", desc: "#e5ecff", foot: "#d4a017", footY: 572, bg: function () {
+    var g = cx.createRadialGradient(300, 190, 0, 300, 190, 800); g.addColorStop(0, "#12306b"); g.addColorStop(1, "#071a3d"); cx.fillStyle = g; cx.fillRect(0, 0, 1200, 630);
+    rr(22, 22, 1156, 586, 18); cx.strokeStyle = "#d4a017"; cx.lineWidth = 3; cx.stroke(); rr(34, 34, 1132, 562, 12); cx.strokeStyle = "rgba(212,160,23,.55)"; cx.lineWidth = 1; cx.stroke(); } },
+  laal: { pill: 1, pillText: "#b91c1c", title: "#fff", desc: "#fee2e2", foot: "#fecaca", bg: function () {
+    lin("#7f1d1d", "#b91c1c", "#ef4444"); for (var x = -20; x < 1220; x += 44) { cx.fillStyle = "#fff"; cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x + 22, 0); cx.lineTo(x + 8, 14); cx.lineTo(x - 14, 14); cx.fill(); } } }
+};
 function tLines(txt, maxW, font, maxLines) {
   var out = []; String(txt).split(/\n/).forEach(function (p) { p = p.trim(); if (!p) return; out = out.concat(wrap(p, maxW, font, 0)); });
   if (maxLines && out.length > maxLines) { out = out.slice(0, maxLines); out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, "") + "…"; }
   return out;
+}
+function dLayout(txt, maxW, y0, yMax) {
+  var sizes = [30, 27, 24, 22, 20], pick = null;
+  for (var s = 0; s < sizes.length; s++) {
+    var sz = sizes[s], font = "500 " + sz + "px " + FONT, lh = Math.round(sz * 1.5), items = [];
+    String(txt).replace(/\r/g, "").split("\n").forEach(function (p) {
+      p = p.trim();
+      if (!p) { if (items.length) items.push({ gap: Math.round(sz * .7) }); return; }
+      wrap(p, maxW, font, 0).forEach(function (l) { items.push({ t: l }); });
+    });
+    while (items.length && items[items.length - 1].gap) items.pop();
+    var y = y0, last = y0; items.forEach(function (it) { if (it.t != null) { last = y; y += lh; } else y += it.gap; });
+    pick = { items: items, sz: sz, lh: lh, font: font };
+    if (last <= yMax) break;
+  }
+  return pick;
 }
 function draw() {
   var t = $("t").value.trim(), d = $("d").value.trim(), mode = document.querySelector("input[name=m]:checked").value, topT = $("top").value.trim(), ftT = $("ft").value.trim();
@@ -112,20 +158,30 @@ function draw() {
       if (logo) { cx.save(); cx.beginPath(); cx.arc(1120, 560, 52, 0, 7); cx.clip(); cx.fillStyle = "#fff"; cx.fillRect(1068, 508, 104, 104); cx.drawImage(logo, 1068, 508, 104, 104); cx.restore(); }
     }
   } else {
-    var gr = cx.createLinearGradient(0, 0, 1200, 630); gr.addColorStop(0, "#0a2a5e"); gr.addColorStop(.6, "#12408f"); gr.addColorStop(1, "#1a56c4");
-    cx.fillStyle = gr; cx.fillRect(0, 0, 1200, 630);
-    cx.strokeStyle = "rgba(255,255,255,.12)"; cx.lineWidth = 2; cx.beginPath(); cx.arc(1080, 60, 260, 0, 7); cx.stroke(); cx.beginPath(); cx.arc(1080, 60, 120, 0, 7); cx.stroke();
-    var lx = 70, tx = 70;
-    if (logo) { cx.save(); cx.beginPath(); cx.arc(180, 315, 120, 0, 7); cx.closePath(); cx.fillStyle = "#fff"; cx.fill(); cx.clip(); cx.drawImage(logo, 66, 201, 228, 228); cx.restore(); tx = 350; }
-    if (topT) { cx.fillStyle = "#f5a21b"; cx.font = "700 30px " + FONT; cx.fillText(topT, tx, 96); }
-    var fs = 60, tl = tLines(t, 1200 - tx - 60, "700 60px " + FONT, 0); if (tl.length > 3) { fs = 48; tl = tLines(t, 1200 - tx - 60, "700 48px " + FONT, 5); }
-    var lh = Math.round(fs * 1.2), y0 = topT ? 96 + 40 + fs : 80 + fs; cx.fillStyle = "#fff"; cx.font = "700 " + fs + "px " + FONT;
+    var th = TH[$("th").value] || TH.neela;
+    th.bg();
+    var right = th.logo === "R", tx = right ? 110 : 350, maxW = right ? 720 : 790, lcx = right ? 1000 : 180;
+    if (logo) {
+      cx.save(); cx.shadowColor = "rgba(0,0,0,.35)"; cx.shadowBlur = 28; cx.shadowOffsetY = 8; cx.beginPath(); cx.arc(lcx, 315, 124, 0, 7); cx.fillStyle = "#fff"; cx.fill(); cx.restore();
+      cx.save(); cx.beginPath(); cx.arc(lcx, 315, 124, 0, 7); cx.closePath(); cx.clip(); cx.drawImage(logo, lcx - 112, 203, 224, 224); cx.restore();
+    }
+    var fs = 60, tl = tLines(t, maxW, "700 60px " + FONT, 0); if (tl.length > 3) { fs = 48; tl = tLines(t, maxW, "700 48px " + FONT, 5); }
+    var lh = Math.round(fs * 1.2), y0;
+    if (topT && th.pill) {
+      cx.font = "700 28px " + FONT; var pw = cx.measureText(topT).width + 44; rr(tx, 58, pw, 48, 24); cx.fillStyle = "#fff"; cx.fill();
+      cx.fillStyle = th.pillText; cx.fillText(topT, tx + 22, 92); y0 = 106 + 30 + fs;
+    } else if (topT) { cx.fillStyle = th.top; cx.font = "700 30px " + FONT; cx.fillText(topT, tx, 96); y0 = 96 + 40 + fs; }
+    else y0 = 80 + fs;
+    cx.fillStyle = th.title; cx.font = "700 " + fs + "px " + FONT;
+    if (th.shadow) { cx.save(); cx.shadowColor = "rgba(0,0,0,.28)"; cx.shadowBlur = 10; cx.shadowOffsetY = 3; }
     tl.forEach(function (x, i) { cx.fillText(x, tx, y0 + i * lh); });
-    var y = y0 + (tl.length - 1) * lh + 56;
-    cx.fillStyle = "#dbe7ff"; var dl = wrap(d, 1200 - tx - 60, "500 30px " + FONT, Math.max(2, Math.floor((560 - y) / 44))); cx.font = "500 30px " + FONT;
-    dl.forEach(function (x, i) { cx.fillText(x, tx, y + i * 44); });
-    if (ftT) { cx.fillStyle = "#9fc0ff"; cx.font = "500 24px " + FONT; cx.fillText(ftT, 70, 596); }
+    if (th.shadow) cx.restore();
+    var y = y0 + (tl.length - 1) * lh + 56, footY = th.footY || 596;
+    var L = dLayout(d, maxW, y, ftT ? footY - 44 : footY - 6); cx.fillStyle = th.desc; cx.font = L.font;
+    L.items.forEach(function (it) { if (it.t != null) { cx.fillText(it.t, tx, y); y += L.lh; } else y += it.gap; });
+    if (ftT) { cx.fillStyle = th.foot; cx.font = "500 24px " + FONT; cx.fillText(ftT, right ? 110 : 70, footY); }
   }
+
   var s = slug(); $("fi").textContent = s + ".jpg"; $("fh").textContent = s + ".html";
   var fold = $("nofold").checked ? "" : "s/"; $("lk").textContent = BASE + fold + s + ".html";
 }
@@ -135,14 +191,14 @@ function save(blob, name) { var a = document.createElement("a"); a.href = URL.cr
 function jpegBlob(cb) { var q = .9; (function tryQ() { cv.toBlob(function (b) { if (b.size > 290000 && q > .45) { q -= .1; tryQ(); } else cb(b); }, "image/jpeg", q); })(); }
 function pageHtml() {
   var s = slug(), fold = $("nofold").checked ? "" : "s/", url = BASE + fold + s + ".html", img = BASE + fold + s + ".jpg";
-  var tRaw = $("t").value.trim(), t = esc(tRaw.replace(/\s*\n+\s*/g, " ")), tBr = esc(tRaw).replace(/\n+/g, "<br>"), d = esc($("d").value.trim()), to = $("u").value.trim() || BASE;
+  var tRaw = $("t").value.trim(), t = esc(tRaw.replace(/\s*\n+\s*/g, " ")), tBr = esc(tRaw).replace(/\n+/g, "<br>"), dRaw = $("d").value.trim(), d = esc(dRaw.replace(/\s*\n+\s*/g, " ")), dBr = esc(dRaw).replace(/\n\s*\n/g, "<br><br>").replace(/\n/g, "<br>"), to = $("u").value.trim() || BASE;
   return '<!doctype html>\n<html lang="hi"><head><meta charset="utf-8">\n<title>' + t + '</title>\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="description" content="' + d + '">\n' +
     '<meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज – वापी">\n<meta property="og:type" content="website">\n<meta property="og:locale" content="hi_IN">\n<meta property="og:url" content="' + url + '">\n<meta property="og:title" content="' + t + '">\n<meta property="og:description" content="' + d + '">\n' +
     '<meta property="og:image" content="' + img + '">\n<meta property="og:image:width" content="1200">\n<meta property="og:image:height" content="630">\n<meta property="og:image:type" content="image/jpeg">\n' +
     '<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="' + t + '">\n<meta name="twitter:description" content="' + d + '">\n<meta name="twitter:image" content="' + img + '">\n' +
-    '<script>location.replace(' + JSON.stringify(to) + ');<\/script>\n</head><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>' + tBr + '</h2><p>' + d + '</p><p><a href="' + esc(to) + '">आगे बढ़ने के लिए यहाँ दबाएँ →</a></p></body></html>\n';
+    '<script>location.replace(' + JSON.stringify(to) + ');<\/script>\n</head><body style="font-family:sans-serif;text-align:center;padding:40px"><h2>' + tBr + '</h2><p>' + dBr + '</p><p><a href="' + esc(to) + '">आगे बढ़ने के लिए यहाँ दबाएँ →</a></p></body></html>\n';
 }
-["t", "d", "s", "u", "bar", "nofold", "top", "ft"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
+["t", "d", "s", "u", "bar", "nofold", "top", "ft", "th"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
 document.querySelectorAll("input[name=m]").forEach(function (r) { r.addEventListener("change", function () { $("pbox").style.display = r.value === "photo" && r.checked ? "block" : $("pbox").style.display; if (r.value === "auto") $("pbox").style.display = "none"; draw(); }); });
 $("f").addEventListener("change", function (e) { var f = e.target.files[0]; if (!f) return; var im = new Image(); im.onload = function () { photo = im; draw(); }; im.src = URL.createObjectURL(f); });
 $("dImg").onclick = function () { jpegBlob(function (b) { save(b, slug() + ".jpg"); }); };
