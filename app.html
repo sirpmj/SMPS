@@ -5083,7 +5083,7 @@ async function openAddRecordForm(sheetName) {
   if (sheetName === "Members") {
     // Add form: sahi kram (Name, Mobile, Gotra, Origin, City, District, Address, Occupation, Birthday, Anniversary, Joined, Status)
     // MemberID / Member / Login / PIN form mein nahi — MemberID + Member naam server khud banata hai
-    const ORDER_ = [/^name$/i, /mobile|phone/i, /gotra/i, /origin/i, /city/i, /district/i, /address/i, /occupation/i, /birth|dob/i, /anniversary/i, /join/i, /^status$/i];
+    const ORDER_ = [/^name$/i, /^member$/i, /mobile|phone/i, /gotra/i, /origin/i, /city/i, /district/i, /address/i, /occupation/i, /birth|dob/i, /anniversary/i, /join/i, /^status$/i];
     const picked = [];
     ORDER_.forEach(re => { const k = columns.find(c => !picked.includes(c) && re.test(c)); if (k) picked.push(k); });
     columns = [...picked, ...columns.filter(k => !picked.includes(k))];
@@ -5123,7 +5123,13 @@ async function openAddRecordForm(sheetName) {
     // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
     // bekaar/duplicate hai (Name column already hai) — Add Member form mein isse
     // bilkul mat dikhao.
-    if (sheetName === "Members" && kl === "member") return;
+    if (sheetName === "Members" && kl === "member") {   // plain text (dropdown nahi) — Hindi naam jo sab jagah dikhega
+      const mid = "af_" + k.replace(/\s+/g, "_"); inputIds.push({ key: k, id: mid });
+      const g0 = document.createElement("div"), l0 = document.createElement("label"), i0 = document.createElement("input");
+      l0.textContent = "सूची में दिखने वाला नाम (हिंदी) — खाली छोड़ें तो अपने आप बनेगा"; i0.type = "text"; i0.id = mid; i0.placeholder = "जैसे: श्री रामलाल जी प्रजापत (गाँव-वापी)";
+      g0.style.gridColumn = "1 / -1"; g0.appendChild(l0); g0.appendChild(i0); container.appendChild(g0);
+      return;
+    }
     if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
@@ -8906,7 +8912,7 @@ if ('serviceWorker' in navigator) {
     let r; try { r = await callCrudBackend_({ action: "pendingMembers" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
     if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "लोड नहीं हो पाया") + '</p>'; return; }
     const rows = r.rows || [], state = {}, editing = {};
-    const F = [["name", "नाम"], ["gotra", "गोत्र"], ["origin", "मूल गाँव / जिला"], ["city", "वर्तमान शहर"], ["district", "जिला"], ["address", "पता"], ["occupation", "व्यवसाय / फर्म"]];
+    const F = [["name", "नाम"], ["display", "सूची में दिखने वाला नाम (हिंदी)"], ["gotra", "गोत्र"], ["origin", "मूल गाँव / जिला"], ["city", "वर्तमान शहर"], ["district", "जिला"], ["address", "पता"], ["occupation", "व्यवसाय / फर्म"]];
     const btnS = "width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;";
     const act = async (x, op, b) => {
       if (op === "reject" && !confirm("“" + x.name + "” का आवेदन अस्वीकार करें?")) return;
@@ -8922,7 +8928,7 @@ if ('serviceWorker' in navigator) {
     const card = x => {
       const d = document.createElement("div"); d.style.cssText = "border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff";
       const st = state[x.mobile];
-      let h = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between"><div><b style="font-size:15px">' + esc(x.name) + '</b><div style="color:#475569;font-size:13px">📱 ' + esc(x.mobile) + (x.date ? ' · 🗓️ ' + esc(x.date) : "") + '</div></div>' +
+      let h = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between"><div><b style="font-size:15px">' + esc(x.display || x.name) + '</b><div style="color:#475569;font-size:13px">📱 ' + esc(x.mobile) + (x.date ? ' · 🗓️ ' + esc(x.date) : "") + '</div></div>' +
         (st === "approved" ? '<span style="color:#15803d;font-weight:700">✅ स्वीकृत</span>' : st === "rejected" ? '<span style="color:#b91c1c;font-weight:700">❌ अस्वीकृत</span>' : "") + '</div>';
       if (x.dup && !st) h += '<div style="margin-top:4px;font-size:12.5px;color:#b45309;font-weight:600">⚠️ यह मोबाइल पहले से सदस्य सूची में है — दोहरा आवेदन हो सकता है</div>';
       if (editing[x.mobile] && !st) {
