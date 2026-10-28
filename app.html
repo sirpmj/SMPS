@@ -2383,7 +2383,7 @@ const SHEET_ID = "1Ws2WH9ZT7-aBSlJAKqBHCWqTO57Ayxvj2ZPQxSSVUiI";
 /* ===========================
    ADD / EDIT / DELETE CONFIG
    =========================== */
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyP5M44_rAkq9qV0kLcbRY3nEkaZW7LQ7kFE_8viSJNyIG0s5OY7smqBgyjBs1WFTgThA/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDmstaOr5WR8oIEF65Qspdr_UeAuo8-sFOaE96qMUEatrz3JT73f7FrTElGUSNiIg_XQ/exec";
 
 /* Generic caller for addRow/editRow/deleteRow — real error dikhata hai,
    sirf generic "Network error" nahi. Agar Apps Script deploy purana ho,
@@ -6493,7 +6493,7 @@ function buildWaUrl_(mobileRaw, message) {
   const base = useWeb
     ? (SETTINGS?.WhatsAppDesktopURL || "https://web.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
     : (isMobile ? (SETTINGS?.WhatsAppBaseURL || "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}")
-                // computer + App: News tab jaisa api.whatsapp.com link (emoji sahi jate hain); wa.me/<number> par Desktop app emoji "�" kar deta hai
+                // computer + App: News tab jaisa api.whatsapp.com link (emoji sahi jate hain); wa.me/<number> par Desktop app emoji " " kar deta hai
                 : (/wa\.me/i.test(SETTINGS?.WhatsAppBaseURL || "") || !SETTINGS?.WhatsAppBaseURL ? "https://api.whatsapp.com/send?phone={{Mobile}}&text={{Message}}" : SETTINGS.WhatsAppBaseURL));
   return base
     .replace("{{Mobile}}", () => encodeURIComponent(mobile))
