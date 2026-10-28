@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.310"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.311"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8456,6 +8456,7 @@ if ('serviceWorker' in navigator) {
     mk("moneyRepBtn", "📥", "रिपोर्ट — महीना / साल (PDF / Excel)", window.openMoneyReport_, "#0f766e").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     /* v1.310: permission "canAction" list mein hoti hai (canEdit/canAdd naam ka field hai hi nahi) */
     { const pb = mk("pendMemBtn", "🆕", "नए सदस्य की मंज़ूरी", window.openMemberApprovals_, "#b45309"); pb.style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).some(x => x === "EDIT" || x === "ADD"))) ? "inline-block" : "none"; try { window.refreshPendBadge_(); } catch (e) {} }
+    mk("incBtn", "📝", "अधूरी जानकारी वाले सदस्यों को संदेश", () => window.openIncomplete_(), "#0f766e").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
@@ -8984,6 +8985,59 @@ if ('serviceWorker' in navigator) {
       m.body.innerHTML = rows.length ? '<div style="font-size:12.5px;color:#475569;margin-bottom:4px">कुल आवेदन: <b>' + rows.length + '</b> · बाकी: <b>' + pend + '</b> — जाँचकर ✅ मंज़ूर, ✏️ सुधार या ❌ अस्वीकार करें।</div>' : '<div style="padding:18px;text-align:center;color:#15803d;font-weight:700">🎉 कोई नया आवेदन बाकी नहीं है।</div>';
       rows.forEach(x => m.body.appendChild(card(x)));
     };
+    draw();
+  };
+  /* ===== v1.311: adhuri jaankari wale sadasyon ko WhatsApp sandesh ===== */
+  window.openIncomplete_ = async function () {
+    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { alert("Members लोड नहीं हो पाए।"); return; }
+    if (!mem.length) { alert("Members में डेटा नहीं है।"); return; }
+    const kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i);
+    const FIELDS = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
+      ["address", "पता", /address|पता/i, 0], ["occ", "व्यवसाय / फर्म", /occupation|business|firm|profession|व्यवसाय/i, 1], ["birth", "जन्मदिन", /birth|dob|जन्म/i, 0], ["ann", "विवाह वर्षगांठ", /anniversary|वर्षगांठ|marriage|विवाह|शादी/i, 0]]
+      .map(f => ({ id: f[0], label: f[1], key: keyOf(mem, f[2]), on: !!f[3] })).filter(f => f.key);
+    if (!FIELDS.length) { alert("Members sheet में जाँचने लायक columns नहीं मिले।"); return; }
+    const nm = r => String(r[kD] || r[kN] || "").replace(/\s*\([^)]*\)\s*$/, "").trim() || "सदस्य";
+    const empty = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v));
+    const DEFAULT_MSG = "🙏 नमस्कार {{Name}},\n\nसमाज के रिकॉर्ड में आपकी कुछ जानकारी अधूरी है:\n{{Missing}}\n\nकृपया यह जानकारी इसी चैट में भेज दें, ताकि रिकॉर्ड पूरा हो सके।\n\n🙏 धन्यवाद";
+    const m = openModal_("📝 अधूरी जानकारी — WhatsApp संदेश"), sent = {};
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.body.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-bottom:6px">जिन फ़ील्ड्स की जाँच करनी है उन्हें चुनें:</div>' +
+      '<div id="icF" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px">' + FIELDS.map(f => '<label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" data-f="' + f.id + '"' + (f.on ? " checked" : "") + ' style="width:auto;margin:0"> ' + esc(f.label) + '</label>').join("") + '</div>' +
+      '<div style="font-size:12.5px;color:#475569;margin:6px 0 2px">संदेश (<code>{{Name}}</code> = नाम, <code>{{Missing}}</code> = अधूरी जानकारी की सूची) — बदल सकते हैं:</div>' +
+      '<textarea id="icMsg" rows="7" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px"></textarea>' +
+      '<div id="icCnt" style="margin:10px 0 4px;font-weight:700"></div><div id="icList"></div>';
+    const $ = q => m.body.querySelector(q);
+    $("#icMsg").value = DEFAULT_MSG;
+    const build = x => $("#icMsg").value.replace(/\{\{\s*Name\s*\}\}/g, () => x.name).replace(/\{\{\s*Missing\s*\}\}/g, () => x.miss.map(f => "• " + f.label).join("\n"));
+    const draw = () => {
+      const sel = FIELDS.filter(f => $('[data-f="' + f.id + '"]').checked), rows = [], noMob = [];
+      mem.forEach(r => {
+        if (kS && /pending|inactive|reject/i.test(String(r[kS] || ""))) return;   // sirf manzoor sadasya
+        if (empty(r[kD]) && empty(r[kN])) return;
+        const miss = sel.filter(f => empty(r[f.key]));
+        if (!miss.length) return;
+        const mob = String(kM ? r[kM] : "").replace(/\D/g, "").slice(-10), x = { name: nm(r), miss: miss, mob: mob };
+        (mob.length === 10 ? rows : noMob).push(x);
+      });
+      rows.sort((p, q) => p.name.localeCompare(q.name, "hi"));
+      $("#icCnt").textContent = sel.length ? (rows.length + " सदस्य की जानकारी अधूरी") : "कम से कम एक फ़ील्ड चुनें";
+      const host = $("#icList"); host.innerHTML = "";
+      rows.forEach((x, i) => {
+        const d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0";
+        d.innerHTML = '<div style="min-width:0"><b>' + (i + 1) + ". " + esc(x.name) + '</b> <span style="color:#64748b;font-size:12.5px">📱 ' + esc(x.mob) + '</span><div style="font-size:12.5px;color:#b45309;margin-top:2px">❌ ' + x.miss.map(f => esc(f.label)).join(" · ") + '</div></div>';
+        const b = document.createElement("button"); b.type = "button"; b.style.cssText = "flex:none;width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:" + (sent[x.mob] ? "#64748b" : "#25a244");
+        b.textContent = sent[x.mob] ? "✔ भेजा · फिर भेजें" : "💬 भेजें";
+        b.onclick = () => {
+          const msg = build(x); window.open(buildWaUrl_(x.mob, msg), "_blank");
+          try { window.logSend_("Members", "जानकारी अधूरी", x.name, x.mob, msg); } catch (e) {}
+          sent[x.mob] = 1; b.style.background = "#64748b"; b.textContent = "✔ भेजा · फिर भेजें";
+        };
+        d.appendChild(b); host.appendChild(d);
+      });
+      if (noMob.length) host.insertAdjacentHTML("beforeend", '<div style="margin-top:10px;font-size:12.5px;color:#b45309">⚠️ ' + noMob.length + ' सदस्यों का मोबाइल नहीं है, इसलिए संदेश नहीं जा सकता: ' + esc(noMob.slice(0, 10).map(x => x.name).join(", ")) + (noMob.length > 10 ? " …" : "") + '</div>');
+      if (sel.length && !rows.length && !noMob.length) host.innerHTML = '<div style="padding:16px;text-align:center;color:#15803d;font-weight:700">🎉 चुने हुए फ़ील्ड्स में कोई जानकारी अधूरी नहीं है।</div>';
+    };
+    m.body.querySelectorAll("#icF input").forEach(c => c.onchange = draw);
     draw();
   };
   window.refreshPendBadge_ = function () {
