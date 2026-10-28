@@ -2438,7 +2438,7 @@ const CRUD_ALLOWED_TABS = {
   "Receipts":      { idPrefix: "REC", allowEditDelete: true },
   "Expenses":      { idPrefix: "EXP", allowEditDelete: true },
   "Transfer":      { idPrefix: "TRF", idDigits: 3, allowEditDelete: true },
-  "Members":       { idPrefix: null,  allowEditDelete: true },
+  "Members":       { idPrefix: "MEM", idDigits: 3, allowEditDelete: true },
   "Boli":          { idPrefix: "BOLI", allowEditDelete: true },
   "Donation":      { idPrefix: "DON",  allowEditDelete: true },
   "Meetings":      { idPrefix: null,  allowEditDelete: true },
@@ -5081,12 +5081,12 @@ async function openAddRecordForm(sheetName) {
   // pehle naam poocha jana natural hai. "Place of Origin"/"Origin" (gaon) field
   // bhi turant uske baad, upar hi dikhega — neeche scroll karke dhoondhna na pade.
   if (sheetName === "Members") {
-    const nameKey = columns.find(k => k.toLowerCase() === "name");
-    const originKey = columns.find(k => k !== nameKey && k.toLowerCase().includes("origin"));
-    const priorityKeys = [nameKey, originKey].filter(Boolean);
-    if (priorityKeys.length) {
-      columns = [...priorityKeys, ...columns.filter(k => !priorityKeys.includes(k))];
-    }
+    // Add form: sahi kram (Name, Mobile, Gotra, Origin, City, District, Address, Occupation, Birthday, Anniversary, Joined, Status)
+    // MemberID / Member / Login / PIN form mein nahi — MemberID + Member naam server khud banata hai
+    const ORDER_ = [/^name$/i, /mobile|phone/i, /gotra/i, /origin/i, /city/i, /district/i, /address/i, /occupation/i, /birth|dob/i, /anniversary/i, /join/i, /^status$/i];
+    const picked = [];
+    ORDER_.forEach(re => { const k = columns.find(c => !picked.includes(c) && re.test(c)); if (k) picked.push(k); });
+    columns = [...picked, ...columns.filter(k => !picked.includes(k))];
   }
 
   if (!columns.length) {
@@ -5117,6 +5117,7 @@ async function openAddRecordForm(sheetName) {
     const kl = k.toLowerCase();
     if (kl === "password" || kl === "role") return;
     if (kl === "id") return; // 🆕 ID auto-generate hoti hai, Add form mein dikhane ki zaroorat nahi
+    if (sheetName === "Members" && /^(memberid|member id|login|pin|otp)$/i.test(kl.trim())) return; // MemberID auto; Login/PIN sheet ya PIN-set se
     if (/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
     if (isMeetingPhotoCol_(k)) return; // 🆕 v1.239
     // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
@@ -5381,6 +5382,17 @@ async function openAddRecordForm(sheetName) {
       data[key] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
     });
 
+    if (sheetName === "Members") {
+      const nk = Object.keys(data).find(k => /^name$/i.test(k)), mk = Object.keys(data).find(k => /mobile|phone/i.test(k));
+      if (nk && !String(data[nk] || "").trim()) { alert("❌ नाम भरना ज़रूरी है।"); return; }
+      if (mk) {
+        const mob = String(data[mk] || "").replace(/\D/g, "").slice(-10);
+        if (mob.length !== 10) { alert("❌ मोबाइल नंबर 10 अंकों का सही डालें।"); return; }
+        data[mk] = mob;
+        const dup = tableData.find(r => String(r[mk] || r["Mobile"] || "").replace(/\D/g, "").slice(-10) === mob);
+        if (dup && !confirm("⚠️ यह मोबाइल (" + mob + ") पहले से सदस्य सूची में है।\n\nफिर भी जोड़ें?")) return;
+      }
+    }
     el("saveEditBtn").disabled = true;
     el("saveEditBtn").textContent = "Saving...";
     try {
@@ -5401,7 +5413,8 @@ async function openAddRecordForm(sheetName) {
         if (currentTab === sheetName) {
           try {
             const newRow = { ...data };
-            if (res.id) newRow["ID"] = res.id;
+            if (res.id) newRow[sheetName === "Members" ? "MemberID" : "ID"] = res.id;
+            if (sheetName === "Members" && res.member) newRow["Member"] = res.member;
             tableData.push(newRow);
             renderTable();
           } catch (uiErr) {
@@ -5753,7 +5766,7 @@ if(searchVal){
       Object.entries(row).some(([k, v]) => {
         if (!k) return false;
         const key = k.toLowerCase();
-        if (key === "password" || key === "role") return false;
+        if (key === "password" || key === "role" || key === "pin") return false;
         return smatch_(v, searchVal);
       })
     );
@@ -6496,7 +6509,7 @@ function openModal_(title) {
   if (old) old.remove();
   const ov = document.createElement("div");
   ov.id = "appModal";
-  ov.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1300;display:flex;align-items:center;justify-content:center;";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:2600;display:flex;align-items:center;justify-content:center;";
   const box = document.createElement("div");
   box.style.cssText = "background:#fff;border-radius:14px;width:94%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3);overflow:hidden;";
   const head = document.createElement("div");
@@ -6935,13 +6948,32 @@ function openMeetingView_(incomingEnc, start, e) {
   m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => m.close()));
 }
 // 🆕 v1.257: Minutes ko "चर्चा / निर्णय" (points) aur "✅ कार्य (किसे / कब तक)" mein todo / jodo; WhatsApp message banao
+// Text ko points mein todo: numbered/bullet line = naya point; khaali line = naya point;
+// baaki (wrap hui) lines pichhle point se judi rehti hain. Bina kisi nishaan ke har-line-alag wala purana tareeka tabhi jab text mein koi khaali line/bullet nahi aur har line chhoti ho.
+function smartPoints_(txt, numbered) {
+  const lines = String(txt || "").replace(/\r/g, "").split("\n"), out = []; let cur = null;
+  const isMark = l => /^\s*(\d+[.)]|[•\-*●▪])\s+/.test(l);
+  const clean = l => l.replace(/^\s*(\d+[.)]|[•\-*●▪])\s+/, "").trim();
+  const hasBlank = lines.some(l => !l.trim()) && lines.filter(l => l.trim()).length > 1;
+  const anyMark = lines.some(isMark);
+  const join = hasBlank || anyMark || numbered;   // is text mein sanrachna hai — wrap lines jodo
+  lines.forEach(l => {
+    if (!l.trim()) { if (cur !== null) { out.push(cur); cur = null; } return; }
+    if (isMark(l)) { if (cur !== null) out.push(cur); cur = clean(l); }
+    else if (join && cur !== null) cur += "\n" + l.trim();
+    else if (join) cur = l.trim();
+    else { out.push(l.trim()); }
+  });
+  if (cur !== null) out.push(cur);
+  return out.filter(Boolean);
+}
 function splitMinutes_(text) {
   const t = String(text || "").replace(/\r/g, "").trim();
   const m = t.match(/^[ \t]*✅[ \t]*कार्य.*$/m);      // [ \t] — pehle \s* khaali line se match hokar heading ko bhi "kaam" bana deta tha
   const head = m ? t.slice(0, m.index) : t;
   const tail = m ? t.slice(m.index).split("\n").slice(1) : [];
   const numbered = /^\s*\d+[.)]\s/.test(head.trim());
-  const points = head.split(/\n+/).map(x => x.replace(/^\s*(\d+[.)]|[•\-*])\s*/, "").trim()).filter(Boolean);
+  const points = smartPoints_(head, numbered);
   const tasks = tail.map(l => l.replace(/^\s*\d+[.)]\s*/, "").trim()).filter(Boolean).map(l => {
     const f = l.split(" — ").map(x => x.trim());
     const nz = v => (!v || v === "-") ? "" : v;
@@ -6950,7 +6982,7 @@ function splitMinutes_(text) {
   return { points, tasks, numbered };
 }
 function joinMinutes_(points, tasks) {
-  let out = points.map((p, i) => (i + 1) + ". " + p).join("\n");
+  let out = points.map((p, i) => (i + 1) + ". " + String(p).replace(/\n/g, "\n   ")).join("\n");
   if (tasks.length) out += (out ? "\n\n" : "") + "✅ कार्य (किसे / कब तक):\n" + tasks.map((k, i) => (i + 1) + ". " + k.t + " — " + (k.w || "-") + " — " + (k.d || "-")).join("\n");
   return out;
 }
@@ -7020,6 +7052,15 @@ function openMeetingNotes_(incomingEnc, e) {
     const x = document.createElement("button"); x.type = "button"; x.className = "mn-x"; x.textContent = "✕";
     r.appendChild(t); r.appendChild(x);
     t.oninput = () => grow(t);
+    t.onpaste = ev => {
+      const txt = (ev.clipboardData || window.clipboardData || {}).getData ? (ev.clipboardData || window.clipboardData).getData("text") : "";
+      if (!txt || !/\n/.test(txt.trim())) return;          // ek line ka paste normal chale
+      const parts = smartPoints_(txt, false);
+      ev.preventDefault();
+      if (parts.length <= 1) { const a = t.selectionStart, b = t.selectionEnd; t.value = t.value.slice(0, a) + (parts[0] || txt.trim()) + t.value.slice(b); grow(t); return; }
+      let after = r; parts.forEach((p, i) => { if (i === 0 && !t.value.trim()) { t.value = p; grow(t); } else { addPoint(p, false, after); after = after.nextSibling || after; } });
+      renum(ptsEl);
+    };
     t.onkeydown = ev => {
       if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); addPoint("", true, r); }
       else if (ev.key === "Backspace" && !t.value && ptsEl.children.length > 1) { ev.preventDefault(); const p = r.previousSibling || r.nextSibling; r.remove(); renum(ptsEl); if (p) p.querySelector("textarea").focus(); }
@@ -7349,7 +7390,7 @@ function viewRecord(incomingEnc, e) {
     rows += rowItem("समाज ID", rec["MemberID"] || rec["ID"]);
     rows += rowItem("सदस्य का नाम ", displayMemberFromRow_(rec));
     rows += rowItem("मोबाइल", rec[SETTINGS?.MobileColumn] || rec["Mobile"] || rec["Phone"]);
-rows += rowItem("पेशा/व्यवसाय का नाम ", rec["Occupation / Business Name"] || "");
+rows += rowItem("पेशा/व्यवसाय का नाम ", rec["Occupation / Business Name"] || rec["Occupation"] || "");
 rows += rowItem("गोत्र  ", rec["Gotra"] || "");
    rows += rowItem("गांव   ", rec["Place of origin"] || ""); rows += rowItem("जिला    ", rec["District"] || ""); 
     rows += rowItem("वर्तमान शहर", rec[SETTINGS?.CityColumn] || rec["Current City"] || "");
@@ -7445,8 +7486,9 @@ rows += rowItem("गोत्र  ", rec["Gotra"] || "");
   };
   el("popupPrintBtn").textContent = "📄 प्रिंट / PDF";
   { let ib = el("popupImgBtn"); if (!ib) { ib = document.createElement("button"); ib.id = "popupImgBtn"; ib.type = "button"; el("popupPrintBtn").parentNode.insertBefore(ib, el("popupPrintBtn")); }
-    ib.textContent = "🖼️ इमेज (शेयर)"; ib.style.display = currentTab === "Members" ? "none" : "";
-    ib.onclick = () => { if (window.receiptImage_) window.receiptImage_(heading, rows); }; }
+    ib.textContent = "🖼️ इमेज (शेयर)"; ib.style.display = "";
+    ib.textContent = currentTab === "Members" ? "🖼️ सदस्य कार्ड (इमेज)" : "🖼️ इमेज (शेयर)";
+    ib.onclick = () => { if (window.receiptImage_) window.receiptImage_(heading, rows, currentTab === "Members" ? { footer: "यह सदस्य कार्ड श्री मेवाड़ प्रजापत समाज, वापी की ऐप से बनाया गया है।", file: "SMPS_member_" } : undefined); }; }
   el("popupCloseBtn").onclick = () => {
     el("receiptPopup").style.display = "none";
   };
@@ -7546,7 +7588,7 @@ async function openEditRecord(incomingEnc, e){
   Object.keys(rec).forEach(k => {
     if(!k) return;
     const kl = k.toLowerCase();
-    if(kl === "password" || kl === "role") return; // hidden fields not editable here
+    if(kl === "password" || kl === "role" || kl === "pin") return; // hidden fields not editable here
     if(SYNTHETIC_DISPLAY_COLUMNS.includes(k)) return; // 🆕 webapp-computed, sheet mein hai hi nahi
     if(/^commitments?$/.test(kl.trim())) return; // 🆕 📅 वादा popup se manage hota hai
     if(isMeetingPhotoCol_(k)) return; // 🆕 v1.239: photo Attn popup se jodte hain
@@ -7595,7 +7637,7 @@ async function openEditRecord(incomingEnc, e){
     Object.keys(rec).forEach(k => {
       if(!k) return;
       const kl = k.toLowerCase();
-      if(kl === "password" || kl === "role") return;
+      if(kl === "password" || kl === "role" || kl === "pin") return;
       const id = "ef_"+k.replace(/\s+/g,"_");
       const node = document.getElementById(id);
       if(node) updated[k] = (node.type === "date") ? isoToDDMMYYYY_(node.value) : node.value;
@@ -8725,7 +8767,8 @@ if ('serviceWorker' in navigator) {
   };
 
   /* ===== v1.304: रसीद की इमेज (PNG) — शेयर ya download ===== */
-  window.receiptImage_ = async function (heading, rowsHtml) {
+  window.receiptImage_ = async function (heading, rowsHtml, opt) {
+    opt = opt || {};
     const doc = new DOMParser().parseFromString("<table>" + rowsHtml + "</table>", "text/html");
     const pairs = [...doc.querySelectorAll("tr")].map(tr => { const td = tr.querySelectorAll("td"); return [(td[0] ? td[0].textContent : "").replace(/\s+/g, " ").trim(), (td[1] ? td[1].textContent : "").replace(/\s+/g, " ").trim()]; }).filter(p => p[0] && p[1]);
     const W = 900, PAD = 40, font = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
@@ -8754,10 +8797,10 @@ if ('serviceWorker' in navigator) {
     });
     cx.strokeStyle = "#cbd5e1"; cx.strokeRect(PAD, 300, W - PAD * 2, y - 300);
     cx.fillStyle = "#64748b"; cx.font = "500 22px " + font; cx.textAlign = "center";
-    cx.fillText("यह रसीद श्री मेवाड़ प्रजापत समाज, वापी की ऐप से बनाई गई है।", W / 2, y + 60);
+    cx.fillText(opt.footer || "यह रसीद श्री मेवाड़ प्रजापत समाज, वापी की ऐप से बनाई गई है।", W / 2, y + 60);
     cx.fillStyle = "#0a2a5e"; cx.font = "700 24px " + font; cx.fillText("🙏 जय श्रीयादे माता की 🙏", W / 2, y + 108);
     const blob = await new Promise(r => cv.toBlob(r, "image/png"));
-    const fn = "SMPS_receipt_" + new Date().toISOString().slice(0, 10) + ".png";
+    const fn = (opt.file || "SMPS_receipt_") + new Date().toISOString().slice(0, 10) + ".png";
     const file = new File([blob], fn, { type: "image/png" });
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: heading }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
     saveBlob_(blob, fn);
