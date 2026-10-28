@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.308"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.309"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2301,7 +2301,7 @@ style="display:none;position:fixed;inset:0;
 background:rgba(0,0,0,.5);
 z-index:999999;align-items:center;justify-content:center">
 
-  <div style="background:#fff;padding:20px;border-radius:10px;width:380px">
+  <div style="background:#fff;padding:20px;border-radius:10px;width:380px;max-width:94vw;max-height:92vh;overflow:auto;box-sizing:border-box">
 
     <h3 style="margin-top:0">नया सदस्य पंजीकरण</h3>
 
@@ -2316,14 +2316,20 @@ z-index:999999;align-items:center;justify-content:center">
   oninput="this.value=this.value.replace(/\D/g,'').slice(0,10)" style="width:100%">
     <label>गोत्र :</label>
     <input id="rGotra" placeholder="गोत्र" style="width:100%">
-    <label>व्यवसाय / फर्म :</label>
-    <input id="rOccupation" placeholder="व्यवसाय या फर्म का नाम" style="width:100%">
-    <label>गाँव का नाम :</label>
+    <label>गाँव / मूल स्थान :</label>
     <input id="rOrigin" placeholder="गाँव" style="width:100%">
     <label>वर्तमान शहर :</label>
     <input id="rCity" placeholder="वर्तमान शहर" style="width:100%">
     <label>जिला :</label>
-    <input id="rDistrict" placeholder="जिला" style="width:100%"><br>
+    <input id="rDistrict" placeholder="जिला" style="width:100%">
+    <label>पता :</label>
+    <input id="rAddress" placeholder="पूरा पता लिखें" style="width:100%">
+    <label>व्यवसाय / फर्म :</label>
+    <input id="rOccupation" placeholder="व्यवसाय या फर्म का नाम" style="width:100%">
+    <label>जन्मदिन :</label>
+    <input id="rBirthday" type="date" style="width:100%">
+    <label>विवाह वर्षगांठ :</label>
+    <input id="rAnniversary" type="date" style="width:100%"><br>
     <button id="regSubmit"
       style="background:#008000;color:#fff;padding:8px 14px;border:none;border-radius:6px">
       Submit
@@ -5123,13 +5129,8 @@ async function openAddRecordForm(sheetName) {
     // 🆕 Members sheet mein "Member" naam ka column khud member ke record ke andar
     // bekaar/duplicate hai (Name column already hai) — Add Member form mein isse
     // bilkul mat dikhao.
-    if (sheetName === "Members" && kl === "member") {   // plain text (dropdown nahi) — Hindi naam jo sab jagah dikhega
-      const mid = "af_" + k.replace(/\s+/g, "_"); inputIds.push({ key: k, id: mid });
-      const g0 = document.createElement("div"), l0 = document.createElement("label"), i0 = document.createElement("input");
-      l0.textContent = "सूची में दिखने वाला नाम (हिंदी) — खाली छोड़ें तो अपने आप बनेगा"; i0.type = "text"; i0.id = mid; i0.placeholder = "जैसे: श्री रामलाल जी प्रजापत (गाँव-वापी)";
-      g0.style.gridColumn = "1 / -1"; g0.appendChild(l0); g0.appendChild(i0); container.appendChild(g0);
-      return;
-    }
+    // v1.309: "Member" (Hindi label) Add form se hata diya — server khud Hindi mein banata hai (Edit mein badal sakte hain)
+    if (sheetName === "Members" && kl === "member") return;
     if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
@@ -5153,16 +5154,15 @@ async function openAddRecordForm(sheetName) {
       const hint = samplePlaceholder_(k);
       if (hint) input.placeholder = hint; // 🆕 sample text
     }
-    // 🆕 Members Add form mein "Status" hamesha "Approve" se pre-select rahe —
-    // admin khud se member add kare to usko approval ke liye alag se click na
-    // karna pade (naya self-registration abhi bhi "Pending" hi rahega, woh
-    // newRegistration() function se aata hai, is form se nahi).
+    // 🆕 v1.309: Members Add form mein "Status" hamesha "Pending" se pre-select rahe —
+    // naya sadasya (form se ya website registration se) pehle Pending jaata hai aur
+    // 🆕 button se Approve/Reject hota hai.
     if (sheetName === "Members" && kl === "status" && input.tagName === "SELECT") {
-      setSelectValueSafe_(input, "Approve");
+      setSelectValueSafe_(input, "Pending");
     } else if (sheetName === "Members" && kl === "status" && !input.value) {
       // 🆕 Bilkul khaali sheet (abhi tak koi bhi status value hi nahi hai) mein
       // dropdown ke bajaye plain input ban jaata hai — wahan bhi default bhar do
-      input.value = "Approve";
+      input.value = "Pending";
     }
     const group = document.createElement("div");
     if (isTextarea) group.style.gridColumn = "1 / -1";
@@ -7610,6 +7610,12 @@ async function openEditRecord(incomingEnc, e){
       input.disabled = true;
       input.style.background = "#f0f0f0";
       input.style.fontWeight = "600";
+    } else if (currentTab === "Members" && kl === "member") {
+      // v1.309: Member (Hindi label) dropdown nahi — Name ki tarah seedha edit hone wala text
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = val;
+      input.placeholder = "सूची में दिखने वाला नाम (हिंदी)";
     } else if (isDateField_(k)) {
       // 🆕 Native date-picker, existing DD/MM/YYYY value ko ISO mein convert karke dikhao
       input = document.createElement("input");
@@ -8102,51 +8108,62 @@ document.addEventListener("DOMContentLoaded", function () {
 
     console.log("✅ Submit clicked");
 
-    const name = document.getElementById("rName").value.trim();
-    const mobile = document.getElementById("rMobile").value.replace(/\D/g, "");
-    const gotra = document.getElementById("rGotra").value.trim();
-    const occupation = document.getElementById("rOccupation").value.trim();
-    const origin = document.getElementById("rOrigin").value.trim();
-    const district = document.getElementById("rDistrict").value.trim();
-
-    const city = document.getElementById("rCity").value.trim();
+    const v = id => { const n = document.getElementById(id); return n ? n.value.trim() : ""; };
+    const name = v("rName");
+    const mobile = v("rMobile").replace(/\D/g, "");
+    const gotra = v("rGotra");
+    const origin = v("rOrigin");
+    const city = v("rCity");
+    const district = v("rDistrict");
+    const address = v("rAddress");
+    const occupation = v("rOccupation");
+    const birthday = isoToDDMMYYYY_(v("rBirthday"));
+    const anniversary = isoToDDMMYYYY_(v("rAnniversary"));
 
     if (!name || mobile.length !== 10) {
       alert("पूरा नाम और 10 अंकों का मोबाइल जरूरी है");
       return;
     }
 
-    document.getElementById("regMsg").innerText = "Submitting...";
+    const msgEl = document.getElementById("regMsg");
+    // v1.309: WhatsApp तभी खुलता है जब click के सीधे जवाब में खुले — इसलिए desktop पर tab पहले ही खोल लेते हैं,
+    // mobile पर जमा होते ही सीधे WhatsApp पर भेज देते हैं (browser await के बाद खुलने वाली window रोक देता था)
+    const isMob = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+    let waWin = null;
+    if (!isMob) { try { waWin = window.open("", "_blank"); } catch (e2) {} }
+    const closeWin = () => { try { if (waWin && !waWin.closed) waWin.close(); } catch (e3) {} };
+
+    msgEl.innerText = "Submitting...";
+    submitBtn.disabled = true;
 
     try {
       const res = await fetch(WEB_APP_URL, {
         method: "POST",
-        body: JSON.stringify({
-          action: "newRegistration",
-          name,
-          mobile,
-          gotra,
-          occupation,
-          origin,
-          city,
-district
-        })
+        body: JSON.stringify({ action: "newRegistration", name, mobile, gotra, origin, city, district, address, occupation, birthday, anniversary })
       }).then(r => r.json());
 
-
-// 🔔 ADMIN WHATSAPP (YAHI SE OPEN HOGA)
-if (res.adminWa) {
-  window.open(res.adminWa, "_blank");
-}
-
-      document.getElementById("regMsg").innerText =
-        res.success
-          ? "✅ Registration submitted. Approval pending."
-          : "❌ Error saving data";
-
+      if (res && res.success) {
+        msgEl.innerText = "✅ Registration submitted. Approval pending.";
+        if (res.adminWa) {
+          // भरोसेमंद विकल्प: हमेशा एक बटन भी दिखाओ
+          const a = document.createElement("a");
+          a.href = res.adminWa; a.target = "_blank"; a.rel = "noopener";
+          a.textContent = "💬 WhatsApp पर भेजें";
+          a.style.cssText = "display:inline-block;margin-top:8px;background:#25a244;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none;font-weight:600";
+          msgEl.appendChild(document.createElement("br")); msgEl.appendChild(a);
+          if (isMob) { setTimeout(() => { window.location.href = res.adminWa; }, 300); }
+          else if (waWin && !waWin.closed) { waWin.location.href = res.adminWa; }
+        } else { closeWin(); }
+      } else {
+        closeWin();
+        submitBtn.disabled = false;
+        msgEl.innerText = "❌ " + ((res && res.msg) || "Error saving data");
+      }
     } catch (err) {
       console.error(err);
-      document.getElementById("regMsg").innerText = "❌ Network error";
+      closeWin();
+      submitBtn.disabled = false;
+      msgEl.innerText = "❌ Network error";
     }
   });
 
