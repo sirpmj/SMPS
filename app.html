@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.311"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.312"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8998,7 +8998,7 @@ if ('serviceWorker' in navigator) {
     if (!FIELDS.length) { alert("Members sheet में जाँचने लायक columns नहीं मिले।"); return; }
     const nm = r => String(r[kD] || r[kN] || "").replace(/\s*\([^)]*\)\s*$/, "").trim() || "सदस्य";
     const empty = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v));
-    const DEFAULT_MSG = "🙏 नमस्कार {{Name}},\n\nसमाज के रिकॉर्ड में आपकी कुछ जानकारी अधूरी है:\n{{Missing}}\n\nकृपया यह जानकारी इसी चैट में भेज दें, ताकि रिकॉर्ड पूरा हो सके।\n\n🙏 धन्यवाद";
+    const DEFAULT_MSG = "🙏 नमस्कार {{Name}},\n\nसमाज के रिकॉर्ड में आपकी कुछ जानकारी अधूरी है:\n{{Missing}}\n\nकृपया यह जानकारी इसी चैट में भेज दें, ताकि रिकॉर्ड पूरा हो सके।\n\n🙏 धन्यवाद\n\nश्री मेवाड़ प्रजापत समाज, वापी";
     const m = openModal_("📝 अधूरी जानकारी — WhatsApp संदेश"), sent = {};
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     m.body.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-bottom:6px">जिन फ़ील्ड्स की जाँच करनी है उन्हें चुनें:</div>' +
