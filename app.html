@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.309"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.310"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8454,7 +8454,8 @@ if ('serviceWorker' in navigator) {
     mk("attRepBtn", "📊", "उपस्थिति रिपोर्ट", window.openAttendanceReport_, "#7c3aed").style.display = (sheetName === "Meetings" && mA && mA.canView) ? "inline-block" : "none";
     mk("duesRepBtn", "📥", "रिपोर्ट डाउनलोड (PDF / Excel)", window.openDuesReport_, "#0f766e").style.display = ((sheetName === "Boli" || sheetName === "Donation") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("moneyRepBtn", "📥", "रिपोर्ट — महीना / साल (PDF / Excel)", window.openMoneyReport_, "#0f766e").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
-    { const pb = mk("pendMemBtn", "🆕", "नए सदस्य की मंज़ूरी", window.openMemberApprovals_, "#b45309"); pb.style.display = (sheetName === "Members" && mB && (mB.canEdit || mB.canAdd)) ? "inline-block" : "none"; try { window.refreshPendBadge_(); } catch (e) {} }
+    /* v1.310: permission "canAction" list mein hoti hai (canEdit/canAdd naam ka field hai hi nahi) */
+    { const pb = mk("pendMemBtn", "🆕", "नए सदस्य की मंज़ूरी", window.openMemberApprovals_, "#b45309"); pb.style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).some(x => x === "EDIT" || x === "ADD"))) ? "inline-block" : "none"; try { window.refreshPendBadge_(); } catch (e) {} }
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
