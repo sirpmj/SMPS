@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.312"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.313"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2171,6 +2171,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
     </button>
 
     <button id="shareCardBtn" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
+    <button id="myProfBtn" type="button" onclick="openMyProfile_()" title="मेरी जानकारी — देखें / सुधारें, मेरा कार्ड" style="background:#b45309;color:#fff;border:none">👤 मेरी जानकारी</button>
     <button id="myAcctBtn" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
     <button id="logoutBtn">🔙 Logout</button>
   </div>
@@ -4263,7 +4264,7 @@ async function openMembersDirectory_() {
   const K = re => keys.find(k => re.test(String(k).trim()));
   const kName = K(/^(member|name|नाम|member name)$/i) || K(/name|नाम/i);
   const kMob = K(/mobile|मोबाइल|phone/i), kGotra = K(/gotra|गोत्र/i);
-  const kVil = K(/origin|village|native|गांव|गाँव|मूल/i), kCity = K(/^city|शहर/i), kStat = K(/^status$/i), kOcc = K(/occupation|व्यवसाय/i);
+  const kVil = K(/origin|village|native|गांव|गाँव|मूल/i), kCity = K(/city|शहर/i), kStat = K(/^status$/i), kOcc = K(/occupation|व्यवसाय/i);
   const list = rows.filter(r => String(r[kName] || "").trim() && !(kStat && /pending|inactive|reject/i.test(String(r[kStat] || ""))))
     .sort((a, b) => String(a[kName]).localeCompare(String(b[kName]), "hi"));
   const cols = [["नाम", kName], ["मोबाइल", kMob], ["गोत्र", kGotra], ["गांव", kVil], ["शहर", kCity], ["व्यवसाय", kOcc]].filter(c => c[1]);
@@ -4277,21 +4278,23 @@ async function openMembersDirectory_() {
       <input id="dirQ" type="text" placeholder="🔍 नाम / मोबाइल / गांव (Hindi या English)">
       ${kGotra ? `<select id="dirG"><option value="">सभी गोत्र</option>${uniq(kGotra).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
       ${kVil ? `<select id="dirV"><option value="">सभी गांव</option>${uniq(kVil).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
+      ${kCity ? `<select id="dirC"><option value="">सभी शहर</option>${uniq(kCity).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
+      ${kOcc ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="dirB" style="width:auto;margin:0"> सिर्फ़ व्यवसाय वाले</label>` : ""}
       <button type="button" id="dirP">🖨️ Print / PDF</button>
     </div>
     <div class="dir-sc"><table class="dir-t"><thead></thead><tbody></tbody></table></div></div>`;
   document.body.appendChild(ov);
-  const q = ov.querySelector("#dirQ"), g = ov.querySelector("#dirG"), v = ov.querySelector("#dirV");
+  const q = ov.querySelector("#dirQ"), g = ov.querySelector("#dirG"), v = ov.querySelector("#dirV"); const cs = ov.querySelector("#dirC"), bz = ov.querySelector("#dirB");
   ov.querySelector("thead").innerHTML = "<tr><th>क्र.</th>" + cols.map(c => `<th>${c[0]}</th>`).join("") + "</tr>";
   let cur = list;
   const draw = () => {
     const s = q.value.trim().toLowerCase();
-    cur = list.filter(r => (!g || !g.value || String(r[kGotra] || "").trim() === g.value) && (!v || !v.value || String(r[kVil] || "").trim() === v.value) &&
+    cur = list.filter(r => (!g || !g.value || String(r[kGotra] || "").trim() === g.value) && (!v || !v.value || String(r[kVil] || "").trim() === v.value) && (!cs || !cs.value || String(r[kCity] || "").trim() === cs.value) && (!bz || !bz.checked || String(r[kOcc] || "").trim()) &&
       (!s || cols.some(c => smatch_(r[c[1]], s))));
     ov.querySelector("tbody").innerHTML = cur.map((r, i) => `<tr><td class="dn">${i + 1}</td>` + cols.map(c => c[1] === kMob && r[c[1]] ? `<td><a href="tel:${esc(r[c[1]])}">${esc(r[c[1]])}</a></td>` : `<td>${esc(r[c[1]])}</td>`).join("") + "</tr>").join("") || `<tr><td colspan="${cols.length + 1}" class="dir-e">कोई member नहीं मिला</td></tr>`;
     ov.querySelector("#dirCnt").textContent = cur.length + " / " + list.length;
   };
-  [q, g, v].forEach(x => { if (x) x.oninput = x.onchange = draw; });
+  [q, g, v, cs, bz].forEach(x => { if (x) x.oninput = x.onchange = draw; });
   ov.querySelector("#dirClose").onclick = () => ov.remove();
   ov.querySelector("#dirP").onclick = () => {
     const w = window.open("", "_blank"); if (!w) { alert("Pop-up allow करें।"); return; }
@@ -8457,6 +8460,8 @@ if ('serviceWorker' in navigator) {
     /* v1.310: permission "canAction" list mein hoti hai (canEdit/canAdd naam ka field hai hi nahi) */
     { const pb = mk("pendMemBtn", "🆕", "नए सदस्य की मंज़ूरी", window.openMemberApprovals_, "#b45309"); pb.style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).some(x => x === "EDIT" || x === "ADD"))) ? "inline-block" : "none"; try { window.refreshPendBadge_(); } catch (e) {} }
     mk("incBtn", "📝", "अधूरी जानकारी वाले सदस्यों को संदेश", () => window.openIncomplete_(), "#0f766e").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
+    mk("cleanBtn", "🧹", "डेटा सफ़ाई (duplicate / अधूरी rows / Hindi नाम)", () => window.openDataClean_(), "#475569").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
+    mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
@@ -9040,6 +9045,186 @@ if ('serviceWorker' in navigator) {
     m.body.querySelectorAll("#icF input").forEach(c => c.onchange = draw);
     draw();
   };
+  /* ===== v1.313: मेरी जानकारी + मेरा कार्ड, डेटा सफ़ाई, वार्षिक रिपोर्ट ===== */
+  const SAMAJ_NAME_ = "श्री मेवाड़ प्रजापत समाज, वापी";
+  const CARD_FONT_ = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+  const hasDev_ = s => /[\u0900-\u097F]/.test(String(s || ""));
+  const stripPlace_ = s => String(s || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const loadImg_ = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  function rrect_(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function fitText_(g, txt, x, y, maxW, size, weight, color) {
+    let s = size; g.fillStyle = color; g.textBaseline = "alphabetic";
+    do { g.font = weight + " " + s + "px " + CARD_FONT_; s -= 2; } while (g.measureText(txt).width > maxW && s > 14);
+    g.fillText(txt, x, y);
+  }
+  async function makeCard_(P) {
+    const W = 1000, H = 600, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    const grd = g.createLinearGradient(0, 0, W, H); grd.addColorStop(0, "#7c2d12"); grd.addColorStop(1, "#c2410c");
+    rrect_(g, 0, 0, W, H, 34); g.fillStyle = grd; g.fill();
+    g.save(); rrect_(g, 0, 0, W, H, 34); g.clip();
+    g.fillStyle = "#fff7ed"; g.fillRect(0, 0, W, 130); g.fillStyle = "#fbbf24"; g.fillRect(0, 130, W, 8); g.restore();
+    const logo = await loadImg_(new URL("Logo-192.png", location.href).href);
+    if (logo) g.drawImage(logo, 28, 14, 102, 102);
+    fitText_(g, SAMAJ_NAME_, 150, 66, W - 180, 44, "700", "#7c2d12");
+    fitText_(g, "सदस्य पहचान पत्र", 150, 108, W - 180, 30, "600", "#b45309");
+    fitText_(g, P.name || "", 50, 220, 610, 58, "700", "#ffffff");
+    const lines = [["सदस्य क्रमांक", P.id], ["मोबाइल", P.mobile], ["गोत्र", P.gotra], ["मूल गाँव", P.origin], ["वर्तमान शहर", P.city]].filter(x => String(x[1] || "").trim());
+    lines.forEach((x, i) => fitText_(g, x[0] + ":  " + x[1], 50, 290 + i * 56, 600, 34, "500", "#ffedd5"));
+    rrect_(g, 690, 190, 270, 270, 20); g.fillStyle = "#fff"; g.fill();
+    let ok = false;
+    try {
+      if (window.QRCode) {
+        const holder = document.createElement("div"); holder.style.cssText = "position:fixed;left:-9999px;top:0";
+        document.body.appendChild(holder);
+        new QRCode(holder, { text: SAMAJ_NAME_ + " | " + (P.id || "") + " | " + (P.mobile || ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        await new Promise(r => setTimeout(r, 80));
+        const src = holder.querySelector("canvas") || holder.querySelector("img");
+        if (src) { g.drawImage(src, 705, 205, 240, 240); ok = true; }
+        holder.remove();
+      }
+    } catch (e) { console.error("card QR", e); }
+    if (!ok) fitText_(g, "QR उपलब्ध नहीं", 715, 330, 230, 26, "500", "#64748b");
+    fitText_(g, "पहचान के लिए स्कैन करें", 690, 500, 270, 24, "500", "#ffedd5");
+    fitText_(g, "यह कार्ड सदस्यता का प्रमाण नहीं, केवल पहचान हेतु है", 50, 565, W - 100, 22, "400", "#fed7aa");
+    return cv;
+  }
+  function showCard_(P) {
+    const m = openModal_("🪪 मेरा कार्ड"); m.body.innerHTML = '<p class="muted">⏳ कार्ड बन रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    makeCard_(P).then(cv => {
+      m.body.innerHTML = ""; cv.style.cssText = "width:100%;height:auto;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)"; m.body.appendChild(cv);
+      const safe = String(P.id || "member").replace(/\W+/g, "_");
+      m.foot.insertBefore(modalBtn_("⬇️ डाउनलोड (PNG)", "#15803d", () => { const l = document.createElement("a"); l.href = cv.toDataURL("image/png"); l.download = "SMPS_card_" + safe + ".png"; document.body.appendChild(l); l.click(); l.remove(); }), m.foot.firstChild);
+      m.foot.insertBefore(modalBtn_("📤 शेयर", "#25a244", () => {
+        cv.toBlob(b => {
+          const f = new File([b], "SMPS_card_" + safe + ".png", { type: "image/png" });
+          if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], text: SAMAJ_NAME_ }).catch(() => {});
+          else alert("इस ब्राउज़र में सीधा शेयर नहीं हो सकता — कृपया ⬇️ डाउनलोड करके WhatsApp में भेजें।");
+        }, "image/png");
+      }), m.foot.firstChild);
+    }).catch(e => { m.body.innerHTML = "<p>❌ कार्ड नहीं बन पाया: " + esc(e.message || e) + "</p>"; });
+  }
+  window.openMyProfile_ = async function () {
+    const m = openModal_("👤 मेरी जानकारी"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "myProfile" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ" };
+    const keys = (r.has || []).filter(k => L[k]), isD = k => k === "birthday" || k === "anniversary", full = v => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v);
+    const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
+    m.body.innerHTML = '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.6;margin-bottom:8px"><b>' + esc(stripPlace_(r.label) || r.name) + '</b><br>📱 ' + esc(r.mobile) + (r.memberId ? " · 🆔 " + esc(r.memberId) : "") + '</div>' +
+      '<div style="font-size:12.5px;color:#475569;margin-bottom:4px">अधूरी जानकारी <b>⚠️</b> से दिखाई गई है — भरकर सेव करें।</div>' +
+      keys.map(k => { const v = r.fields[k] || "", asDate = isD(k) && (!v || full(v));
+        return '<label style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px">' + (v ? "" : "⚠️ ") + L[k] + '</label>' + (asDate ? '<input type="date" data-k="' + k + '" value="' + esc(ddmmyyyyToISO_(v)) + '" ' + sty + '>' : '<input type="text" data-k="' + k + '" value="' + esc(v) + '"' + (isD(k) ? ' placeholder="दिन/महीना/साल (जैसे 05/04/1987)"' : "") + " " + sty + ">"); }).join("");
+    const read = () => { const f = {}; m.body.querySelectorAll("input[data-k]").forEach(i => { f[i.dataset.k] = i.type === "date" ? isoToDDMMYYYY_(i.value) : i.value.trim(); }); return f; };
+    const save = modalBtn_("💾 सेव करें", "#0369a1", async () => {
+      save.disabled = true; save.textContent = "Saving...";
+      try { const rr = await callCrudBackend_({ action: "updateMyProfile", fields: read() }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); try { delete CACHE["Members"]; } catch (e) {} alert("✅ " + (rr.msg || "सेव हो गया")); }
+      catch (e) { alert("❌ " + (e.message || e)); }
+      save.disabled = false; save.textContent = "💾 सेव करें";
+    });
+    m.foot.insertBefore(save, m.foot.firstChild);
+    m.foot.insertBefore(modalBtn_("🪪 मेरा कार्ड", "#b45309", () => { const f = read(); showCard_({ name: stripPlace_(r.label) || r.name, id: r.memberId, mobile: r.mobile, gotra: f.gotra, origin: f.origin, city: f.city }); }), m.foot.children[1] || null);
+  };
+
+  /* ---------- 🧹 डेटा सफ़ाई (Admin) ---------- */
+  window.openDataClean_ = async function () {
+    const m = openModal_("🧹 डेटा सफ़ाई — Members"); m.body.innerHTML = '<p class="muted">⏳ जाँच हो रही है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => { m.close(); if (changed) { try { delete CACHE["Members"]; if (currentTab === "Members") loadTab("Members", true); } catch (e) {} } }));
+    let changed = false, mem; try { mem = (await fetchSheet("Members", true)) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    if (!mem.length) { m.body.innerHTML = "<p>Members में डेटा नहीं है।</p>"; return; }
+    const kI = keyOf(mem, /^(member ?id|id)$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kS = keyOf(mem, /^status$/i), kO = keyOf(mem, /occupation|व्यवसाय/i);
+    if (!kI || !kN) { m.body.innerHTML = "<p>❌ MemberID / Name column नहीं मिले।</p>"; return; }
+    const blank = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v)), dig = v => String(v || "").replace(/\D/g, "").slice(-10);
+    const st = r => String(kS ? r[kS] || "" : ""), rej = r => /reject/i.test(st(r));
+    const rows = mem.filter(r => !rej(r));
+    const dupMap = {}; rows.forEach(r => { const d = dig(kM && r[kM]); if (d.length === 10) (dupMap[d] = dupMap[d] || []).push(r); });
+    const dups = Object.keys(dupMap).filter(k => dupMap[k].length > 1);
+    const blanks = rows.filter(r => blank(r[kN]));
+    const noMob = rows.filter(r => !blank(r[kN]) && dig(kM && r[kM]).length !== 10);
+    const eng = rows.filter(r => !blank(r[kN]) && String(r[kI] || "").trim() && !hasDev_(kD ? r[kD] : ""));
+    const nm = r => String((kD && r[kD]) || r[kN] || "").trim() || "(बिना नाम)";
+    const sec = (title, n, body) => '<div style="margin:12px 0 4px;font-weight:700">' + title + ' <span style="color:' + (n ? "#b45309" : "#15803d") + '">' + (n ? "(" + n + ")" : "✅ ठीक है") + "</span></div>" + (n ? body : "");
+    const rowBox = (html, id) => '<div data-r="' + esc(id) + '" style="display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px;margin:5px 0;font-size:13px"><div style="min-width:0">' + html + "</div><span data-a></span></div>";
+    const draw = () => {
+      m.body.innerHTML =
+        sec("🔁 एक ही मोबाइल कई बार", dups.length, dups.map(k => rowBox("📱 <b>" + esc(k) + "</b><br>" + dupMap[k].map(r => esc(r[kI] || "?") + " · " + esc(nm(r)) + " · " + esc(st(r) || "-")).join("<br>"), "d" + k)).join("")) +
+        sec("🕳️ बिना नाम की अधूरी rows", blanks.length, blanks.map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · 📱 " + esc(dig(kM && r[kM])) + " · " + esc(st(r) || "-") + (kO && r[kO] ? "<br>" + esc(r[kO]) : ""), "b" + r[kI])).join("")) +
+        sec("📵 मोबाइल नहीं / गलत", noMob.length, noMob.slice(0, 40).map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · " + esc(nm(r)), "n" + r[kI])).join("")) +
+        sec("🔤 Member नाम Hindi में नहीं", eng.length, (eng.length ? '<div style="margin:4px 0"><button type="button" id="dcAll" style="width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:#0369a1">🔤 सबका Hindi नाम बनाएँ</button> <span id="dcProg" style="font-size:12.5px;color:#475569"></span></div>' : "") + eng.slice(0, 80).map(r => rowBox(esc(r[kI]) + " · " + esc(nm(r)), "e" + r[kI])).join("") + (eng.length > 80 ? '<div style="font-size:12.5px;color:#64748b">… और ' + (eng.length - 80) + "</div>" : ""));
+      blanks.forEach(r => { const host = m.body.querySelector('[data-r="' + CSS.escape("b" + r[kI]) + '"] [data-a]'); if (!host || !String(r[kI] || "").trim()) return;
+        const b = document.createElement("button"); b.type = "button"; b.textContent = "🗑️ हटाएँ"; b.style.cssText = "width:auto;border:0;border-radius:9px;padding:6px 10px;font-weight:700;cursor:pointer;color:#fff;background:#b91c1c";
+        b.onclick = async () => { if (!confirm(String(r[kI]) + " को Members sheet से हमेशा के लिए हटाएँ?")) return; b.disabled = true;
+          try { const rr = await callCrudBackend_({ action: "deleteRow", sheetName: "Members", idColumn: kI, id: r[kI] }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "हट नहीं पाया"); blanks.splice(blanks.indexOf(r), 1); changed = true; draw(); } catch (e) { alert("❌ " + (e.message || e)); b.disabled = false; } };
+        host.appendChild(b); });
+      const all = m.body.querySelector("#dcAll");
+      if (all) all.onclick = async () => {
+        all.disabled = true; const ids = eng.map(r => String(r[kI]).trim()), prog = m.body.querySelector("#dcProg"); let done = 0, fixed = 0;
+        try {
+          for (let i = 0; i < ids.length; i += 12) {
+            const rr = await callCrudBackend_({ action: "memberTools", op: "hindiFix", ids: ids.slice(i, i + 12) });
+            if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हो पाया");
+            Object.keys(rr.updated || {}).forEach(id => { const row = eng.find(x => String(x[kI]).trim() === id); if (row && kD) row[kD] = rr.updated[id]; fixed++; });
+            done = Math.min(ids.length, i + 12); prog.textContent = done + " / " + ids.length + " जाँचे · " + fixed + " बने";
+          }
+          changed = true; alert("✅ " + fixed + " सदस्यों का Hindi नाम बन गया" + (fixed < ids.length ? "\n(" + (ids.length - fixed) + " का नहीं बन पाया — उन्हें ✏️ Edit से खुद लिखें)" : ""));
+          for (let j = eng.length - 1; j >= 0; j--) if (hasDev_(kD ? eng[j][kD] : "")) eng.splice(j, 1);
+          draw();
+        } catch (e) { alert("❌ " + (e.message || e)); all.disabled = false; }
+      };
+    };
+    draw();
+  };
+
+  /* ---------- 📑 वार्षिक रिपोर्ट (वित्त वर्ष, पूरा समाज) ---------- */
+  window.openAnnualReport_ = async function () {
+    const m = openModal_("📑 वार्षिक रिपोर्ट"); m.body.innerHTML = '<p class="muted">⏳ डेटा जुट रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    const get = async n => { try { return (await fetchSheet(n)) || []; } catch (e) { return []; } };
+    const [rc, ex, bo, dn, mt, mem] = await Promise.all(["Receipts", "Expenses", "Boli", "Donation", "Meetings", "Members"].map(get));
+    const fy = d => (d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1), lbl = y => y + "-" + String((y + 1) % 100).padStart(2, "0");
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => Number(n).toLocaleString("en-IN");
+    const dKey = rows => keyOf(rows, /^(date|तारीख|दिनांक)/i), aKey = (rows, pref) => { if (!rows.length) return null; const ks = Object.keys(rows[0]), ok = k => !/balance|शेष|mode|method|type|ref|id$/i.test(k.trim()); return ks.find(k => pref.test(k.trim()) && ok(k)) || ks.find(k => /^(credit|debit|received|payment|amount|जमा|खर्च|नामे|राशि)/i.test(k.trim()) && ok(k)) || null; };
+    const pKey = (rows, re) => rows.length ? Object.keys(rows[0]).find(k => re.test(k.trim())) : null;
+    const fKey = rows => keyOf(rows, /^(for|purpose|उद्देश्य|head|category)$/i);
+    const S = {
+      rc: { rows: rc, d: dKey(rc), a: aKey(rc, /^(received|amount|credit|जमा|राशि)/i), f: fKey(rc) }, ex: { rows: ex, d: dKey(ex), a: aKey(ex, /^(payment|paid|amount|debit|expense|खर्च|नामे|राशि)/i), f: fKey(ex) },
+      bo: { rows: bo, d: dKey(bo), p: pKey(bo, /^pledged/i), a: pKey(bo, /^paid/i) }, dn: { rows: dn, d: dKey(dn), p: pKey(dn, /^pledged/i), a: pKey(dn, /^paid/i) }
+    };
+    const years = new Set(); [S.rc, S.ex, S.bo, S.dn].forEach(s => s.rows.forEach(r => { const d = s.d ? dt_(r[s.d]) : null; if (d) years.add(fy(d)); }));
+    if (!years.size) { m.body.innerHTML = "<p>❌ Receipts / Expenses में तारीख वाला डेटा नहीं मिला।</p>"; return; }
+    const ys = [...years].sort((x, y) => y - x), cur = fy(new Date());
+    m.body.innerHTML = '<label style="font-size:12.5px;color:#475569">वित्त वर्ष (अप्रैल–मार्च)</label><select id="arY" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">' + ys.map(y => '<option value="' + y + '">' + lbl(y) + "</option>").join("") + '</select>' +
+      '<div id="arS" style="margin-top:10px;padding:10px;background:#f1f5f9;border-radius:10px;font-size:13.5px;line-height:1.8"></div>' +
+      '<div style="font-size:12px;color:#64748b;margin-top:6px">बोली / दान के आँकड़े उन प्रविष्टियों के हैं जिनकी तारीख इस वित्त वर्ष में है।</div>';
+    const sel = m.body.querySelector("#arY"); sel.value = String(ys.includes(cur) ? cur : ys[0]);
+    const inFY = (s, r, y) => { const d = s.d ? dt_(r[s.d]) : null; return d && fy(d) === y; };
+    const group = (s, list) => { const g = {}; list.forEach(r => { const k = (s.f ? String(r[s.f] || "").trim() : "") || "(बिना उद्देश्य)"; g[k] = (g[k] || 0) + num(r[s.a]); }); return Object.keys(g).map(k => [k, g[k]]).sort((x, y) => y[1] - x[1]).slice(0, 20); };
+    const compute = y => {
+      const R = S.rc.a ? S.rc.rows.filter(r => inFY(S.rc, r, y)) : [], E = S.ex.a ? S.ex.rows.filter(r => inFY(S.ex, r, y)) : [];
+      const sumP = (s, re) => { const L = s.rows.filter(r => inFY(s, r, y)); return { n: L.length, p: s.p ? L.reduce((t, r) => t + num(r[s.p]), 0) : 0, a: s.a ? L.reduce((t, r) => t + num(r[s.a]), 0) : 0 }; };
+      const kS = keyOf(mem, /^status$/i), kJ = keyOf(mem, /^(joined|joining|date)/i);
+      const active = mem.filter(r => !(kS && /pending|inactive|reject/i.test(String(r[kS] || "")))).length;
+      const newM = kJ ? mem.filter(r => { const d = dt_(r[kJ]); return d && fy(d) === y && !(kS && /pending|reject/i.test(String(r[kS] || ""))); }).length : 0;
+      const kd = dKey(mt), M = kd ? mt.filter(r => { const d = dt_(r[kd]); return d && fy(d) === y; }) : [];
+      const att = M.map(r => String(r.Attendance || "").split(/[,\n;]+/).map(x => x.trim()).filter(Boolean).length).filter(n => n > 0);
+      return { R, E, rcT: R.reduce((t, r) => t + num(r[S.rc.a]), 0), exT: E.reduce((t, r) => t + num(r[S.ex.a]), 0), bo: sumP(S.bo), dn: sumP(S.dn), active, newM, meets: M.length, avgAtt: att.length ? Math.round(att.reduce((a, b) => a + b, 0) / att.length) : 0, rcG: S.rc.a ? group(S.rc, R) : [], exG: S.ex.a ? group(S.ex, E) : [] };
+    };
+    const paint = () => { const c = compute(+sel.value); m.body.querySelector("#arS").innerHTML = "<b>वित्त वर्ष " + lbl(+sel.value) + "</b><br>🧾 कुल प्राप्त (Receipts): <b>₹" + inr(c.rcT) + "</b> (" + c.R.length + ")<br>💸 कुल खर्च: <b>₹" + inr(c.exT) + "</b> (" + c.E.length + ")<br>📊 अंतर: <b>₹" + inr(c.rcT - c.exT) + "</b><br>🔔 बोली: कुल ₹" + inr(c.bo.p) + " · जमा ₹" + inr(c.bo.a) + " · बाकी ₹" + inr(Math.max(0, c.bo.p - c.bo.a)) + "<br>🤝 दान: कुल ₹" + inr(c.dn.p) + " · जमा ₹" + inr(c.dn.a) + " · बाकी ₹" + inr(Math.max(0, c.dn.p - c.dn.a)) + "<br>👥 सक्रिय सदस्य: " + c.active + " · नए: " + c.newM + " · बैठकें: " + c.meets + (c.avgAtt ? " (औसत उपस्थिति " + c.avgAtt + ")" : ""); };
+    sel.onchange = paint; paint();
+    m.foot.insertBefore(modalBtn_("📄 PDF / प्रिंट", "#b91c1c", () => {
+      const y = +sel.value, c = compute(y), e = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), logo = new URL("Logo-512.png", location.href).href;
+      const tbl = (h, rows) => "<table><thead><tr>" + h.map(x => "<th>" + e(x) + "</th>").join("") + "</tr></thead><tbody>" + rows.map(r => "<tr><td>" + e(r[0]) + '</td><td class="r">₹' + inr(r[1]) + "</td></tr>").join("") + "</tbody></table>";
+      const html = '<!doctype html><html><head><meta charset="utf-8"><title>वार्षिक रिपोर्ट ' + lbl(y) + '</title><style>@page{size:A4;margin:12mm}body{font-family:"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{text-align:center;margin:4px 0;font-size:20px}h2{text-align:center;margin:0 0 10px;font-size:15px;color:#7c2d12}h3{margin:16px 0 4px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:2px}img{display:block;margin:0 auto;height:60px}table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border:1px solid #999;padding:4px 7px;text-align:left}th{background:#fef3c7}.r{text-align:right}.k td:first-child{width:62%}</style></head><body><img src="' + logo + '" alt="">' +
+        "<h1>" + e(SAMAJ_NAME_) + "</h1><h2>वार्षिक रिपोर्ट — वित्त वर्ष " + lbl(y) + " (अप्रैल–मार्च)</h2>" +
+        '<h3>सारांश</h3><table class="k"><tbody>' + [["कुल प्राप्त (Receipts)", "₹" + inr(c.rcT)], ["कुल खर्च", "₹" + inr(c.exT)], ["प्राप्त − खर्च", "₹" + inr(c.rcT - c.exT)], ["बोली — कुल / जमा / बाकी", "₹" + inr(c.bo.p) + " / ₹" + inr(c.bo.a) + " / ₹" + inr(Math.max(0, c.bo.p - c.bo.a))], ["दान — कुल / जमा / बाकी", "₹" + inr(c.dn.p) + " / ₹" + inr(c.dn.a) + " / ₹" + inr(Math.max(0, c.dn.p - c.dn.a))], ["सक्रिय सदस्य / इस वर्ष नए", c.active + " / " + c.newM], ["बैठकें / औसत उपस्थिति", c.meets + " / " + (c.avgAtt || "-")]].map(r => "<tr><td>" + e(r[0]) + '</td><td class="r"><b>' + e(r[1]) + "</b></td></tr>").join("") + "</tbody></table>" +
+        (c.rcG.length ? "<h3>प्राप्ति (उद्देश्य-वार)</h3>" + tbl(["उद्देश्य", "राशि"], c.rcG) : "") + (c.exG.length ? "<h3>खर्च (उद्देश्य-वार)</h3>" + tbl(["उद्देश्य", "राशि"], c.exG) : "") +
+        '<p style="margin-top:18px;font-size:11px;color:#555">तैयार: ' + e(new Date().toLocaleDateString("en-GB")) + " · बोली / दान के आँकड़े इस वित्त वर्ष की तारीख वाली प्रविष्टियों के हैं।</p></body></html>";
+      const w = window.open("", "_blank"); if (!w) { alert("Pop-up रुका हुआ है — browser में इस साइट के लिए pop-up की अनुमति दें।"); return; }
+      w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (x) {} }, 600);
+    }), m.foot.firstChild);
+  };
+
   window.refreshPendBadge_ = function () {
     const b = document.getElementById("pendMemBtn"); if (!b) return;
     let n = 0; if (currentTab === "Members" && Array.isArray(tableData)) { const k = keyOf(tableData, /^status$/i); if (k) n = tableData.filter(r => /^\s*pending/i.test(String(r[k] || ""))).length; }
