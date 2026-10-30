@@ -1574,7 +1574,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.314"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.315"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -9146,12 +9146,66 @@ if ('serviceWorker' in navigator) {
     const nm = r => String((kD && r[kD]) || r[kN] || "").trim() || "(बिना नाम)";
     const sec = (title, n, body) => '<div style="margin:12px 0 4px;font-weight:700">' + title + ' <span style="color:' + (n ? "#b45309" : "#15803d") + '">' + (n ? "(" + n + ")" : "✅ ठीक है") + "</span></div>" + (n ? body : "");
     const rowBox = (html, id) => '<div data-r="' + esc(id) + '" style="display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px;margin:5px 0;font-size:13px"><div style="min-width:0">' + html + "</div><span data-a></span></div>";
+    /* ---- v1.315: पुराने Hindi नामों की जाँच (अनुमान से मिलान, बदलना आपके हाथ में) ---- */
+    let review = null;
+    const lev = (x, y) => { const n1 = x.length, n2 = y.length; if (!n1) return n2; if (!n2) return n1; let p = Array.from({ length: n2 + 1 }, (_, j) => j); for (let i = 1; i <= n1; i++) { const q = [i]; for (let j = 1; j <= n2; j++) q[j] = Math.min(p[j] + 1, q[j - 1] + 1, p[j - 1] + (x[i - 1] === y[j - 1] ? 0 : 1)); p = q; } return p[n2]; };
+    const nz = (s, dropJi) => { let t = String(s || "").replace(/श्री/g, "").replace(/\u093C/g, "").replace(/[ँं]/g, "ं").replace(/[ीि]/g, "ि").replace(/[ूु]/g, "ु"); if (dropJi) t = t.replace(/जी/g, ""); return t.replace(/[\s\-–—.,()\/]+/g, ""); };
+    const ratio = (x, y, dropJi) => { const p = nz(x, dropJi), q = nz(y, dropJi), L = Math.max(p.length, q.length); return L ? lev(p, q) / L : 0; };
+    const splitLabel = s => { const t = String(s || "").trim(), mm = t.match(/^(.*?)\s*\(([^)]*)\)\s*$/); return mm ? { n: mm[1].trim(), place: mm[2].trim() } : { n: t, place: "" }; };
+    const renderReview = () => {
+      const box = m.body.querySelector("#dcRevBox"); if (!box) return;
+      box.innerHTML = '<div style="margin:14px 0 4px;font-weight:700">✍️ पुराने Hindi नामों की जाँच</div><div style="font-size:12.5px;color:#475569;margin-bottom:6px">मौजूदा Hindi नाम की तुलना नए अनुमान से होती है। सिर्फ़ जो अलग लगें वही दिखते हैं — ज़रूरत हो तो नाम बदलकर ✔ लगाएँ दबाएँ। सही नाम को कुछ नहीं होता।</div>';
+      if (!review) {
+        const b = document.createElement("button"); b.type = "button"; b.textContent = "🔎 जाँच शुरू करें"; b.style.cssText = "width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:#0369a1";
+        b.onclick = runReview; box.appendChild(b); return;
+      }
+      const pr = document.createElement("div"); pr.style.cssText = "font-size:12.5px;color:#475569;margin:4px 0";
+      pr.textContent = review.done + " / " + review.total + " जाँचे · " + review.ok + " ठीक लगे · " + review.items.length + " देखने लायक" + (review.busy ? " …" : ""); box.appendChild(pr);
+      review.items.forEach(it => {
+        const d = document.createElement("div"); d.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px";
+        d.innerHTML = "<b>" + esc(it.id) + '</b> <span style="color:#b45309;font-size:12px">' + (it.nameBad ? "⚠️ नाम " : "") + (it.placeBad ? "⚠️ गाँव/शहर" : "") + '</span><div style="color:#64748b;margin:2px 0">अभी: ' + esc(it.cur) + "</div>";
+        const inp = document.createElement("input"); inp.type = "text"; inp.value = it.sug; inp.style.cssText = "width:100%;box-sizing:border-box;padding:7px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px";
+        const row = document.createElement("div"); row.style.cssText = "display:flex;gap:6px;margin-top:6px";
+        const ok = document.createElement("button"); ok.type = "button"; ok.textContent = "✔ लगाएँ"; ok.style.cssText = "width:auto;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer;color:#fff;background:#15803d";
+        const skip = document.createElement("button"); skip.type = "button"; skip.textContent = "छोड़ें (सही है)"; skip.style.cssText = "width:auto;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer;color:#fff;background:#64748b";
+        ok.onclick = async () => {
+          const val = inp.value.trim(); if (!val) { alert("नाम खाली नहीं हो सकता।"); return; } ok.disabled = true;
+          try { const rr = await callCrudBackend_({ action: "memberTools", op: "setLabel", items: [{ id: it.id, label: val }] }); if (!rr || !rr.success || !(rr.updated || {})[it.id]) throw new Error((rr && rr.msg) || "सेव नहीं हुआ (नाम Hindi में लिखें)"); if (kD) it.row[kD] = rr.updated[it.id]; review.items.splice(review.items.indexOf(it), 1); review.ok++; changed = true; renderReview(); }
+          catch (e) { alert("❌ " + (e.message || e)); ok.disabled = false; }
+        };
+        skip.onclick = () => { review.items.splice(review.items.indexOf(it), 1); review.ok++; renderReview(); };
+        row.appendChild(ok); row.appendChild(skip); d.appendChild(inp); d.appendChild(row); box.appendChild(d);
+      });
+      if (!review.busy && !review.items.length && review.done) box.insertAdjacentHTML("beforeend", '<div style="padding:10px;color:#15803d;font-weight:700">🎉 जाँचे गए सभी नाम ठीक लगे।</div>');
+    };
+    const runReview = async () => {
+      const todo = mem.filter(r => !rej(r) && String(r[kI] || "").trim() && !blank(r[kN]) && hasDev_(kD ? r[kD] : ""));
+      review = { items: [], ok: 0, total: todo.length, done: 0, busy: true }; renderReview();
+      try {
+        for (let i = 0; i < todo.length; i += 10) {
+          const chunk = todo.slice(i, i + 10), rr = await callCrudBackend_({ action: "memberTools", op: "hindiSuggest", ids: chunk.map(r => String(r[kI]).trim()) });
+          if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हो पाया");
+          chunk.forEach(r => {
+            const id = String(r[kI]).trim(), s = (rr.items || {})[id]; review.done++;
+            if (!s || !s.n) { review.ok++; return; }
+            const curFull = String(kD ? r[kD] : ""), cur = splitLabel(curFull), hasShri = /^\s*श्री/.test(curFull);
+            const nameBad = ratio(cur.n, s.n, true) > 0.2, placeBad = !!(cur.place || s.place) && ratio(cur.place, s.place, false) > 0.3;
+            if (!nameBad && !placeBad) { review.ok++; return; }
+            const n = nameBad ? (hasShri ? "श्री " : "") + s.n : cur.n, place = placeBad ? s.place : cur.place;
+            review.items.push({ id: id, row: r, cur: curFull, sug: n + (place ? " (" + place + ")" : ""), nameBad: nameBad, placeBad: placeBad });
+          });
+          renderReview();
+        }
+      } catch (e) { alert("❌ " + (e.message || e)); }
+      review.busy = false; renderReview();
+    };
     const draw = () => {
       m.body.innerHTML =
         sec("🔁 एक ही मोबाइल कई बार", dups.length, dups.map(k => rowBox("📱 <b>" + esc(k) + "</b><br>" + dupMap[k].map(r => esc(r[kI] || "?") + " · " + esc(nm(r)) + " · " + esc(st(r) || "-")).join("<br>"), "d" + k)).join("")) +
         sec("🕳️ बिना नाम की अधूरी rows", blanks.length, blanks.map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · 📱 " + esc(dig(kM && r[kM])) + " · " + esc(st(r) || "-") + (kO && r[kO] ? "<br>" + esc(r[kO]) : ""), "b" + r[kI])).join("")) +
         sec("📵 मोबाइल नहीं / गलत", noMob.length, noMob.slice(0, 40).map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · " + esc(nm(r)), "n" + r[kI])).join("")) +
         sec("🔤 Member नाम Hindi में नहीं", eng.length, (eng.length ? '<div style="margin:4px 0"><button type="button" id="dcAll" style="width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:#0369a1">🔤 सबका Hindi नाम बनाएँ</button> <span id="dcProg" style="font-size:12.5px;color:#475569"></span></div>' : "") + eng.slice(0, 80).map(r => rowBox(esc(r[kI]) + " · " + esc(nm(r)), "e" + r[kI])).join("") + (eng.length > 80 ? '<div style="font-size:12.5px;color:#64748b">… और ' + (eng.length - 80) + "</div>" : ""));
+      m.body.insertAdjacentHTML("beforeend", '<div id="dcRevBox"></div>'); renderReview();
       blanks.forEach(r => { const host = m.body.querySelector('[data-r="' + CSS.escape("b" + r[kI]) + '"] [data-a]'); if (!host || !String(r[kI] || "").trim()) return;
         const b = document.createElement("button"); b.type = "button"; b.textContent = "🗑️ हटाएँ"; b.style.cssText = "width:auto;border:0;border-radius:9px;padding:6px 10px;font-weight:700;cursor:pointer;color:#fff;background:#b91c1c";
         b.onclick = async () => { if (!confirm(String(r[kI]) + " को Members sheet से हमेशा के लिए हटाएँ?")) return; b.disabled = true;
