@@ -8778,6 +8778,438 @@ if ('serviceWorker' in navigator) {
     const pick = () => { const mode = m.body.querySelector('input[name=drm]:checked').value; return all.filter(x => mode === "all" ? true : (mode === "pend" ? x.b > 0 : x.b <= 0 && x.p > 0)); };
     const label = () => ({ all: "सभी", pend: "सिर्फ बाकी", paid: "सिर्फ पूरा जमा" }[m.body.querySelector('input[name=drm]:checked').value]);
     const tot = rs => rs.reduce((t, x) => ({ p: t.p + x.p, a: t.a + x.a, b: t.b + x.b }), { p: 0, a: 0, b: 0 });
+    const paint = () => { const rs = pick(), t = tot(rs); m.body.querySelector("#drSum").innerHTML = "सदस्य / रिकॉर्ड: <b>" + rs.length + "</b><br>कुल " + nm + ": <b>₹" + t.p.toLocaleString("en-IN") + "</b> · जमा: <b>₹" + t.a.toLocaleString("en-IN") + "</b> · बाकी: <b>₹" + t.b.toLocaleString("en-IN") + "</b>"; };
+    m.body.querySelectorAll("input[name=drm]").forEach(i => i.onchange = paint); paint();
+    const fname = () => (isB ? "Boli" : "Donation") + "_" + ({ all: "all", pend: "pending", paid: "paid" }[m.body.querySelector('input[name=drm]:checked').value]) + "_" + new Date().toISOString().slice(0, 10);
+    m.foot.appendChild(modalBtn_("📊 Excel (.xlsx)", "#15803d", () => {
+      const rs = pick(), t = tot(rs);
+      const rows = rs.map((x, i) => [i + 1, x.name, x.mobile, x.forTxt, x.date, x.p, x.a, x.b]);
+      saveBlob_(xlsxBlob_(nm + " रिपोर्ट", ["क्र.", "सदस्य", "मोबाइल", "उद्देश्य", "तारीख", nm + " राशि (₹)", "जमा (₹)", "बाकी (₹)"], rows, new Set([0, 5, 6, 7]), [6, 30, 14, 26, 12, 14, 12, 12], ["", "कुल", "", "", "", t.p, t.a, t.b]), fname() + ".xlsx");
+    }));
+    m.foot.appendChild(modalBtn_("📄 PDF / प्रिंट", "#b91c1c", () => {
+      const rs = pick(), t = tot(rs), logo = new URL("Logo-512.png", location.href).href, e = esc;
+      const body = rs.map((x, i) => "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "<br><small>" + e(x.mobile) + "</small></td><td>" + e(x.forTxt) + "</td><td class=r>" + x.p.toLocaleString("en-IN") + "</td><td class=r>" + x.a.toLocaleString("en-IN") + "</td><td class=r><b>" + x.b.toLocaleString("en-IN") + "</b></td></tr>").join("");
+      const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + e(nm) + ' रिपोर्ट</title><style>@page{size:A4;margin:12mm}body{font-family:"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{font-size:19px;margin:0}.h{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0a2a5e;padding-bottom:8px;margin-bottom:10px}.h img{width:54px;height:54px;border-radius:50%}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:5px 6px;vertical-align:top}th{background:#e8eefb}.r{text-align:right;white-space:nowrap}small{color:#555}tfoot td{font-weight:700;background:#f4f6fa}</style></head><body><div class="h"><img src="' + logo + '"><div><h1>श्री मेवाड़ प्रजापत समाज – वापी</h1><div>' + e(nm) + ' रिपोर्ट — ' + e(label()) + ' · दिनांक: ' + new Date().toLocaleDateString("en-GB") + '</div></div></div><table><thead><tr><th>क्र.</th><th>सदस्य</th><th>उद्देश्य</th><th>' + e(nm) + ' ₹</th><th>जमा ₹</th><th>बाकी ₹</th></tr></thead><tbody>' + body + '</tbody><tfoot><tr><td colspan="3">कुल (' + rs.length + ')</td><td class=r>' + t.p.toLocaleString("en-IN") + '</td><td class=r>' + t.a.toLocaleString("en-IN") + '</td><td class=r>' + t.b.toLocaleString("en-IN") + '</td></tr></tfoot></table></body></html>';
+      const w = window.open("", "_blank"); if (!w) { alert("Pop-up रुका हुआ है — browser में इस साइट के लिए pop-up की अनुमति दें।"); return; }
+      w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (x) {} }, 500);
+    }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+
+  /* ===== v1.304: रसीद की इमेज (PNG) — शेयर ya download ===== */
+  window.receiptImage_ = async function (heading, rowsHtml, opt) {
+    opt = opt || {};
+    const doc = new DOMParser().parseFromString("<table>" + rowsHtml + "</table>", "text/html");
+    const pairs = [...doc.querySelectorAll("tr")].map(tr => { const td = tr.querySelectorAll("td"); return [(td[0] ? td[0].textContent : "").replace(/\s+/g, " ").trim(), (td[1] ? td[1].textContent : "").replace(/\s+/g, " ").trim()]; }).filter(p => p[0] && p[1]);
+    const W = 900, PAD = 40, font = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+    const cv = document.createElement("canvas"), cx = cv.getContext("2d");
+    const wrap = (txt, maxW, f) => { cx.font = f; const out = []; let line = ""; String(txt).split(/(\s+)/).forEach(w => { const t = line + w; if (cx.measureText(t).width > maxW && line.trim()) { out.push(line.trim()); line = w.trimStart(); } else line = t; }); if (line.trim()) out.push(line.trim()); return out.length ? out : [""]; };
+    const colL = 330, colR = W - PAD * 2 - colL - 20;
+    const blocks = pairs.map(p => ({ k: wrap(p[0], colL - 20, "600 25px " + font), v: wrap(p[1], colR, "600 27px " + font) }));
+    let H = 330; blocks.forEach(b => H += Math.max(b.k.length, b.v.length) * 36 + 22); H += 190;
+    cv.width = W; cv.height = H;
+    cx.fillStyle = "#fff"; cx.fillRect(0, 0, W, H);
+    const g = cx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, "#0a2a5e"); g.addColorStop(1, "#1a56c4");
+    cx.fillStyle = g; cx.fillRect(0, 0, W, 190);
+    cx.fillStyle = "#f5a21b"; cx.fillRect(0, 190, W, 8);
+    try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = new URL("Logo-512.png", location.href).href; }); cx.save(); cx.beginPath(); cx.arc(PAD + 62, 95, 62, 0, 7); cx.closePath(); cx.clip(); cx.fillStyle = "#fff"; cx.fillRect(PAD, 33, 124, 124); cx.drawImage(img, PAD, 33, 124, 124); cx.restore(); } catch (e) {}
+    cx.fillStyle = "#fff"; cx.textBaseline = "alphabetic";
+    cx.font = "700 40px " + font; cx.fillText("श्री मेवाड़ प्रजापत समाज – वापी", PAD + 150, 92);
+    cx.font = "500 24px " + font; cx.fillStyle = "#dbe7ff"; cx.fillText("पंजीकृत संस्था · Reg No: " + (SETTINGS?.OrgReg || "A/1221"), PAD + 150, 134);
+    cx.fillStyle = "#0a2a5e"; cx.font = "700 38px " + font; cx.textAlign = "center"; cx.fillText(heading, W / 2, 262); cx.textAlign = "left";
+    let y = 300;
+    blocks.forEach((b, i) => {
+      const h = Math.max(b.k.length, b.v.length) * 36 + 22;
+      cx.fillStyle = i % 2 ? "#ffffff" : "#f3f6fc"; cx.fillRect(PAD, y, W - PAD * 2, h);
+      cx.fillStyle = "#475569"; cx.font = "600 25px " + font; b.k.forEach((t, j) => cx.fillText(t, PAD + 14, y + 36 + j * 36));
+      cx.fillStyle = "#0f172a"; cx.font = "600 27px " + font; b.v.forEach((t, j) => cx.fillText(t, PAD + colL + 14, y + 36 + j * 36));
+      y += h;
+    });
+    cx.strokeStyle = "#cbd5e1"; cx.strokeRect(PAD, 300, W - PAD * 2, y - 300);
+    cx.fillStyle = "#64748b"; cx.font = "500 22px " + font; cx.textAlign = "center";
+    cx.fillText(opt.footer || "यह रसीद श्री मेवाड़ प्रजापत समाज, वापी की ऐप से बनाई गई है।", W / 2, y + 60);
+    cx.fillStyle = "#0a2a5e"; cx.font = "700 24px " + font; cx.fillText("🙏 जय श्रीयादे माता की 🙏", W / 2, y + 108);
+    const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+    const fn = (opt.file || "SMPS_receipt_") + new Date().toISOString().slice(0, 10) + ".png";
+    const file = new File([blob], fn, { type: "image/png" });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: heading }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    saveBlob_(blob, fn);
+  };
+
+  /* ===== v1.306: bheje gaye sandesh ka record (MessageLog) ===== */
+  const SENT_LS_ = "smps_sent_local";
+  const logQ_ = []; let logT_ = null; const sentCache_ = {};
+  function sentLocal_() { try { return JSON.parse(localStorage.getItem(SENT_LS_) || "[]"); } catch (e) { return []; } }
+  function sentLocalAdd_(items) { try { localStorage.setItem(SENT_LS_, JSON.stringify(sentLocal_().concat(items).slice(-1500))); } catch (e) {} }
+  async function flushLog_() {
+    if (!logQ_.length) return; const items = logQ_.splice(0, 60);
+    try {
+      const r = await callCrudBackend_({ action: "logMessages", items: items.map(x => ({ tab: x.tab, tpl: x.tpl, member: x.m, mobile: x.mob, preview: x.pv })) });
+      if (!r || !r.success) throw new Error("log");
+    } catch (e) { logQ_.unshift.apply(logQ_, items); }
+  }
+  window.logSend_ = function (tab, tpl, member, mobile, preview) {
+    const it = { t: new Date().toISOString(), tab: tab, tpl: String(tpl || ""), m: String(member || ""), mob: String(mobile || "").replace(/\D/g, "").slice(-10), pv: String(preview || "").replace(/\s+/g, " ").slice(0, 100), by: (currentUser && currentUser.name) || "" };
+    logQ_.push(it); sentLocalAdd_([{ t: it.t, tab: tab, tpl: it.tpl, m: it.m, mob: it.mob, by: it.by }]);
+    clearTimeout(logT_); logT_ = setTimeout(flushLog_, 2000); if (logQ_.length >= 15) flushLog_();
+  };
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushLog_(); });
+  window.addEventListener("pagehide", flushLog_);
+  const tplNorm_ = x => String(x || "").replace(/^[^\p{L}\p{N}]+/u, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const dAgo_ = t => { const d = Math.floor((Date.now() - Date.parse(t)) / 864e5); return d <= 0 ? "आज" : d === 1 ? "कल" : d + " दिन पहले"; };
+  const fmtT_ = t => { const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleDateString("en-GB") + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); };
+  function dedupeLog_(rows) {
+    const a = rows.slice().sort((x, y) => Date.parse(x.t) - Date.parse(y.t)), out = [];
+    a.forEach(r => { const p = out[out.length - 1]; if (p && p.mob === r.mob && tplNorm_(p.tpl) === tplNorm_(r.tpl) && Math.abs(Date.parse(r.t) - Date.parse(p.t)) < 180000) { if (r.by && !p.by) p.by = r.by; return; } out.push(Object.assign({}, r)); });
+    return out;
+  }
+  async function getSentLog_(tab, fresh) {
+    const c = sentCache_[tab]; let rows;
+    if (c && !fresh && Date.now() - c.t < 90000) rows = c.rows;
+    else { try { const r = await callCrudBackend_({ action: "getMessageLog", tab: tab, days: 60 }); rows = (r && r.success && Array.isArray(r.rows)) ? r.rows : []; } catch (e) { rows = []; } sentCache_[tab] = { t: Date.now(), rows: rows }; }
+    const loc = sentLocal_().filter(x => x.tab === tab && Date.now() - Date.parse(x.t) < 60 * 864e5);
+    return dedupeLog_(rows.concat(loc));
+  }
+  window.getSentLog_ = getSentLog_;
+  window.openSendLog_ = async function (tab, onBack) {
+    const m = openModal_("📜 भेजने का record — " + tab);
+    m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    const rows = (await getSentLog_(tab, true)).sort((a, b) => Date.parse(b.t) - Date.parse(a.t));
+    m.body.innerHTML = '<input type="text" id="slQ" placeholder="🔍 नाम / मोबाइल / संदेश खोजें" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><div id="slC" style="font-size:12.5px;color:#64748b;margin:6px 0"></div><div id="slL"></div>';
+    const draw = () => {
+      const q = m.body.querySelector("#slQ").value.trim().toLowerCase(), f = rows.filter(r => !q || (r.m + " " + r.mob + " " + r.tpl + " " + r.by).toLowerCase().includes(q));
+      m.body.querySelector("#slC").textContent = f.length + " संदेश (पिछले 60 दिन)";
+      m.body.querySelector("#slL").innerHTML = f.length ? f.slice(0, 300).map(r => '<div style="border-bottom:1px solid #eee;padding:7px 2px;font-size:13px"><b>' + esc(r.m) + '</b> <span style="color:#64748b">' + esc(r.mob) + '</span><br><span>' + esc(r.tpl) + '</span><br><span style="color:#64748b;font-size:12px">🕒 ' + esc(fmtT_(r.t)) + (r.by ? " · द्वारा: " + esc(r.by) : "") + '</span></div>').join("") : '<p class="muted">अभी कोई record नहीं है।</p>';
+    };
+    m.body.querySelector("#slQ").oninput = draw; draw();
+    m.foot.appendChild(modalBtn_("📊 Excel", "#15803d", () => saveBlob_(xlsxBlob_("भेजे संदेश", ["समय", "सदस्य", "मोबाइल", "संदेश", "द्वारा"], rows.map(r => [fmtT_(r.t), r.m, r.mob, r.tpl, r.by || ""]), new Set(), [20, 28, 14, 40, 18]), "MessageLog_" + tab + "_" + new Date().toISOString().slice(0, 10) + ".xlsx")));
+    if (onBack) m.foot.appendChild(modalBtn_("← वापस", "#475569", () => { m.close(); onBack(); }));
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+  };
+
+  /* ===== v1.306: member ka apna hisaab ===== */
+  window.openMyAccount_ = async function () {
+    const m = openModal_("💳 मेरा हिसाब");
+    m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r = null; try { r = await callCrudBackend_({ action: "myAccount" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "हिसाब नहीं मिल पाया") + '</p>'; return; }
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
+    const get = (row, re) => { const k = Object.keys(row).find(x => re.test(x)); return k ? row[k] : ""; };
+    const calc = row => { const p = num(get(row, /^pledged/i)), a = num(get(row, /^paid/i)); const pr = get(row, /^pending/i); let b = String(pr).trim() !== "" ? num(pr) : p - a; if (b < 0) b = 0; return { p: p, a: a, b: b }; };
+    const sum = rows => rows.reduce((t, x) => { const c = calc(x); return { p: t.p + c.p, a: t.a + c.a, b: t.b + c.b }; }, { p: 0, a: 0, b: 0 });
+    const B = sum(r.boli || []), D = sum(r.donation || []), rcv = (r.receipts || []).reduce((t, x) => t + num(get(x, /^received$/i) || get(x, /^payment$/i)), 0), pend = B.b + D.b;
+    const card = (x, kind) => { const c = calc(x); return '<div style="border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13.5px"><b>' + esc(get(x, /^for$|^purpose$/i) || kind) + '</b> <span style="color:#64748b;font-size:12px">' + esc(get(x, /^date$/i)) + '</span><br>' + kind + ': ' + inr(c.p) + ' · जमा: ' + inr(c.a) + ' · <b style="color:' + (c.b > 0 ? "#b91c1c" : "#15803d") + '">' + (c.b > 0 ? "बाकी: " + inr(c.b) : "✅ पूरा जमा") + '</b></div>'; };
+    m.body.innerHTML = '<div style="font-weight:700;margin-bottom:6px">🙏 ' + esc(r.name || "") + '</div>' +
+      '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.8">🔔 <b>बोली:</b> कुल ' + inr(B.p) + ' · जमा ' + inr(B.a) + ' · बाकी ' + inr(B.b) + '<br>🤝 <b>दान / सहयोग:</b> कुल ' + inr(D.p) + ' · जमा ' + inr(D.a) + ' · बाकी ' + inr(D.b) + '<br>🧾 <b>रसीदों में कुल प्राप्त:</b> ' + inr(rcv) + '<div style="font-size:16px;margin-top:4px">💰 <b>कुल बाकी: ' + inr(pend) + '</b></div></div>' +
+      '<h4 style="margin:14px 0 4px">🔔 बोली</h4>' + ((r.boli || []).length ? r.boli.map(x => card(x, "बोली")).join("") : '<p class="muted">कोई रिकॉर्ड नहीं।</p>') +
+      '<h4 style="margin:14px 0 4px">🤝 दान / सहयोग</h4>' + ((r.donation || []).length ? r.donation.map(x => card(x, "सहयोग")).join("") : '<p class="muted">कोई रिकॉर्ड नहीं।</p>') +
+      '<h4 style="margin:14px 0 4px">🧾 रसीदें</h4><div id="maR"></div>';
+    const host = m.body.querySelector("#maR");
+    if (!(r.receipts || []).length) host.innerHTML = '<p class="muted">कोई रसीद नहीं।</p>';
+    (r.receipts || []).forEach(x => {
+      const amt = get(x, /^received$/i) || get(x, /^payment$/i), d = document.createElement("div");
+      d.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13.5px;display:flex;gap:8px;align-items:center";
+      d.innerHTML = '<div style="flex:1;min-width:0"><b>' + inr(num(amt)) + '</b> · ' + esc(get(x, /^for$|^purpose$/i)) + '<br><span style="color:#64748b;font-size:12px">' + esc(get(x, /^date$/i)) + (get(x, /^mode$/i) ? " · " + esc(get(x, /^mode$/i)) : "") + (get(x, /^id$/i) ? " · " + esc(get(x, /^id$/i)) : "") + '</span></div><button type="button" style="width:auto;background:#0369a1;color:#fff;border:0;border-radius:8px;padding:7px 10px;cursor:pointer">🖼️ रसीद</button>';
+      d.querySelector("button").onclick = () => {
+        const rw = (a, b) => b ? "<tr><td>" + esc(a) + "</td><td>" + esc(b) + "</td></tr>" : "";
+        window.receiptImage_("रसीद", rw("रसीद नंबर", get(x, /^id$/i)) + rw("तारीख", get(x, /^date$/i)) + rw("सदस्य का नाम", r.name) + rw("रसीद राशि (₹)", num(amt).toLocaleString("en-IN")) + rw("उद्देश्य (For)", get(x, /^for$|^purpose$/i)) + rw("भुगतान का तरीका", get(x, /^mode$/i)) + rw("नोट्स", get(x, /^notes?$|^remarks?$/i)));
+      };
+      host.appendChild(d);
+    });
+    if (pend > 0) { try { const bank = buildBankBlock_({ ID: r.name, "Pending Dues": pend }); m.body.insertAdjacentHTML("beforeend", '<h4 style="margin:14px 0 4px">🏦 बाकी राशि जमा करने के लिए</h4><div class="notranslate" translate="no" style="white-space:pre-wrap;font-size:13px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 10px">' + esc(bank) + '</div>'); } catch (e) {} }
+    const txt = () => ["🙏 " + (r.name || ""), "🔔 बोली: कुल " + inr(B.p) + " | जमा " + inr(B.a) + " | बाकी " + inr(B.b), "🤝 दान/सहयोग: कुल " + inr(D.p) + " | जमा " + inr(D.a) + " | बाकी " + inr(D.b), "🧾 कुल प्राप्त: " + inr(rcv), "💰 कुल बाकी: " + inr(pend)].join("\n");
+    const cp = modalBtn_("📋 कॉपी", "#0369a1", () => copyText_(txt(), cp)); m.foot.insertBefore(cp, m.foot.firstChild);
+  };
+
+  /* ===== v1.308: naye sadasya ki manzoori (Approve / Reject / Sudhar) + swagat sandesh ===== */
+  const keyOf = (rows, re) => window.__keyOf(rows, re), dt_ = v => window.__dt(v);
+  const welcomeMsg_ = name => {
+    const L = presets("Members"), p = L.find(x => /स्वागत/.test(x.label)) || L.find(x => x.grp === "list"); if (!p) return "";
+    let t = p.text; try { t = getMessageFromTemplate("Members", { Member: name }, t, { plain: true }); } catch (e) {}
+    return fillSettings_(String(t).replace(NAMEPH, name)).replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  };
+  window.openMemberApprovals_ = async function () {
+    const m = openModal_("🆕 नए सदस्य — मंज़ूरी"); let changed = false;
+    const closeAll = () => { m.close(); if (changed) { try { if (typeof loadTab === "function") loadTab(currentTab, true); } catch (e) {} } };
+    m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", closeAll));
+    let r; try { r = await callCrudBackend_({ action: "pendingMembers" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "लोड नहीं हो पाया") + '</p>'; return; }
+    const rows = r.rows || [], state = {}, editing = {};
+    const F = [["name", "नाम"], ["display", "सूची में दिखने वाला नाम (हिंदी)"], ["gotra", "गोत्र"], ["origin", "मूल गाँव / जिला"], ["city", "वर्तमान शहर"], ["district", "जिला"], ["address", "पता"], ["occupation", "व्यवसाय / फर्म"]];
+    const btnS = "width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;";
+    const act = async (x, op, b) => {
+      if (op === "reject" && !confirm("“" + x.name + "” का आवेदन अस्वीकार करें?")) return;
+      if (op === "approve" && x.dup && !confirm("⚠️ यह मोबाइल (" + x.mobile + ") सदस्य सूची में पहले से है।\n\nफिर भी मंज़ूर करें?")) return;
+      b.disabled = true;
+      try {
+        const rr = await callCrudBackend_({ action: "memberDecision", op: op, mobile: x.mobile });
+        if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हो पाया");
+        state[x.mobile] = op === "approve" ? "approved" : "rejected"; changed = true;
+      } catch (e) { alert("❌ " + (e.message || e)); }
+      draw();
+    };
+    const card = x => {
+      const d = document.createElement("div"); d.style.cssText = "border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin:8px 0;background:#fff";
+      const st = state[x.mobile];
+      let h = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between"><div><b style="font-size:15px">' + esc(x.display || x.name) + '</b><div style="color:#475569;font-size:13px">📱 ' + esc(x.mobile) + (x.date ? ' · 🗓️ ' + esc(x.date) : "") + '</div></div>' +
+        (st === "approved" ? '<span style="color:#15803d;font-weight:700">✅ स्वीकृत</span>' : st === "rejected" ? '<span style="color:#b91c1c;font-weight:700">❌ अस्वीकृत</span>' : "") + '</div>';
+      if (x.dup && !st) h += '<div style="margin-top:4px;font-size:12.5px;color:#b45309;font-weight:600">⚠️ यह मोबाइल पहले से सदस्य सूची में है — दोहरा आवेदन हो सकता है</div>';
+      if (editing[x.mobile] && !st) {
+        h += '<div class="ef" style="margin-top:8px">' + F.map(f => '<label style="display:block;font-size:12px;color:#475569;margin:6px 0 2px">' + f[1] + '</label><input type="text" data-k="' + f[0] + '" value="' + esc(x[f[0]] || "") + '" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">').join("") + '</div>';
+      } else {
+        h += '<div style="margin-top:6px;font-size:13.5px;line-height:1.6">' + [["गोत्र", x.gotra], ["मूल", x.origin], ["शहर", [x.city, x.district].filter(Boolean).join(", ")], ["पता", x.address], ["व्यवसाय", x.occupation]].filter(p => p[1]).map(p => '<span style="color:#64748b">' + p[0] + ':</span> ' + esc(p[1])).join("<br>") + '</div>';
+      }
+      d.innerHTML = h;
+      const bar = document.createElement("div"); bar.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"; d.appendChild(bar);
+      const add = (txt, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.style.cssText = btnS + "background:" + bg; b.textContent = txt; b.onclick = () => fn(b); bar.appendChild(b); return b; };
+      if (!st && editing[x.mobile]) {
+        add("💾 सुधार सेव", "#0369a1", async b => {
+          const fields = {}; d.querySelectorAll(".ef input").forEach(i => fields[i.dataset.k] = i.value.trim());
+          if (!fields.name) { alert("नाम खाली नहीं हो सकता।"); return; }
+          b.disabled = true;
+          try { const rr = await callCrudBackend_({ action: "memberDecision", op: "fix", mobile: x.mobile, fields: fields }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); Object.assign(x, fields); editing[x.mobile] = false; changed = true; }
+          catch (e) { alert("❌ " + (e.message || e)); }
+          draw();
+        });
+        add("रद्द", "#64748b", () => { editing[x.mobile] = false; draw(); });
+      } else if (!st) {
+        add("✅ मंज़ूर", "#16a34a", b => act(x, "approve", b));
+        add("✏️ सुधार", "#0369a1", () => { editing[x.mobile] = true; draw(); });
+        add("❌ अस्वीकार", "#b91c1c", b => act(x, "reject", b));
+      } else if (st === "approved") {
+        const msg = welcomeMsg_(x.name);
+        add("💬 स्वागत संदेश भेजें", "#25a244", () => { if (!msg) { alert("Templates में “Members: 🌸 नए सदस्य का स्वागत” संदेश नहीं मिला।"); return; } window.open(buildWaUrl_(x.mobile, msg), "_blank"); try { window.logSend_("Members", "नए सदस्य का स्वागत", x.name, x.mobile, msg); } catch (e) {} });
+        if (msg) { add("📋 कॉपी", "#0369a1", b => copyText_(msg, b)); const pv = document.createElement("div"); pv.className = "notranslate"; pv.setAttribute("translate", "no"); pv.style.cssText = "width:100%;white-space:pre-wrap;font-size:12.5px;color:#334155;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px;max-height:130px;overflow:auto"; pv.textContent = msg; bar.appendChild(pv); }
+        else { const w = document.createElement("div"); w.style.cssText = "font-size:12.5px;color:#b45309"; w.textContent = "ℹ️ Templates में “Members: 🌸 नए सदस्य का स्वागत” नहीं मिला"; bar.appendChild(w); }
+      }
+      return d;
+    };
+    const draw = () => {
+      const pend = rows.filter(x => !state[x.mobile]).length;
+      m.body.innerHTML = rows.length ? '<div style="font-size:12.5px;color:#475569;margin-bottom:4px">कुल आवेदन: <b>' + rows.length + '</b> · बाकी: <b>' + pend + '</b> — जाँचकर ✅ मंज़ूर, ✏️ सुधार या ❌ अस्वीकार करें।</div>' : '<div style="padding:18px;text-align:center;color:#15803d;font-weight:700">🎉 कोई नया आवेदन बाकी नहीं है।</div>';
+      rows.forEach(x => m.body.appendChild(card(x)));
+    };
+    draw();
+  };
+  /* ===== v1.311: adhuri jaankari wale sadasyon ko WhatsApp sandesh ===== */
+  window.openIncomplete_ = async function () {
+    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { alert("Members लोड नहीं हो पाए।"); return; }
+    if (!mem.length) { alert("Members में डेटा नहीं है।"); return; }
+    const kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i);
+    const FIELDS = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
+      ["address", "पता", /address|पता/i, 0], ["occ", "व्यवसाय / फर्म", /occupation|business|firm|profession|व्यवसाय/i, 1], ["birth", "जन्मदिन", /birth|dob|जन्म/i, 0], ["ann", "विवाह वर्षगांठ", /anniversary|वर्षगांठ|marriage|विवाह|शादी/i, 0]]
+      .map(f => ({ id: f[0], label: f[1], key: keyOf(mem, f[2]), on: !!f[3] })).filter(f => f.key);
+    if (!FIELDS.length) { alert("Members sheet में जाँचने लायक columns नहीं मिले।"); return; }
+    const nm = r => String(r[kD] || r[kN] || "").replace(/\s*\([^)]*\)\s*$/, "").trim() || "सदस्य";
+    const empty = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v));
+    const DEFAULT_MSG = "🙏 नमस्कार {{Name}},\n\nसमाज के रिकॉर्ड में आपकी कुछ जानकारी अधूरी है:\n{{Missing}}\n\nकृपया यह जानकारी इसी चैट में भेज दें, ताकि रिकॉर्ड पूरा हो सके।\n\n🙏 धन्यवाद\n\nश्री मेवाड़ प्रजापत समाज, वापी";
+    const m = openModal_("📝 अधूरी जानकारी — WhatsApp संदेश"), sent = {};
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.body.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-bottom:6px">जिन फ़ील्ड्स की जाँच करनी है उन्हें चुनें:</div>' +
+      '<div id="icF" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px">' + FIELDS.map(f => '<label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" data-f="' + f.id + '"' + (f.on ? " checked" : "") + ' style="width:auto;margin:0"> ' + esc(f.label) + '</label>').join("") + '</div>' +
+      '<div style="font-size:12.5px;color:#475569;margin:6px 0 2px">संदेश (<code>{{Name}}</code> = नाम, <code>{{Missing}}</code> = अधूरी जानकारी की सूची) — बदल सकते हैं:</div>' +
+      '<textarea id="icMsg" rows="7" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px"></textarea>' +
+      '<div id="icCnt" style="margin:10px 0 4px;font-weight:700"></div><div id="icList"></div>';
+    const $ = q => m.body.querySelector(q);
+    $("#icMsg").value = DEFAULT_MSG;
+    const build = x => $("#icMsg").value.replace(/\{\{\s*Name\s*\}\}/g, () => x.name).replace(/\{\{\s*Missing\s*\}\}/g, () => x.miss.map(f => "• " + f.label).join("\n"));
+    const draw = () => {
+      const sel = FIELDS.filter(f => $('[data-f="' + f.id + '"]').checked), rows = [], noMob = [];
+      mem.forEach(r => {
+        if (kS && /pending|inactive|reject/i.test(String(r[kS] || ""))) return;   // sirf manzoor sadasya
+        if (empty(r[kD]) && empty(r[kN])) return;
+        const miss = sel.filter(f => empty(r[f.key]));
+        if (!miss.length) return;
+        const mob = String(kM ? r[kM] : "").replace(/\D/g, "").slice(-10), x = { name: nm(r), miss: miss, mob: mob };
+        (mob.length === 10 ? rows : noMob).push(x);
+      });
+      rows.sort((p, q) => p.name.localeCompare(q.name, "hi"));
+      $("#icCnt").textContent = sel.length ? (rows.length + " सदस्य की जानकारी अधूरी") : "कम से कम एक फ़ील्ड चुनें";
+      const host = $("#icList"); host.innerHTML = "";
+      rows.forEach((x, i) => {
+        const d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0";
+        d.innerHTML = '<div style="min-width:0"><b>' + (i + 1) + ". " + esc(x.name) + '</b> <span style="color:#64748b;font-size:12.5px">📱 ' + esc(x.mob) + '</span><div style="font-size:12.5px;color:#b45309;margin-top:2px">❌ ' + x.miss.map(f => esc(f.label)).join(" · ") + '</div></div>';
+        const b = document.createElement("button"); b.type = "button"; b.style.cssText = "flex:none;width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:" + (sent[x.mob] ? "#64748b" : "#25a244");
+        b.textContent = sent[x.mob] ? "✔ भेजा · फिर भेजें" : "💬 भेजें";
+        b.onclick = () => {
+          const msg = build(x); window.open(buildWaUrl_(x.mob, msg), "_blank");
+          try { window.logSend_("Members", "जानकारी अधूरी", x.name, x.mob, msg); } catch (e) {}
+          sent[x.mob] = 1; b.style.background = "#64748b"; b.textContent = "✔ भेजा · फिर भेजें";
+        };
+        d.appendChild(b); host.appendChild(d);
+      });
+      if (noMob.length) host.insertAdjacentHTML("beforeend", '<div style="margin-top:10px;font-size:12.5px;color:#b45309">⚠️ ' + noMob.length + ' सदस्यों का मोबाइल नहीं है, इसलिए संदेश नहीं जा सकता: ' + esc(noMob.slice(0, 10).map(x => x.name).join(", ")) + (noMob.length > 10 ? " …" : "") + '</div>');
+      if (sel.length && !rows.length && !noMob.length) host.innerHTML = '<div style="padding:16px;text-align:center;color:#15803d;font-weight:700">🎉 चुने हुए फ़ील्ड्स में कोई जानकारी अधूरी नहीं है।</div>';
+    };
+    m.body.querySelectorAll("#icF input").forEach(c => c.onchange = draw);
+    draw();
+  };
+  /* ===== v1.313: मेरी जानकारी + मेरा कार्ड, डेटा सफ़ाई, वार्षिक रिपोर्ट ===== */
+  const SAMAJ_NAME_ = "श्री मेवाड़ प्रजापत समाज, वापी";
+  const CARD_FONT_ = '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+  const hasDev_ = s => /[\u0900-\u097F]/.test(String(s || ""));
+  const stripPlace_ = s => String(s || "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const loadImg_ = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+  function rrect_(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function fitText_(g, txt, x, y, maxW, size, weight, color) {
+    let s = size; g.fillStyle = color; g.textBaseline = "alphabetic";
+    do { g.font = weight + " " + s + "px " + CARD_FONT_; s -= 2; } while (g.measureText(txt).width > maxW && s > 14);
+    g.fillText(txt, x, y);
+  }
+  async function makeCard_(P) {
+    const W = 1000, H = 600, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    const grd = g.createLinearGradient(0, 0, W, H); grd.addColorStop(0, "#7c2d12"); grd.addColorStop(1, "#c2410c");
+    rrect_(g, 0, 0, W, H, 34); g.fillStyle = grd; g.fill();
+    g.save(); rrect_(g, 0, 0, W, H, 34); g.clip();
+    g.fillStyle = "#fff7ed"; g.fillRect(0, 0, W, 130); g.fillStyle = "#fbbf24"; g.fillRect(0, 130, W, 8); g.restore();
+    const logo = await loadImg_(new URL("Logo-192.png", location.href).href);
+    if (logo) g.drawImage(logo, 28, 14, 102, 102);
+    fitText_(g, SAMAJ_NAME_, 150, 66, W - 180, 44, "700", "#7c2d12");
+    fitText_(g, "सदस्य पहचान पत्र", 150, 108, W - 180, 30, "600", "#b45309");
+    fitText_(g, P.name || "", 50, 220, 610, 58, "700", "#ffffff");
+    const lines = [["सदस्य क्रमांक", P.id], ["मोबाइल", P.mobile], ["गोत्र", P.gotra], ["मूल गाँव", P.origin], ["वर्तमान शहर", P.city]].filter(x => String(x[1] || "").trim());
+    lines.forEach((x, i) => fitText_(g, x[0] + ":  " + x[1], 50, 290 + i * 56, 600, 34, "500", "#ffedd5"));
+    rrect_(g, 690, 190, 270, 270, 20); g.fillStyle = "#fff"; g.fill();
+    let ok = false;
+    try {
+      if (window.QRCode) {
+        const holder = document.createElement("div"); holder.style.cssText = "position:fixed;left:-9999px;top:0";
+        document.body.appendChild(holder);
+        new QRCode(holder, { text: SAMAJ_NAME_ + " | " + (P.id || "") + " | " + (P.mobile || ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        await new Promise(r => setTimeout(r, 80));
+        const src = holder.querySelector("canvas") || holder.querySelector("img");
+        if (src) { g.drawImage(src, 705, 205, 240, 240); ok = true; }
+        holder.remove();
+      }
+    } catch (e) { console.error("card QR", e); }
+    if (!ok) fitText_(g, "QR उपलब्ध नहीं", 715, 330, 230, 26, "500", "#64748b");
+    fitText_(g, "पहचान के लिए स्कैन करें", 690, 500, 270, 24, "500", "#ffedd5");
+    fitText_(g, "यह कार्ड सदस्यता का प्रमाण नहीं, केवल पहचान हेतु है", 50, 565, W - 100, 22, "400", "#fed7aa");
+    return cv;
+  }
+  function showCard_(P) {
+    const m = openModal_("🪪 मेरा कार्ड"); m.body.innerHTML = '<p class="muted">⏳ कार्ड बन रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    makeCard_(P).then(cv => {
+      m.body.innerHTML = ""; cv.style.cssText = "width:100%;height:auto;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)"; m.body.appendChild(cv);
+      const safe = String(P.id || "member").replace(/\W+/g, "_");
+      m.foot.insertBefore(modalBtn_("⬇️ डाउनलोड (PNG)", "#15803d", () => { const l = document.createElement("a"); l.href = cv.toDataURL("image/png"); l.download = "SMPS_card_" + safe + ".png"; document.body.appendChild(l); l.click(); l.remove(); }), m.foot.firstChild);
+      m.foot.insertBefore(modalBtn_("📤 शेयर", "#25a244", () => {
+        cv.toBlob(b => {
+          const f = new File([b], "SMPS_card_" + safe + ".png", { type: "image/png" });
+          if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], text: SAMAJ_NAME_ }).catch(() => {});
+          else alert("इस ब्राउज़र में सीधा शेयर नहीं हो सकता — कृपया ⬇️ डाउनलोड करके WhatsApp में भेजें।");
+        }, "image/png");
+      }), m.foot.firstChild);
+    }).catch(e => { m.body.innerHTML = "<p>❌ कार्ड नहीं बन पाया: " + esc(e.message || e) + "</p>"; });
+  }
+  window.openMyProfile_ = async function () {
+    const m = openModal_("👤 मेरी जानकारी"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "myProfile" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ" };
+    const keys = (r.has || []).filter(k => L[k]), isD = k => k === "birthday" || k === "anniversary", full = v => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v);
+    const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
+    m.body.innerHTML = '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.6;margin-bottom:8px"><b>' + esc(stripPlace_(r.label) || r.name) + '</b><br>📱 ' + esc(r.mobile) + (r.memberId ? " · 🆔 " + esc(r.memberId) : "") + '</div>' +
+      '<div style="font-size:12.5px;color:#475569;margin-bottom:4px">अधूरी जानकारी <b>⚠️</b> से दिखाई गई है — भरकर सेव करें।</div>' +
+      keys.map(k => { const v = r.fields[k] || "", asDate = isD(k) && (!v || full(v));
+        return '<label style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px">' + (v ? "" : "⚠️ ") + L[k] + '</label>' + (asDate ? '<input type="date" data-k="' + k + '" value="' + esc(ddmmyyyyToISO_(v)) + '" ' + sty + '>' : '<input type="text" data-k="' + k + '" value="' + esc(v) + '"' + (isD(k) ? ' placeholder="दिन/महीना/साल (जैसे 05/04/1987)"' : "") + " " + sty + ">"); }).join("");
+    const read = () => { const f = {}; m.body.querySelectorAll("input[data-k]").forEach(i => { f[i.dataset.k] = i.type === "date" ? isoToDDMMYYYY_(i.value) : i.value.trim(); }); return f; };
+    const save = modalBtn_("💾 सेव करें", "#0369a1", async () => {
+      save.disabled = true; save.textContent = "Saving...";
+      try { const rr = await callCrudBackend_({ action: "updateMyProfile", fields: read() }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); try { delete CACHE["Members"]; } catch (e) {} alert("✅ " + (rr.msg || "सेव हो गया")); }
+      catch (e) { alert("❌ " + (e.message || e)); }
+      save.disabled = false; save.textContent = "💾 सेव करें";
+    });
+    m.foot.insertBefore(save, m.foot.firstChild);
+    m.foot.insertBefore(modalBtn_("🪪 मेरा कार्ड", "#b45309", () => { const f = read(); showCard_({ name: stripPlace_(r.label) || r.name, id: r.memberId, mobile: r.mobile, gotra: f.gotra, origin: f.origin, city: f.city }); }), m.foot.children[1] || null);
+  };
+
+  /* ---------- 🧹 डेटा सफ़ाई (Admin) ---------- */
+  window.openDataClean_ = async function () {
+    const m = openModal_("🧹 डेटा सफ़ाई — Members"); m.body.innerHTML = '<p class="muted">⏳ जाँच हो रही है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => { m.close(); if (changed) { try { delete CACHE["Members"]; if (currentTab === "Members") loadTab("Members", true); } catch (e) {} } }));
+    let changed = false, mem; try { mem = (await fetchSheet("Members", true)) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    if (!mem.length) { m.body.innerHTML = "<p>Members में डेटा नहीं है।</p>"; return; }
+    const kI = keyOf(mem, /^(member ?id|id)$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kS = keyOf(mem, /^status$/i), kO = keyOf(mem, /occupation|व्यवसाय/i);
+    if (!kI || !kN) { m.body.innerHTML = "<p>❌ MemberID / Name column नहीं मिले।</p>"; return; }
+    const blank = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v)), dig = v => String(v || "").replace(/\D/g, "").slice(-10);
+    const st = r => String(kS ? r[kS] || "" : ""), rej = r => /reject/i.test(st(r));
+    const rows = mem.filter(r => !rej(r));
+    const dupMap = {}; rows.forEach(r => { const d = dig(kM && r[kM]); if (d.length === 10) (dupMap[d] = dupMap[d] || []).push(r); });
+    const dups = Object.keys(dupMap).filter(k => dupMap[k].length > 1);
+    const blanks = rows.filter(r => blank(r[kN]));
+    const noMob = rows.filter(r => !blank(r[kN]) && dig(kM && r[kM]).length !== 10);
+    const eng = rows.filter(r => !blank(r[kN]) && String(r[kI] || "").trim() && !hasDev_(kD ? r[kD] : ""));
+    const nm = r => String((kD && r[kD]) || r[kN] || "").trim() || "(बिना नाम)";
+    const sec = (title, n, body) => '<div style="margin:12px 0 4px;font-weight:700">' + title + ' <span style="color:' + (n ? "#b45309" : "#15803d") + '">' + (n ? "(" + n + ")" : "✅ ठीक है") + "</span></div>" + (n ? body : "");
+    const rowBox = (html, id) => '<div data-r="' + esc(id) + '" style="display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px;margin:5px 0;font-size:13px"><div style="min-width:0">' + html + "</div><span data-a></span></div>";
+    const draw = () => {
+      m.body.innerHTML =
+        sec("🔁 एक ही मोबाइल कई बार", dups.length, dups.map(k => rowBox("📱 <b>" + esc(k) + "</b><br>" + dupMap[k].map(r => esc(r[kI] || "?") + " · " + esc(nm(r)) + " · " + esc(st(r) || "-")).join("<br>"), "d" + k)).join("")) +
+        sec("🕳️ बिना नाम की अधूरी rows", blanks.length, blanks.map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · 📱 " + esc(dig(kM && r[kM])) + " · " + esc(st(r) || "-") + (kO && r[kO] ? "<br>" + esc(r[kO]) : ""), "b" + r[kI])).join("")) +
+        sec("📵 मोबाइल नहीं / गलत", noMob.length, noMob.slice(0, 40).map(r => rowBox("<b>" + esc(r[kI] || "?") + "</b> · " + esc(nm(r)), "n" + r[kI])).join("")) +
+        sec("🔤 Member नाम Hindi में नहीं", eng.length, (eng.length ? '<div style="margin:4px 0"><button type="button" id="dcAll" style="width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;background:#0369a1">🔤 सबका Hindi नाम बनाएँ</button> <span id="dcProg" style="font-size:12.5px;color:#475569"></span></div>' : "") + eng.slice(0, 80).map(r => rowBox(esc(r[kI]) + " · " + esc(nm(r)), "e" + r[kI])).join("") + (eng.length > 80 ? '<div style="font-size:12.5px;color:#64748b">… और ' + (eng.length - 80) + "</div>" : ""));
+      blanks.forEach(r => { const host = m.body.querySelector('[data-r="' + CSS.escape("b" + r[kI]) + '"] [data-a]'); if (!host || !String(r[kI] || "").trim()) return;
+        const b = document.createElement("button"); b.type = "button"; b.textContent = "🗑️ हटाएँ"; b.style.cssText = "width:auto;border:0;border-radius:9px;padding:6px 10px;font-weight:700;cursor:pointer;color:#fff;background:#b91c1c";
+        b.onclick = async () => { if (!confirm(String(r[kI]) + " को Members sheet से हमेशा के लिए हटाएँ?")) return; b.disabled = true;
+          try { const rr = await callCrudBackend_({ action: "deleteRow", sheetName: "Members", idColumn: kI, id: r[kI] }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "हट नहीं पाया"); blanks.splice(blanks.indexOf(r), 1); changed = true; draw(); } catch (e) { alert("❌ " + (e.message || e)); b.disabled = false; } };
+        host.appendChild(b); });
+      const all = m.body.querySelector("#dcAll");
+      if (all) all.onclick = async () => {
+        all.disabled = true; const ids = eng.map(r => String(r[kI]).trim()), prog = m.body.querySelector("#dcProg"); let done = 0, fixed = 0;
+        try {
+          for (let i = 0; i < ids.length; i += 12) {
+            const rr = await callCrudBackend_({ action: "memberTools", op: "hindiFix", ids: ids.slice(i, i + 12) });
+            if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हो पाया");
+            Object.keys(rr.updated || {}).forEach(id => { const row = eng.find(x => String(x[kI]).trim() === id); if (row && kD) row[kD] = rr.updated[id]; fixed++; });
+            done = Math.min(ids.length, i + 12); prog.textContent = done + " / " + ids.length + " जाँचे · " + fixed + " बने";
+          }
+          changed = true; alert("✅ " + fixed + " सदस्यों का Hindi नाम बन गया" + (fixed < ids.length ? "\n(" + (ids.length - fixed) + " का नहीं बन पाया — उन्हें ✏️ Edit से खुद लिखें)" : ""));
+          for (let j = eng.length - 1; j >= 0; j--) if (hasDev_(kD ? eng[j][kD] : "")) eng.splice(j, 1);
+          draw();
+        } catch (e) { alert("❌ " + (e.message || e)); all.disabled = false; }
+      };
+    };
+    draw();
+  };
+
+  /* ---------- 📑 वार्षिक रिपोर्ट (वित्त वर्ष, पूरा समाज) ---------- */
+  window.openAnnualReport_ = async function () {
+    const m = openModal_("📑 वार्षिक रिपोर्ट"); m.body.innerHTML = '<p class="muted">⏳ डेटा जुट रहा है...</p>';
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    const get = async n => { try { return (await fetchSheet(n)) || []; } catch (e) { return []; } };
+    const [rc, ex, bo, dn, mt, mem] = await Promise.all(["Receipts", "Expenses", "Boli", "Donation", "Meetings", "Members"].map(get));
+    const fy = d => (d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1), lbl = y => y + "-" + String((y + 1) % 100).padStart(2, "0");
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => Number(n).toLocaleString("en-IN");
+    const dKey = rows => keyOf(rows, /^(date|तारीख|दिनांक)/i), aKey = (rows, pref) => { if (!rows.length) return null; const ks = Object.keys(rows[0]), ok = k => !/balance|शेष|mode|method|type|ref|id$/i.test(k.trim()); return ks.find(k => pref.test(k.trim()) && ok(k)) || ks.find(k => /^(credit|debit|received|payment|amount|जमा|खर्च|नामे|राशि)/i.test(k.trim()) && ok(k)) || null; };
+    const pKey = (rows, re) => rows.length ? Object.keys(rows[0]).find(k => re.test(k.trim())) : null;
+    const fKey = rows => keyOf(rows, /^(for|purpose|उद्देश्य|head|category)$/i);
+    const S = {
+      rc: { rows: rc, d: dKey(rc), a: aKey(rc, /^(received|amount|credit|जमा|राशि)/i), f: fKey(rc) }, ex: { rows: ex, d: dKey(ex), a: aKey(ex, /^(payment|paid|amount|debit|expense|खर्च|नामे|राशि)/i), f: fKey(ex) },
+      bo: { rows: bo, d: dKey(bo), p: pKey(bo, /^pledged/i), a: pKey(bo, /^paid/i) }, dn: { rows: dn, d: dKey(dn), p: pKey(dn, /^pledged/i), a: pKey(dn, /^paid/i) }
+    };
+    const years = new Set(); [S.rc, S.ex, S.bo, S.dn].forEach(s => s.rows.forEach(r => { const d = s.d ? dt_(r[s.d]) : null; if (d) years.add(fy(d)); }));
+    if (!years.size) { m.body.innerHTML = "<p>❌ Receipts / Expenses में तारीख वाला डेटा नहीं मिला।</p>"; return; }
+    const ys = [...years].sort((x, y) => y - x), cur = fy(new Date());
+    m.body.innerHTML = '<label style="font-size:12.5px;color:#475569">वित्त वर्ष (अप्रैल–मार्च)</label><select id="arY" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">' + ys.map(y => '<option value="' + y + '">' + lbl(y) + "</option>").join("") + '</select>' +
+      '<div id="arS" style="margin-top:10px;padding:10px;background:#f1f5f9;border-radius:10px;font-size:13.5px;line-height:1.8"></div>' +
+      '<div style="font-size:12px;color:#64748b;margin-top:6px">बोली / दान के आँकड़े उन प्रविष्टियों के हैं जिनकी तारीख इस वित्त वर्ष में है।</div>';
+    const sel = m.body.querySelector("#arY"); sel.value = String(ys.includes(cur) ? cur : ys[0]);
+    const inFY = (s, r, y) => { const d = s.d ? dt_(r[s.d]) : null; return d && fy(d) === y; };
+    const group = (s, list) => { const g = {}; list.forEach(r => { const k = (s.f ? String(r[s.f] || "").trim() : "") || "(बिना उद्देश्य)"; g[k] = (g[k] || 0) + num(r[s.a]); }); return Object.keys(g).map(k => [k, g[k]]).sort((x, y) => y[1] - x[1]); };
+    const compute = y => {
+      const R = S.rc.a ? S.rc.rows.filter(r => inFY(S.rc, r, y)) : [], E = S.ex.a ? S.ex.rows.filter(r => inFY(S.ex, r, y)) : [];
+      const sumP = (s, re) => { const L = s.rows.filter(r => inFY(s, r, y)); return { n: L.length, p: s.p ? L.reduce((t, r) => t + num(r[s.p]), 0) : 0, a: s.a ? L.reduce((t, r) => t + num(r[s.a]), 0) : 0 }; };
+      const kS = keyOf(mem, /^status$/i), kJ = keyOf(mem, /^(joined|joining|date)/i);
+      const active = mem.filter(r => !(kS && /pending|inactive|reject/i.test(String(r[kS] || "")))).length;
+      const newM = kJ ? mem.filter(r => { const d = dt_(r[kJ]); return d && fy(d) === y && !(kS && /pending|reject/i.test(String(r[kS] || ""))); }).length : 0;
+      const kd = dKey(mt), M = kd ? mt.filter(r => { const d = dt_(r[kd]); return d && fy(d) === y; }) : [];
+      const att = M.map(r => String(r.Attendance || "").split(/[,\n;]+/).map(x => x.trim()).filter(Boolean).length).filter(n => n > 0);
+      return { R, E, rcT: R.reduce((t, r) => t + num(r[S.rc.a]), 0), exT: E.reduce((t, r) => t + num(r[S.ex.a]), 0), bo: sumP(S.bo), dn: sumP(S.dn), active, newM, meets: M.length, avgAtt: att.length ? Math.round(att.reduce((a, b) => a + b, 0) / att.length) : 0, rcG: S.rc.a ? group(S.rc, R) : [], exG: S.ex.a ? group(S.ex, E) : [] };
+    };
     const paint = () => { const c = compute(+sel.value), pend = x => Math.max(0, x.p - x.a); m.body.querySelector("#arS").innerHTML =
       "<b>वित्त वर्ष / Financial Year " + lbl(+sel.value) + "</b><br>" +
       "🧾 कुल आय / Total Income: <b>₹" + inr(c.rcT) + "</b> (" + c.R.length + ")<br>" +
