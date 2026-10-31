@@ -266,6 +266,18 @@ document.addEventListener("DOMContentLoaded", function () {
 .logged-out #loginView {
   display: block;
 }
+
+/* v1.316: Mobile par header ke saare buttons EK hi line mein — lamba text chhupakar chhota label (data-s) dikhate hain */
+@media (max-width: 600px) {
+  .app-header .toolbar-btns { flex-wrap: nowrap !important; gap: 3px !important; width: 100%; }
+  .toolbar-btns > button[data-s] { font-size: 0 !important; padding: 0 5px !important; flex: 0 1 auto; min-width: 0; }
+  .toolbar-btns > button[data-s]::after { content: attr(data-s); font-size: 11px; line-height: 1; white-space: nowrap; }
+  .toolbar-btns > button[data-s]:disabled::after { opacity: .6; }
+  #myProfBtn[data-s], #myAcctBtn[data-s] { flex: 1 1 auto; }
+  #refreshBtn[data-s], #logoutBtn[data-s], #shareCardBtn[data-s] { min-width: 30px; }
+  .toolbar-btns > #excelMenuWrapper { flex: 1 1 auto !important; min-width: 0; }
+  #exportExcelBtn, #exportPDFBtn { white-space: nowrap; }
+}
 </style>
 
 </head>
@@ -1574,7 +1586,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.315"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.317"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -1757,6 +1769,7 @@ table[data-tab="News"] td.act-cell, table[data-tab="Notices"] td.act-cell { whit
 .ar-bar i { display: block; height: 100%; background: #0b63d6; }
 .wi { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid #e8eef9; }
 .wi-i { font-size: 24px; } .wi-t { flex: 1; min-width: 0; } .wi-t small { display: block; color: #64748b; font-size: 12.5px; }
+.wi-c { width: auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 7px 9px; font-size: 15px; cursor: pointer; }
 .wi-b { width: auto; background: #25a244; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 [data-theme="dark"] .nt-row.nt-shok { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 [data-theme="dark"] .nt-row.nt-shubh { background: #3b2f12; border-color: #6b5420; color: #fde8b0; }
@@ -2147,7 +2160,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
 
   <div class="toolbar-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <button id="refreshBtn" type="button">⟳ Refresh</button>
+    <button id="refreshBtn" data-s="⟳" type="button">⟳ Refresh</button>
 
     <!-- 🆕 "Excel" aur "All Tabs Excel" ab EK hi button mein — click karte hi
          chhota sa selection menu khulta hai (kaunsa export chahiye), isse
@@ -2170,10 +2183,10 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       📄 PDF
     </button>
 
-    <button id="shareCardBtn" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
-    <button id="myProfBtn" type="button" onclick="openMyProfile_()" title="मेरी जानकारी — देखें / सुधारें, मेरा कार्ड" style="background:#b45309;color:#fff;border:none">👤 मेरी जानकारी</button>
-    <button id="myAcctBtn" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
-    <button id="logoutBtn">🔙 Logout</button>
+    <button id="shareCardBtn" data-s="🔗" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
+    <button id="myProfBtn" data-s="👤 जानकारी" type="button" onclick="openMyProfile_()" title="मेरी जानकारी — देखें / सुधारें, मेरा कार्ड" style="background:#b45309;color:#fff;border:none">👤 मेरी जानकारी</button>
+    <button id="myAcctBtn" data-s="💳 हिसाब" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
+    <button id="logoutBtn" data-s="🔙">🔙 Logout</button>
   </div>
 
   <!-- 🆕 User info ab desktop par button-row ke SAATH, right side par dikhega -->
@@ -8411,7 +8424,8 @@ if ('serviceWorker' in navigator) {
         return `<div style="margin:8px 10px;border:1px solid ${ty === "birth" ? "#fcd9b6" : "#e9d5ff"};background:${ty === "birth" ? "#fff7ed" : "#faf5ff"};border-radius:10px;padding:8px 10px"><div style="font-size:12.5px;font-weight:700;margin-bottom:4px">👁️ ${ty === "birth" ? "🎂 जन्मदिन" : "💍 वर्षगांठ"} — ऐसा संदेश जाएगा <span style="font-weight:500;color:#64748b">(नमूना: ${esc(first.n)})</span></div><div class="notranslate" translate="no" style="white-space:pre-wrap;word-break:break-word;font-size:13.5px;line-height:1.5;max-height:150px;overflow:auto">${msg ? esc(msg) : "⚠️ Templates sheet में इस प्रकार का संदेश नहीं मिला"}</div></div>`;
       };
       const _pv = pvBox("birth") + pvBox("ann");
-      body.innerHTML = _pv + list.map((x, i) => { const d = new Date(base); d.setDate(d.getDate() + x.o); return `<div class="wi"><span class="wi-i">${x.ty === "birth" ? "🎂" : "💍"}</span><div class="wi-t"><b>${esc(x.n)}</b><small>${x.ty === "birth" ? "जन्मदिन" : "वैवाहिक वर्षगांठ"} · ${x.o === 0 ? "आज" : x.o === 1 ? "कल" : x.o + " दिन बाद"} (${dmy(d)})</small></div>${x.m ? `<button type="button" class="wi-b" data-i="${i}">📤 बधाई भेजें</button>` : `<small style="color:#94a3b8">मोबाइल नहीं</small>`}</div>`; }).join("");
+      body.innerHTML = _pv + list.map((x, i) => { const d = new Date(base); d.setDate(d.getDate() + x.o); return `<div class="wi"><span class="wi-i">${x.ty === "birth" ? "🎂" : "💍"}</span><div class="wi-t"><b>${esc(x.n)}</b><small>${x.ty === "birth" ? "जन्मदिन" : "वैवाहिक वर्षगांठ"} · ${x.o === 0 ? "आज" : x.o === 1 ? "कल" : x.o + " दिन बाद"} (${dmy(d)})</small></div><button type="button" class="wi-c" data-i="${i}" title="बधाई कार्ड बनाएँ">🎴</button>${x.m ? `<button type="button" class="wi-b" data-i="${i}">📤 बधाई भेजें</button>` : `<small style="color:#94a3b8">मोबाइल नहीं</small>`}</div>`; }).join("");
+      body.querySelectorAll(".wi-c").forEach(b => b.onclick = () => { const x = list[+b.dataset.i]; if (window.openCardMaker_) window.openCardMaker_({ type: x.ty, name: x.n }); });
       body.querySelectorAll(".wi-b").forEach(b => b.onclick = () => {
         const x = list[+b.dataset.i], pk = ov.querySelector(x.ty === "birth" ? "#wiB" : "#wiA"), msg = wishMsg_(x.ty, x.n, pk ? +pk.value : 0);
         if (!msg) { alert("Templates sheet में " + (x.ty === "birth" ? "'Birthday' ya 'Birthday: <naam>'" : "'Anniversary: <naam>'") + " संदेश नहीं मिला।"); return; }
@@ -8462,6 +8476,7 @@ if ('serviceWorker' in navigator) {
     mk("incBtn", "📝", "अधूरी जानकारी वाले सदस्यों को संदेश", () => window.openIncomplete_(), "#0f766e").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("cleanBtn", "🧹", "डेटा सफ़ाई (duplicate / अधूरी rows / Hindi नाम)", () => window.openDataClean_(), "#475569").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
+    mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
@@ -9306,6 +9321,94 @@ if ('serviceWorker' in navigator) {
       const w = window.open("", "_blank"); if (!w) { alert("Pop-up रुका हुआ है — browser में इस साइट के लिए pop-up की अनुमति दें।"); return; }
       w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (x) {} }, 600);
     }), m.foot.firstChild);
+  };
+
+  /* ===== v1.317: बधाई कार्ड + श्रद्धांजलि कार्ड (PNG, WhatsApp पर भेजने लायक) ===== */
+  const CARD_TYPES_ = [
+    { id: "birth", label: "🎂 जन्मदिन", emoji: "🎂", emoji2: "🎉", title: "जन्मदिन की हार्दिक बधाई", bg: ["#f97316", "#be185d"], accent: "#fde68a", msg: "आपका जीवन खुशियों, अच्छे स्वास्थ्य और सफलता से भरा रहे। ईश्वर आपको लंबी आयु प्रदान करें।" },
+    { id: "ann", label: "💍 विवाह वर्षगांठ", emoji: "💍", emoji2: "💞", title: "विवाह वर्षगांठ की हार्दिक बधाई", bg: ["#7c3aed", "#db2777"], accent: "#fde68a", msg: "आपका वैवाहिक जीवन प्रेम, सद्भाव और खुशियों से सदा महकता रहे। आपकी जोड़ी सदा बनी रहे।" },
+    { id: "wed", label: "💐 शुभ विवाह", emoji: "💐", emoji2: "👰", title: "शुभ विवाह की हार्दिक बधाई", bg: ["#be123c", "#f59e0b"], accent: "#fff7ed", msg: "नव दांपत्य जीवन के लिए हार्दिक शुभकामनाएँ। आपका नया सफ़र सुख, समृद्धि और प्रेम से भरा रहे।" },
+    { id: "baby", label: "👶 नन्हे मेहमान का स्वागत", emoji: "👶", emoji2: "🍼", title: "घर में नन्हे मेहमान की बधाई", bg: ["#0ea5e9", "#16a34a"], accent: "#fef9c3", msg: "आपके आँगन में आई इस नन्ही खुशी की हार्दिक बधाई। नन्हा मेहमान स्वस्थ और दीर्घायु हो।" },
+    { id: "success", label: "🏆 सफलता / प्रतिभा सम्मान", emoji: "🏆", emoji2: "🎓", title: "सफलता पर हार्दिक बधाई", bg: ["#0f766e", "#1d4ed8"], accent: "#fde68a", msg: "आपकी मेहनत और लगन रंग लाई है। समाज को आप पर गर्व है। आगे भी इसी तरह चमकते रहें।" },
+    { id: "biz", label: "🏪 नया व्यवसाय / दुकान", emoji: "🏪", emoji2: "🪔", title: "नए व्यवसाय की हार्दिक बधाई", bg: ["#b45309", "#15803d"], accent: "#fef9c3", msg: "आपके नए व्यवसाय को दिन दुगुनी, रात चौगुनी तरक्की मिले — यही हमारी शुभकामना है।" },
+    { id: "home", label: "🏡 गृह प्रवेश / नई शुरुआत", emoji: "🏡", emoji2: "🪔", title: "गृह प्रवेश की हार्दिक बधाई", bg: ["#c2410c", "#a16207"], accent: "#fff7ed", msg: "आपके नए घर में सदा सुख, शांति और समृद्धि का वास रहे। आपको नई शुरुआत की बहुत-बहुत बधाई।" },
+    { id: "shraddha", label: "🕯️ श्रद्धांजलि", emoji: "🕯️", emoji2: "🕉️", title: "भावभीनी श्रद्धांजलि", bg: ["#111827", "#374151"], accent: "#e5e7eb", dark: true, msg: "ईश्वर दिवंगत आत्मा को अपने श्रीचरणों में स्थान दें तथा शोक संतप्त परिवार को यह अपार दुःख सहने की शक्ति प्रदान करें।\nॐ शांति शांति शांति" }
+  ];
+  const EMOJI_FONT_ = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  function wrapLines_(g, text, maxW) {
+    const out = [];
+    String(text || "").split(/\n/).forEach(par => { let line = ""; par.split(/\s+/).filter(Boolean).forEach(w => { const t = line ? line + " " + w : w; if (g.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t; }); if (line) out.push(line); });
+    return out;
+  }
+  async function drawGreeting_(S) {
+    const W = 1080, H = 1350, T = S.type, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+    const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, T.bg[0]); gr.addColorStop(1, T.bg[1]); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.fillStyle = "rgba(255,255,255,.07)"; [[120, 140, 230], [990, 260, 170], [920, 1170, 260], [60, 980, 150]].forEach(c => { g.beginPath(); g.arc(c[0], c[1], c[2], 0, Math.PI * 2); g.fill(); });
+    g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4; rrect_(g, 28, 28, W - 56, H - 56, 34); g.stroke();
+    g.textAlign = "center"; g.textBaseline = "alphabetic";
+    g.font = "110px " + EMOJI_FONT_; g.fillStyle = "#fff"; g.fillText(T.emoji, W / 2, 160);
+    g.font = "700 64px " + CARD_FONT_; g.fillStyle = T.accent;
+    wrapLines_(g, T.title, 900).slice(0, 2).forEach((l, i) => g.fillText(l, W / 2, 255 + i * 78));
+    const cx = W / 2, cy = 590, R = 170;
+    g.save(); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.closePath(); g.clip();
+    if (S.photo) { const s = Math.max(2 * R / S.photo.width, 2 * R / S.photo.height), w = S.photo.width * s, h = S.photo.height * s; try { if (T.dark) g.filter = "grayscale(1)"; } catch (e) {} g.drawImage(S.photo, cx - w / 2, cy - h / 2, w, h); }
+    else { g.fillStyle = "rgba(255,255,255,.18)"; g.fillRect(cx - R, cy - R, 2 * R, 2 * R); g.font = "170px " + EMOJI_FONT_; g.fillStyle = "#fff"; g.fillText(T.emoji2, cx, cy + 60); }
+    g.restore();
+    g.lineWidth = 10; g.strokeStyle = T.accent; g.beginPath(); g.arc(cx, cy, R + 6, 0, Math.PI * 2); g.stroke();
+    fitText_(g, S.name || "नाम", W / 2, 862, 940, 76, "700", "#ffffff");
+    if (S.sub) fitText_(g, S.sub, W / 2, 914, 900, 38, "500", T.accent);
+    const boxTop = 955, boxH = S.note ? 200 : 245; g.fillStyle = "rgba(255,255,255,.14)"; rrect_(g, 90, boxTop, W - 180, boxH, 26); g.fill();
+    let fs = 38, lines; for (; fs >= 24; fs -= 2) { g.font = "500 " + fs + "px " + CARD_FONT_; lines = wrapLines_(g, S.msg, W - 260); if (lines.length * (fs * 1.45) <= boxH - 28) break; }
+    g.fillStyle = "#fff"; const lh = fs * 1.45, y0 = boxTop + (boxH - lines.length * lh) / 2 + fs * 1.05; lines.forEach((l, i) => g.fillText(l, W / 2, y0 + i * lh));
+    if (S.note) fitText_(g, S.note, W / 2, 1195, 900, 30, "500", T.accent);
+    const logo = await loadImg_(new URL("Logo-192.png", location.href).href);
+    g.font = "600 30px " + CARD_FONT_; const tw = Math.min(g.measureText(SAMAJ_NAME_).width, 800), tot = (logo ? 64 : 0) + 14 + tw, sx = (W - tot) / 2;
+    if (logo) { g.save(); g.beginPath(); g.arc(sx + 32, 1275, 32, 0, Math.PI * 2); g.closePath(); g.clip(); g.drawImage(logo, sx, 1243, 64, 64); g.restore(); }
+    g.textAlign = "left"; fitText_(g, SAMAJ_NAME_, sx + (logo ? 78 : 0), 1286, 800, 30, "600", "#ffffff");
+    return cv;
+  }
+  window.openCardMaker_ = async function (opts) {
+    opts = opts || {};
+    const m = openModal_("🎴 बधाई / श्रद्धांजलि कार्ड"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"', lab = 'style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px"';
+    m.body.innerHTML = '<label ' + lab + '>कार्ड का प्रकार</label><select id="cmT" ' + sty + '>' + CARD_TYPES_.map(t => '<option value="' + t.id + '">' + esc(t.label) + '</option>').join("") + '</select>' +
+      '<label ' + lab + ' id="cmNL">नाम</label><input id="cmN" list="cmMem" type="text" placeholder="नाम लिखें या सदस्य चुनें" ' + sty + '><datalist id="cmMem"></datalist>' +
+      '<label ' + lab + ' id="cmSL">विवरण (वैकल्पिक)</label><input id="cmS" type="text" ' + sty + '>' +
+      '<label ' + lab + ' id="cmXL">अतिरिक्त पंक्ति (वैकल्पिक)</label><input id="cmX" type="text" ' + sty + '>' +
+      '<label ' + lab + '>संदेश (बदल सकते हैं)</label><textarea id="cmM" rows="4" ' + sty + '></textarea>' +
+      '<label ' + lab + '>फोटो (वैकल्पिक)</label><input id="cmP" type="file" accept="image/*" style="font-size:13px">' +
+      '<div id="cmPv" style="margin-top:12px"></div>';
+    const $ = q => m.body.querySelector(q);
+    let S = { type: CARD_TYPES_[0], photo: null }, cur = null, tok = 0, tmr = null;
+    const setType = id => {
+      S.type = CARD_TYPES_.find(t => t.id === id) || CARD_TYPES_[0]; const sh = S.type.id === "shraddha";
+      $("#cmM").value = S.type.msg;
+      $("#cmNL").textContent = sh ? "दिवंगत का नाम" : "नाम"; $("#cmS").placeholder = sh ? "जैसे: 1950 – 2026" : "जैसे: वापी / 10वीं में 92% / 25वीं वर्षगांठ";
+      $("#cmSL").textContent = sh ? "जन्म – निधन (वैकल्पिक)" : "विवरण (वैकल्पिक)";
+      $("#cmXL").textContent = sh ? "शोक संतप्त परिवार / उठावना – प्रार्थना सभा (वैकल्पिक)" : "अतिरिक्त पंक्ति (वैकल्पिक)"; $("#cmX").placeholder = sh ? "जैसे: उठावना: रविवार, शाम 4 बजे, वापी" : "";
+    };
+    const render = async () => {
+      const my = ++tok; S.name = stripPlace_($("#cmN").value.trim()); S.sub = $("#cmS").value.trim(); S.note = $("#cmX").value.trim(); S.msg = $("#cmM").value.trim() || S.type.msg;
+      let cv; try { cv = await drawGreeting_(S); } catch (e) { $("#cmPv").innerHTML = "<p>❌ कार्ड नहीं बन पाया: " + esc(e.message || e) + "</p>"; return; }
+      if (my !== tok) return; cur = cv; cv.style.cssText = "width:100%;height:auto;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)"; $("#cmPv").replaceChildren(cv);
+    };
+    const later = () => { clearTimeout(tmr); tmr = setTimeout(render, 180); };
+    $("#cmT").onchange = () => { setType($("#cmT").value); render(); };
+    ["#cmN", "#cmS", "#cmX", "#cmM"].forEach(q => $(q).oninput = later);
+    $("#cmP").onchange = e => { const f = e.target.files && e.target.files[0]; if (!f) { S.photo = null; render(); return; } const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { S.photo = im; render(); }; im.src = rd.result; }; rd.readAsDataURL(f); };
+    const fname = () => "SMPS_" + S.type.id + "_" + (S.name || "card").replace(/[^\w\u0900-\u097F]+/g, "_").slice(0, 30) + ".png";
+    m.foot.insertBefore(modalBtn_("⬇️ डाउनलोड", "#15803d", () => { if (!cur) return; const l = document.createElement("a"); l.href = cur.toDataURL("image/png"); l.download = fname(); document.body.appendChild(l); l.click(); l.remove(); }), m.foot.firstChild);
+    m.foot.insertBefore(modalBtn_("📤 शेयर / WhatsApp", "#25a244", () => {
+      if (!cur) return;
+      cur.toBlob(b => { const f = new File([b], fname(), { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], text: S.type.title + (S.name ? " — " + S.name : "") }).catch(() => {}); else alert("इस ब्राउज़र में सीधा शेयर नहीं हो सकता — कृपया ⬇️ डाउनलोड करके WhatsApp में भेजें।"); }, "image/png");
+    }), m.foot.children[1] || null);
+    $("#cmT").value = (CARD_TYPES_.find(t => t.id === opts.type) || CARD_TYPES_[0]).id; setType($("#cmT").value);
+    if (opts.name) $("#cmN").value = stripPlace_(opts.name);
+    render();
+    try {   // सदस्य सूची (नाम चुनने के लिए) — बाद में भर जाती है
+      const mem = (await fetchSheet("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i) || keyOf(mem, /^(name|नाम)$/i), dl = $("#cmMem");
+      if (kD && dl) dl.innerHTML = mem.filter(r => !(kS && /pending|inactive|reject/i.test(String(r[kS] || ""))) && String(r[kD] || "").trim()).map(r => '<option value="' + esc(stripPlace_(r[kD])) + '"></option>').join("");
+    } catch (e) {}
   };
 
   window.refreshPendBadge_ = function () {
