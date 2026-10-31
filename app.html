@@ -267,14 +267,15 @@ document.addEventListener("DOMContentLoaded", function () {
   display: block;
 }
 
-/* v1.321: Table header 2 line (sirf mobile) — Line 2 "toolRow" tabhi banti hai jab tab mein tool buttons hon; header pehle jaisa, 👤 header se hata (table header mein) */
-#toolRow { display: none; gap: 4px; margin: 0 0 6px; }
+/* v1.322: Table header (mobile) — buttons chhote; Line 2 (toolRow) sirf jab 4+ tool buttons hon (jaise Members) */
+#toolRow { display: none; gap: 4px; margin: 0 0 4px; }
 #searchWrapper[style*="display:none"] + #toolRow, #searchWrapper[style*="display: none"] + #toolRow { display: none !important; }
-@media (min-width: 601px) { #profTblBtn { display: none !important; } }
 @media (max-width: 600px) {
   #myProfBtn { display: none !important; }
-  #toolRow > button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 48px !important; padding: 2px 0 !important; font-size: 17px !important; line-height: 1.15 !important; white-space: normal; text-align: center; }
-  #toolRow > button::after { content: attr(data-l); display: block; font-size: 11px; margin-top: 1px; white-space: nowrap; }
+  #searchWrapper #pageSize, #searchWrapper #searchInput, #searchWrapper #addNewBtn, #searchWrapper #dirBtn, #searchWrapper #bulkRemBtn, #searchWrapper #commitFilter, #searchWrapper > button { height: 34px !important; }
+  #searchWrapper #addNewBtn, #searchWrapper #dirBtn, #searchWrapper > button { padding: 0 7px !important; font-size: 14px !important; min-width: 0; }
+  #toolRow > button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 38px !important; padding: 1px 0 !important; font-size: 15px !important; line-height: 1.1 !important; white-space: normal; text-align: center; }
+  #toolRow > button::after { content: attr(data-l); display: block; font-size: 10px; margin-top: 1px; white-space: nowrap; }
 }
 </style>
 
@@ -1584,7 +1585,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.321"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.322"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8476,7 +8477,6 @@ if ('serviceWorker' in navigator) {
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
-    mk("profTblBtn", "👤", "मेरी जानकारी — देखें / सुधारें, मेरा कार्ड", () => window.openMyProfile_(), "#b45309").style.display = "inline-block";
     try { if (window.placeToolRow_) window.placeToolRow_(); } catch (e) {}
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
@@ -8907,6 +8907,7 @@ if ('serviceWorker' in navigator) {
     const m = openModal_("💳 मेरा हिसाब");
     m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.foot.insertBefore(modalBtn_("👤 मेरी जानकारी", "#b45309", () => { m.close(); if (window.openMyProfile_) window.openMyProfile_(); }), m.foot.firstChild);
     let r = null; try { r = await callCrudBackend_({ action: "myAccount" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
     if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "हिसाब नहीं मिल पाया") + '</p>'; return; }
     const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
@@ -9411,16 +9412,16 @@ if ('serviceWorker' in navigator) {
     } catch (e) {}
   };
 
-  /* ===== v1.321: Table header — Line 1 = search; Line 2 (tool buttons) SIRF jis tab mein tools hon; warna 👤 bhi Line 1 mein ===== */
+  /* ===== v1.322: Table header — Line 1 = search; Line 2 (tool buttons) SIRF jab 4+ tool buttons hon; warna sab Line 1 mein ===== */
   const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "wishBtn"];
-  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", wishBtn: "बधाई", profTblBtn: "जानकारी" };
+  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", wishBtn: "बधाई" };
   window.placeToolRow_ = function () {
     const sw = document.getElementById("searchWrapper"), dirBtn = document.getElementById("dirBtn"); if (!sw || !dirBtn || !dirBtn.parentNode) return;
     const mobile = !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches);
-    const prof = document.getElementById("profTblBtn"), tools = SEC_IDS_.map(id => document.getElementById(id)).filter(Boolean), all = tools.concat(prof ? [prof] : []);
+    const tools = SEC_IDS_.map(id => document.getElementById(id)).filter(Boolean), all = tools;
     all.forEach(b => { if (TOOL_LBL_[b.id]) b.dataset.l = TOOL_LBL_[b.id]; });
     let row = document.getElementById("toolRow");
-    if (mobile && tools.some(b => b.style.display !== "none")) {
+    if (mobile && tools.filter(b => b.style.display !== "none").length >= 4) {   // 2 line sirf jab 4+ tool buttons hon (jaise Members)
       if (!row) { row = document.createElement("div"); row.id = "toolRow"; sw.parentNode.insertBefore(row, sw.nextSibling); }
       all.forEach(b => { if (b.parentNode !== row) row.appendChild(b); });
       row.style.display = "flex";
