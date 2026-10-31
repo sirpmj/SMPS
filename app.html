@@ -267,16 +267,14 @@ document.addEventListener("DOMContentLoaded", function () {
   display: block;
 }
 
-/* v1.316: Mobile par header ke saare buttons EK hi line mein — lamba text chhupakar chhota label (data-s) dikhate hain */
+/* v1.321: Table header 2 line (sirf mobile) — Line 2 "toolRow" tabhi banti hai jab tab mein tool buttons hon; header pehle jaisa, 👤 header se hata (table header mein) */
+#toolRow { display: none; gap: 4px; margin: 0 0 6px; }
+#searchWrapper[style*="display:none"] + #toolRow, #searchWrapper[style*="display: none"] + #toolRow { display: none !important; }
+@media (min-width: 601px) { #profTblBtn { display: none !important; } }
 @media (max-width: 600px) {
-  .app-header .toolbar-btns { flex-wrap: nowrap !important; gap: 3px !important; width: 100%; }
-  .toolbar-btns > button[data-s] { font-size: 0 !important; padding: 0 5px !important; flex: 0 1 auto; min-width: 0; }
-  .toolbar-btns > button[data-s]::after { content: attr(data-s); font-size: 11px; line-height: 1; white-space: nowrap; }
-  .toolbar-btns > button[data-s]:disabled::after { opacity: .6; }
-  #myProfBtn[data-s], #myAcctBtn[data-s] { flex: 1 1 auto; }
-  #refreshBtn[data-s], #logoutBtn[data-s], #shareCardBtn[data-s] { min-width: 30px; }
-  .toolbar-btns > #excelMenuWrapper { flex: 1 1 auto !important; min-width: 0; }
-  #exportExcelBtn, #exportPDFBtn { white-space: nowrap; }
+  #myProfBtn { display: none !important; }
+  #toolRow > button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 48px !important; padding: 2px 0 !important; font-size: 17px !important; line-height: 1.15 !important; white-space: normal; text-align: center; }
+  #toolRow > button::after { content: attr(data-l); display: block; font-size: 11px; margin-top: 1px; white-space: nowrap; }
 }
 </style>
 
@@ -1586,7 +1584,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.317"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.321"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2160,7 +2158,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       <div class="app-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
 
   <div class="toolbar-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <button id="refreshBtn" data-s="⟳" type="button">⟳ Refresh</button>
+    <button id="refreshBtn" type="button">⟳ Refresh</button>
 
     <!-- 🆕 "Excel" aur "All Tabs Excel" ab EK hi button mein — click karte hi
          chhota sa selection menu khulta hai (kaunsa export chahiye), isse
@@ -2183,10 +2181,10 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
       📄 PDF
     </button>
 
-    <button id="shareCardBtn" data-s="🔗" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
-    <button id="myProfBtn" data-s="👤 जानकारी" type="button" onclick="openMyProfile_()" title="मेरी जानकारी — देखें / सुधारें, मेरा कार्ड" style="background:#b45309;color:#fff;border:none">👤 मेरी जानकारी</button>
-    <button id="myAcctBtn" data-s="💳 हिसाब" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
-    <button id="logoutBtn" data-s="🔙">🔙 Logout</button>
+    <button id="shareCardBtn" type="button" onclick="window.open('share.html','_blank')" title="WhatsApp लिंक कार्ड बनाएँ (कार्यक्रम / सूचना के लिए अलग नाम-फोटो वाला लिंक)" style="display:none;background:#7c3aed;color:#fff;border:none">🔗 लिंक कार्ड</button>
+    <button id="myProfBtn" type="button" onclick="openMyProfile_()" title="मेरी जानकारी — देखें / सुधारें, मेरा कार्ड" style="background:#b45309;color:#fff;border:none">👤 मेरी जानकारी</button>
+    <button id="myAcctBtn" type="button" onclick="openMyAccount_()" title="मेरा हिसाब — बोली / दान / रसीदें" style="background:#0f766e;color:#fff;border:none">💳 मेरा हिसाब</button>
+    <button id="logoutBtn">🔙 Logout</button>
   </div>
 
   <!-- 🆕 User info ab desktop par button-row ke SAATH, right side par dikhega -->
@@ -8478,6 +8476,8 @@ if ('serviceWorker' in navigator) {
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
+    mk("profTblBtn", "👤", "मेरी जानकारी — देखें / सुधारें, मेरा कार्ड", () => window.openMyProfile_(), "#b45309").style.display = "inline-block";
+    try { if (window.placeToolRow_) window.placeToolRow_(); } catch (e) {}
   }
   if (typeof updateAddNewButton === "function") { const _u = updateAddNewButton; updateAddNewButton = function (n) { const r = _u.apply(this, arguments); try { extraToolbar_(n); } catch (e) {} return r; }; }
 
@@ -9410,6 +9410,26 @@ if ('serviceWorker' in navigator) {
       if (kD && dl) dl.innerHTML = mem.filter(r => !(kS && /pending|inactive|reject/i.test(String(r[kS] || ""))) && String(r[kD] || "").trim()).map(r => '<option value="' + esc(stripPlace_(r[kD])) + '"></option>').join("");
     } catch (e) {}
   };
+
+  /* ===== v1.321: Table header — Line 1 = search; Line 2 (tool buttons) SIRF jis tab mein tools hon; warna 👤 bhi Line 1 mein ===== */
+  const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "wishBtn"];
+  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", wishBtn: "बधाई", profTblBtn: "जानकारी" };
+  window.placeToolRow_ = function () {
+    const sw = document.getElementById("searchWrapper"), dirBtn = document.getElementById("dirBtn"); if (!sw || !dirBtn || !dirBtn.parentNode) return;
+    const mobile = !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches);
+    const prof = document.getElementById("profTblBtn"), tools = SEC_IDS_.map(id => document.getElementById(id)).filter(Boolean), all = tools.concat(prof ? [prof] : []);
+    all.forEach(b => { if (TOOL_LBL_[b.id]) b.dataset.l = TOOL_LBL_[b.id]; });
+    let row = document.getElementById("toolRow");
+    if (mobile && tools.some(b => b.style.display !== "none")) {
+      if (!row) { row = document.createElement("div"); row.id = "toolRow"; sw.parentNode.insertBefore(row, sw.nextSibling); }
+      all.forEach(b => { if (b.parentNode !== row) row.appendChild(b); });
+      row.style.display = "flex";
+    } else {
+      all.forEach(b => { if (b.parentNode !== dirBtn.parentNode) dirBtn.parentNode.insertBefore(b, dirBtn); });
+      if (row) row.style.display = "none";
+    }
+  };
+  try { const mq = window.matchMedia("(max-width: 600px)"), f = () => { try { window.placeToolRow_(); } catch (e) {} }; if (mq.addEventListener) mq.addEventListener("change", f); else if (mq.addListener) mq.addListener(f); } catch (e) {}
 
   window.refreshPendBadge_ = function () {
     const b = document.getElementById("pendMemBtn"); if (!b) return;
