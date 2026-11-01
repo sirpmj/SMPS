@@ -1585,7 +1585,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.322"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.323"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -4010,6 +4010,7 @@ function setActiveTab(name){
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName, forceFresh) {
   if (!sheetName) return;                          // koi tab chuna hi nahi — "No data in" jaisa khaali message nahi
+  const _seq = (window.__loadSeq = (window.__loadSeq || 0) + 1);   // v1.323: sabse naya load hi jeete (purana der se aaya jawab tab nahi badlega)
   try {
     // 🆕 Naye tab ka data aane tak purane tab ka "Add New" button chhupa do —
     // warna loading ke beech click karne par PICHHLE tab ka form khul jaata tha
@@ -4029,7 +4030,11 @@ async function loadTab(sheetName, forceFresh) {
     if (el("pagination")) el("pagination").innerHTML = "";
 
     // 🔹 Fetch sheet data
-    tableData = await fetchSheet(sheetName, forceFresh);
+    const _fetched = await fetchSheet(sheetName, forceFresh);
+    // v1.323: agar is beech user ne doosra tab khol liya (ya naya load shuru ho gaya) to ye purana jawab chhod do —
+    // pehle Fund Ledger ka der se aaya data Members khol dene ke baad bhi uski jagah dikh jata tha
+    if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
+    tableData = _fetched;
 
     // 🔹 Safety check
     if (!Array.isArray(tableData)) {
@@ -4110,6 +4115,7 @@ async function loadTab(sheetName, forceFresh) {
 
   } catch (e) {
     console.error("loadTab error:", e);
+    if (_seq !== window.__loadSeq) return;   // v1.323: purane load ki error naye tab ke upar na dikhe
     el("contentArea").innerHTML =
       "<div class='muted'>Error loading data</div>";
   }
