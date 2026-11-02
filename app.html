@@ -310,11 +310,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
 /* v1.326: card mein naam ke neeche saare action buttons EK hi line mein */
 .mc-a { margin-top: 8px; }
-.mc-a .abtns.ab-flex { display: flex !important; flex-wrap: nowrap !important; gap: 4px; min-width: 0 !important; width: 100%; }
+.mc-a .abtns.ab-flex { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: stretch !important; justify-content: stretch !important; gap: 4px; min-width: 0 !important; max-width: none !important; width: 100%; }
 .mc-a .ab-row { display: contents !important; }
 .mc-a .ab-btn { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 34px !important; padding: 0 2px !important; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; font-size: 14px; line-height: 1; overflow: hidden; white-space: nowrap; border-radius: 8px; box-sizing: border-box; }
 .mc-a .ab-btn svg { max-height: 16px; width: auto; }
 .mc-a .ab-btn span { margin-left: 3px; font-size: 10.5px; }
+.mc-a .ab-btn.ab-lbl { flex: 1.7 1 0 !important; }
 </style>
 
 </head>
@@ -1623,7 +1624,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.326"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.327"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -9548,6 +9549,7 @@ if ('serviceWorker' in navigator) {
       const d = document.createElement("div"); d.className = "mc" + bday; d.dataset.i = i;
       d.innerHTML = "<div class=\"mc-h\"><b>" + esc(name) + "</b><span>" + esc(idK ? r[idK] : "") + "</span></div>" + (sub ? "<div class=\"mc-s\">" + esc(sub) + "</div>" : "") + (occ ? "<div class=\"mc-s\">" + esc(occ) + "</div>" : "") +
         (line ? "<div class=\"mc-a\">" + line + "</div>" : "");
+      d.querySelectorAll(".mc-a .ab-btn span").forEach(sp => { if (sp.parentNode) sp.parentNode.classList.add("ab-lbl"); });   // naam wale button (खाता) ko thoda chauda hissa
       list.appendChild(d);
     });
     list.onclick = ev => { if (ev.target.closest("a,button")) return; const c = ev.target.closest(".mc"); if (c && rows[+c.dataset.i]) window.openCardDetail_(rows[+c.dataset.i]); };
