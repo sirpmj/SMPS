@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
 <title>WhatsApp लिंक कार्ड बनाएँ — श्री मेवाड़ प्रजापत समाज</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:"Mukta","Noto Sans Devanagari","Segoe UI",system-ui,sans-serif;background:#eef3fb;color:#0f172a}
@@ -63,6 +66,11 @@ small{color:#64748b}
     <label class="opt"><input type="radio" name="m" value="photo"> अपनी फोटो / पोस्टर लगाएँ</label>
     <div id="pbox" style="display:none">
       <input type="file" id="f" accept="image/*">
+      <div id="padj" style="display:none;margin-top:6px">
+        <label>फोटो adjust करें — नीचे कार्ड पर उँगली / माउस से खींचकर सरकाएँ, दो उँगली से छोटा-बड़ा करें</label>
+        <input type="range" id="pz" min="0.3" max="4" step="0.02" value="1" style="width:100%">
+        <div class="btns"><button type="button" class="o" id="prot">⟲ घुमाएँ</button><button type="button" class="o" id="pfit">↔ पूरी फोटो दिखाएँ</button><button type="button" class="o" id="prst">↺ रीसेट</button></div>
+      </div>
       <label class="opt"><input type="checkbox" id="bar" checked> नीचे शीर्षक की पट्टी लगाएँ</label>
     </div>
   </div>
@@ -141,12 +149,28 @@ function dLayout(txt, maxW, y0, yMax) {
   }
   return pick;
 }
+var pz = { zoom: 1, ox: 0, oy: 0, rot: 0, fit: false };
+function pzDims() {
+  var r90 = pz.rot % 2, rw = r90 ? photo.height : photo.width, rh = r90 ? photo.width : photo.height;
+  var base = pz.fit ? Math.min(1200 / rw, 630 / rh) : Math.max(1200 / rw, 630 / rh);
+  return { rw: rw, rh: rh, sc: base * pz.zoom };
+}
+function pzClamp() {
+  if (!photo) return; var d = pzDims(), mx = d.sc * d.rw / 2 + 600 - 80, my = d.sc * d.rh / 2 + 315 - 60;
+  pz.ox = Math.max(-mx, Math.min(mx, pz.ox)); pz.oy = Math.max(-my, Math.min(my, pz.oy));
+}
+function drawPhotoAdj() {
+  var d = pzDims();
+  if (pz.fit || d.sc * d.rw < 1199 || d.sc * d.rh < 629 || pz.ox || pz.oy) {   // khaali jagah / khiska hua — gehra neela background
+    var g = cx.createLinearGradient(0, 0, 1200, 630); g.addColorStop(0, "#0a2a5e"); g.addColorStop(1, "#1d4ed8"); cx.fillStyle = g; cx.fillRect(0, 0, 1200, 630);
+  }
+  cx.save(); cx.translate(600 + pz.ox, 315 + pz.oy); cx.rotate(pz.rot * Math.PI / 2); cx.scale(d.sc, d.sc); cx.drawImage(photo, -photo.width / 2, -photo.height / 2); cx.restore();
+}
 function draw() {
   var t = $("t").value.trim(), d = $("d").value.trim(), mode = document.querySelector("input[name=m]:checked").value, topT = $("top").value.trim(), ftT = $("ft").value.trim();
   cx.clearRect(0, 0, 1200, 630);
   if (mode === "photo" && photo) {
-    var r = Math.max(1200 / photo.width, 630 / photo.height), w = photo.width * r, h = photo.height * r;
-    cx.drawImage(photo, (1200 - w) / 2, (630 - h) / 2, w, h);
+    drawPhotoAdj();
     if ($("bar").checked) {
       var tl = tLines(t, 1000, "700 52px " + FONT, 3), barH = tl.length * 58 + (ftT ? 80 : 50) + 50, y0 = 630 - barH;
       var g = cx.createLinearGradient(0, y0, 0, 630); g.addColorStop(0, "rgba(10,42,94,0)"); g.addColorStop(.3, "rgba(10,42,94,.88)"); g.addColorStop(1, "rgba(10,42,94,.97)");
@@ -182,6 +206,7 @@ function draw() {
     if (ftT) { cx.fillStyle = th.foot; cx.font = "500 24px " + FONT; cx.fillText(ftT, right ? 110 : 70, footY); }
   }
 
+  var adj = mode === "photo" && !!photo; $("padj").style.display = adj ? "block" : "none"; cv.style.cursor = adj ? "grab" : "default"; cv.style.touchAction = adj ? "none" : "auto";
   var s = slug(); $("fi").textContent = s + ".jpg"; $("fh").textContent = s + ".html";
   var fold = $("nofold").checked ? "" : "s/"; $("lk").textContent = BASE + fold + s + ".html";
 }
@@ -200,11 +225,31 @@ function pageHtml() {
 }
 ["t", "d", "s", "u", "bar", "nofold", "top", "ft", "th"].forEach(function (i) { $(i).addEventListener("input", draw); $(i).addEventListener("change", draw); });
 document.querySelectorAll("input[name=m]").forEach(function (r) { r.addEventListener("change", function () { $("pbox").style.display = r.value === "photo" && r.checked ? "block" : $("pbox").style.display; if (r.value === "auto") $("pbox").style.display = "none"; draw(); }); });
-$("f").addEventListener("change", function (e) { var f = e.target.files[0]; if (!f) return; var im = new Image(); im.onload = function () { photo = im; draw(); }; im.src = URL.createObjectURL(f); });
+$("f").addEventListener("change", function (e) { var f = e.target.files[0]; if (!f) return; var im = new Image(); im.onload = function () { photo = im; pz = { zoom: 1, ox: 0, oy: 0, rot: 0, fit: false }; $("pz").value = 1; draw(); }; im.src = URL.createObjectURL(f); });
+$("pz").addEventListener("input", function () { pz.zoom = parseFloat($("pz").value) || 1; pzClamp(); draw(); });
+$("prot").onclick = function () { pz.rot = (pz.rot + 1) % 4; pz.ox = 0; pz.oy = 0; pzClamp(); draw(); };
+$("pfit").onclick = function () { pz.fit = !pz.fit; pz.zoom = 1; pz.ox = 0; pz.oy = 0; $("pz").value = 1; $("pfit").textContent = pz.fit ? "⤢ पूरा भर दें" : "↔ पूरी फोटो दिखाएँ"; draw(); };
+$("prst").onclick = function () { pz = { zoom: 1, ox: 0, oy: 0, rot: 0, fit: false }; $("pz").value = 1; $("pfit").textContent = "↔ पूरी फोटो दिखाएँ"; draw(); };
+(function () {   // canvas par khinchna / pinch / wheel
+  var ptrs = {}, n = 0, pinch = null;
+  function k() { return 1200 / cv.getBoundingClientRect().width; }
+  function on() { return photo && document.querySelector("input[name=m]:checked").value === "photo"; }
+  cv.addEventListener("pointerdown", function (e) { if (!on()) return; cv.setPointerCapture(e.pointerId); ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; n = Object.keys(ptrs).length; if (n === 2) { var a = Object.keys(ptrs).map(function (i) { return ptrs[i]; }); pinch = { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), z: pz.zoom }; } cv.style.cursor = "grabbing"; });
+  cv.addEventListener("pointermove", function (e) {
+    var p = ptrs[e.pointerId]; if (!p || !on()) return;
+    if (n === 2 && pinch) { ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; var a = Object.keys(ptrs).map(function (i) { return ptrs[i]; }); pz.zoom = Math.max(0.3, Math.min(4, pinch.z * Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) / pinch.d)); $("pz").value = pz.zoom; }
+    else { pz.ox += (e.clientX - p.x) * k(); pz.oy += (e.clientY - p.y) * k(); ptrs[e.pointerId] = { x: e.clientX, y: e.clientY }; }
+    pzClamp(); draw();
+  });
+  function up(e) { delete ptrs[e.pointerId]; n = Object.keys(ptrs).length; if (n < 2) pinch = null; if (!n && on()) cv.style.cursor = "grab"; }
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  cv.addEventListener("wheel", function (e) { if (!on()) return; e.preventDefault(); pz.zoom = Math.max(0.3, Math.min(4, pz.zoom * (e.deltaY < 0 ? 1.08 : 0.93))); $("pz").value = pz.zoom; pzClamp(); draw(); }, { passive: false });
+})();
 $("dImg").onclick = function () { jpegBlob(function (b) { save(b, slug() + ".jpg"); }); };
 $("dHtml").onclick = function () { save(new Blob([pageHtml()], { type: "text/html;charset=utf-8" }), slug() + ".html"); };
 $("cp").onclick = function () { var t = $("lk").textContent; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { $("cp").textContent = "✔ हो गया"; setTimeout(function () { $("cp").textContent = "कॉपी"; }, 1400); }).catch(function () { prompt("लिंक कॉपी करें:", t); }); };
 draw();
+try { document.fonts.load('700 52px "Mukta"'); document.fonts.load('500 24px "Mukta"'); document.fonts.load('700 52px "Noto Sans Devanagari"'); document.fonts.ready.then(draw); } catch (e) {}
 </script>
 </body>
 </html>

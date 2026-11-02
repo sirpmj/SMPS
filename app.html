@@ -307,6 +307,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
 /* v1.325: ⚙️ टेबल व्यू button sirf mobile par (desktop par card/density options kaam hi nahi karte) */
 @media (min-width: 601px) { #viewBtn { display: none !important; } }
+
+/* v1.326: card mein naam ke neeche saare action buttons EK hi line mein */
+.mc-a { margin-top: 8px; }
+.mc-a .abtns.ab-flex { display: flex !important; flex-wrap: nowrap !important; gap: 4px; min-width: 0 !important; width: 100%; }
+.mc-a .ab-row { display: contents !important; }
+.mc-a .ab-btn { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 34px !important; padding: 0 2px !important; margin: 0 !important; display: flex !important; align-items: center; justify-content: center; font-size: 14px; line-height: 1; overflow: hidden; white-space: nowrap; border-radius: 8px; box-sizing: border-box; }
+.mc-a .ab-btn svg { max-height: 16px; width: auto; }
+.mc-a .ab-btn span { margin-left: 3px; font-size: 10.5px; }
 </style>
 
 </head>
@@ -1615,7 +1623,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.325"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.326"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2091,7 +2099,7 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 
 <!-- ===== PDFMAKE (Hindi Supported) ===== -->
 <!-- Hindi Font -->
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- HTML to PDF -->
@@ -4589,7 +4597,7 @@ async function openMultiPhotoAdd_(sheetName) {
   };
   const inp = m.body.querySelector("#mpFiles");
   m.body.querySelector("#mpPick").onclick = () => inp.click();
-  inp.onchange = () => { Array.from(inp.files).forEach(f => files.push({ file: f, cap: "" })); inp.value = ""; draw(); };
+  inp.onchange = async () => { const picked = Array.from(inp.files); inp.value = ""; for (let i = 0; i < picked.length; i++) { const f = window.cropImage_ ? await window.cropImage_(picked[i], { title: "फोटो adjust करें (" + (i + 1) + " / " + picked.length + ")", maxSide: 1600 }) : picked[i]; if (f) files.push({ file: f, cap: "" }); } draw(); };
   const saveBtn = modalBtn_("Save", "#1a9c4b", async function () {
     const ev = m.body.querySelector("#mpEv").value.trim(), dIso = m.body.querySelector("#mpDate").value;
     if (!files.length) { alert("पहले फोटो चुनें।"); return; }
@@ -7235,7 +7243,7 @@ function openAttendance_(incomingEnc, e) {
     if (src) row.appendChild(modalBtn_("🗑️ हटाएं", "#b91c1c", () => { photoFile = null; photoRemoved = true; photoIn.value = ""; drawPhoto(); }));
     photoWrap.appendChild(row);
   };
-  photoIn.onchange = () => { if (photoIn.files && photoIn.files[0]) { photoFile = photoIn.files[0]; photoRemoved = false; drawPhoto(); } };
+  photoIn.onchange = async () => { if (photoIn.files && photoIn.files[0]) { const f0 = photoIn.files[0], f = window.cropImage_ ? await window.cropImage_(f0, { title: "मीटिंग की फोटो adjust करें", maxSide: 1600 }) : f0; photoIn.value = ""; if (!f) return; photoFile = f; photoRemoved = false; drawPhoto(); } };
   drawPhoto();
   m.body.appendChild(extra);
 
@@ -7971,6 +7979,8 @@ async function exportAllTabsExcel() {
 
 function exportPDF() {
 
+  if (window.exportPDFPrint_ && window.exportPDFPrint_()) return;   // v1.326: print se PDF (sahi Hindi)
+
   const table = document.querySelector("#contentArea table");
   if (!table) {
     alert("Table nahi mila");
@@ -8430,7 +8440,7 @@ if ('serviceWorker' in navigator) {
     return typeof window.fillSettings_ === "function" ? window.fillSettings_(t) : t;
   }
   window.openWishes_ = async function () {
-    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { alert("Members लोड नहीं हो पाए।"); return; }
+    let mem; const _fr = CACHE["Members"] && (Date.now() - CACHE["Members"].time < CACHE_TIME), _ph = _fr ? null : window.loadingModal_(); try { mem = (await fetchSheet("Members")) || []; } catch (e) { if (_ph) _ph.close(); alert("Members लोड नहीं हो पाए।"); return; }
     const kN = keyOf(mem, /^(member|name|नाम|member name)$/i) || keyOf(mem, /name|नाम/i), kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i);
     const kB = keyOf(mem, /^(birthday|dob|date[\s_]*of[\s_]*birth)/i) || keyOf(mem, /birth|जन्म/i), kA = keyOf(mem, /anniversary|वर्षगांठ|marriage|विवाह|शादी/i);
     const items = [], base = today0();
@@ -8945,6 +8955,7 @@ if ('serviceWorker' in navigator) {
     m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     m.foot.insertBefore(modalBtn_("👤 मेरी जानकारी", "#b45309", () => { m.close(); if (window.openMyProfile_) window.openMyProfile_(); }), m.foot.firstChild);
+    try { if (!window.__profBusy && (!window.__profCache || Date.now() - window.__profCache.t > 120000)) { window.__profBusy = true; callCrudBackend_({ action: "myProfile" }).then(r => { if (r && r.success) window.__profCache = { t: Date.now(), r: r }; }).catch(() => {}).then(() => { window.__profBusy = false; }); } } catch (e) {}
     let r = null; try { r = await callCrudBackend_({ action: "myAccount" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
     if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "हिसाब नहीं मिल पाया") + '</p>'; return; }
     const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
@@ -8984,9 +8995,9 @@ if ('serviceWorker' in navigator) {
   };
   window.openMemberApprovals_ = async function () {
     const m = openModal_("🆕 नए सदस्य — मंज़ूरी"); let changed = false;
-    const closeAll = () => { m.close(); if (changed) { try { if (typeof loadTab === "function") loadTab(currentTab, true); } catch (e) {} } };
+    const closeAll = () => { m.close(); if (changed) { window.__pendCache = null; try { if (typeof loadTab === "function") loadTab(currentTab, true); } catch (e) {} } };
     m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", closeAll));
-    let r; try { r = await callCrudBackend_({ action: "pendingMembers" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    let r; const pc = window.__pendCache; if (pc && Date.now() - pc.t < 90000) { r = pc.r; } else { try { r = await callCrudBackend_({ action: "pendingMembers" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; } }
     if (!r || !r.success) { m.body.innerHTML = '<p>❌ ' + esc((r && r.msg) || "लोड नहीं हो पाया") + '</p>'; return; }
     const rows = r.rows || [], state = {}, editing = {};
     const F = [["name", "नाम"], ["display", "सूची में दिखने वाला नाम (हिंदी)"], ["gotra", "गोत्र"], ["origin", "मूल गाँव / जिला"], ["city", "वर्तमान शहर"], ["district", "जिला"], ["address", "पता"], ["occupation", "व्यवसाय / फर्म"]];
@@ -9047,7 +9058,7 @@ if ('serviceWorker' in navigator) {
   };
   /* ===== v1.311: adhuri jaankari wale sadasyon ko WhatsApp sandesh ===== */
   window.openIncomplete_ = async function () {
-    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { alert("Members लोड नहीं हो पाए।"); return; }
+    let mem; const _fr = CACHE["Members"] && (Date.now() - CACHE["Members"].time < CACHE_TIME), _ph = _fr ? null : window.loadingModal_(); try { mem = (await fetchSheet("Members")) || []; } catch (e) { if (_ph) _ph.close(); alert("Members लोड नहीं हो पाए।"); return; }
     if (!mem.length) { alert("Members में डेटा नहीं है।"); return; }
     const kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i);
     const FIELDS = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
@@ -9110,7 +9121,9 @@ if ('serviceWorker' in navigator) {
     do { g.font = weight + " " + s + "px " + CARD_FONT_; s -= 2; } while (g.measureText(txt).width > maxW && s > 14);
     g.fillText(txt, x, y);
   }
+  async function ensureFonts_() { try { await Promise.all(['700 40px "Mukta"', '500 30px "Mukta"', '600 30px "Mukta"', '700 40px "Noto Sans Devanagari"'].map(f => document.fonts.load(f, "श्रीमेवाड़ अआक"))); } catch (e) {} }
   async function makeCard_(P) {
+    await ensureFonts_();
     const W = 1000, H = 600, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
     const grd = g.createLinearGradient(0, 0, W, H); grd.addColorStop(0, "#7c2d12"); grd.addColorStop(1, "#c2410c");
     rrect_(g, 0, 0, W, H, 34); g.fillStyle = grd; g.fill();
@@ -9160,7 +9173,7 @@ if ('serviceWorker' in navigator) {
   window.openMyProfile_ = async function () {
     const m = openModal_("👤 मेरी जानकारी"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>';
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
-    let r; try { r = await callCrudBackend_({ action: "myProfile" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    let r; const pcc = window.__profCache; if (pcc && Date.now() - pcc.t < 120000) { r = pcc.r; } else { try { r = await callCrudBackend_({ action: "myProfile" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; } }
     if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
     const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ" };
     const keys = (r.has || []).filter(k => L[k]), isD = k => k === "birthday" || k === "anniversary", full = v => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v);
@@ -9172,7 +9185,7 @@ if ('serviceWorker' in navigator) {
     const read = () => { const f = {}; m.body.querySelectorAll("input[data-k]").forEach(i => { f[i.dataset.k] = i.type === "date" ? isoToDDMMYYYY_(i.value) : i.value.trim(); }); return f; };
     const save = modalBtn_("💾 सेव करें", "#0369a1", async () => {
       save.disabled = true; save.textContent = "Saving...";
-      try { const rr = await callCrudBackend_({ action: "updateMyProfile", fields: read() }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); try { delete CACHE["Members"]; } catch (e) {} alert("✅ " + (rr.msg || "सेव हो गया")); }
+      try { const rr = await callCrudBackend_({ action: "updateMyProfile", fields: read() }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); try { delete CACHE["Members"]; } catch (e) {} window.__profCache = null; alert("✅ " + (rr.msg || "सेव हो गया")); }
       catch (e) { alert("❌ " + (e.message || e)); }
       save.disabled = false; save.textContent = "💾 सेव करें";
     });
@@ -9184,7 +9197,7 @@ if ('serviceWorker' in navigator) {
   window.openDataClean_ = async function () {
     const m = openModal_("🧹 डेटा सफ़ाई — Members"); m.body.innerHTML = '<p class="muted">⏳ जाँच हो रही है...</p>';
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => { m.close(); if (changed) { try { delete CACHE["Members"]; if (currentTab === "Members") loadTab("Members", true); } catch (e) {} } }));
-    let changed = false, mem; try { mem = (await fetchSheet("Members", true)) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    let changed = false, mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
     if (!mem.length) { m.body.innerHTML = "<p>Members में डेटा नहीं है।</p>"; return; }
     const kI = keyOf(mem, /^(member ?id|id)$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kS = keyOf(mem, /^status$/i), kO = keyOf(mem, /occupation|व्यवसाय/i);
     if (!kI || !kN) { m.body.innerHTML = "<p>❌ MemberID / Name column नहीं मिले।</p>"; return; }
@@ -9337,7 +9350,7 @@ if ('serviceWorker' in navigator) {
           L.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + e(r[0]) + '</td><td class="r">₹' + inr(r[1]) + '</td><td class="r">' + pct(r[1], total) + "</td></tr>").join("") +
           '<tr class="tot"><td></td><td>कुल योग / Total</td><td class="r">₹' + inr(total) + '</td><td class="r">100%</td></tr></tbody></table>';
       };
-      const html = '<!doctype html><html><head><meta charset="utf-8"><title>वार्षिक रिपोर्ट / Annual Report ' + lbl(y) + '</title><style>@page{size:A4;margin:12mm}body{font-family:"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{text-align:center;margin:4px 0 0;font-size:21px}.en{text-align:center;color:#555;font-size:13px}h2{text-align:center;margin:8px 0 2px;font-size:17px;color:#7c2d12}h3{margin:18px 0 4px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:2px;font-size:15px}img{display:block;margin:0 auto;height:60px}table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border:1px solid #888;padding:5px 8px;text-align:left}th{background:#fef3c7}.r{text-align:right;white-space:nowrap}.tot td{background:#ffedd5;font-weight:700;border-top:2px solid #444}.pos{color:#166534}.neg{color:#b91c1c}.note{margin-top:16px;padding:8px 10px;border:1px dashed #999;background:#fafafa;font-size:12px;line-height:1.7}tr{page-break-inside:avoid}</style></head><body><img src="' + logo + '" alt="">' +
+      const html = '<!doctype html><html><head><meta charset="utf-8"><title>वार्षिक रिपोर्ट / Annual Report ' + lbl(y) + '</title><link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet"><style>@page{size:A4;margin:12mm}body{font-family:"Noto Sans Devanagari","Mukta","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{text-align:center;margin:4px 0 0;font-size:21px}.en{text-align:center;color:#555;font-size:13px}h2{text-align:center;margin:8px 0 2px;font-size:17px;color:#7c2d12}h3{margin:18px 0 4px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:2px;font-size:15px}img{display:block;margin:0 auto;height:60px}table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border:1px solid #888;padding:5px 8px;text-align:left}th{background:#fef3c7}.r{text-align:right;white-space:nowrap}.tot td{background:#ffedd5;font-weight:700;border-top:2px solid #444}.pos{color:#166534}.neg{color:#b91c1c}.note{margin-top:16px;padding:8px 10px;border:1px dashed #999;background:#fafafa;font-size:12px;line-height:1.7}tr{page-break-inside:avoid}</style></head><body><img src="' + logo + '" alt="">' +
         "<h1>" + e(SAMAJ_NAME_) + '</h1><div class="en">Shri Mewad Prajapat Samaj, Vapi</div>' +
         "<h2>वार्षिक रिपोर्ट / Annual Report</h2>" +
         '<div class="en">वित्त वर्ष / Financial Year <b>' + lbl(y) + "</b> (अप्रैल–मार्च / April–March)</div>" +
@@ -9357,7 +9370,7 @@ if ('serviceWorker' in navigator) {
         (c.exG.length ? "<h3>5. खर्च का विवरण / Expense Details</h3>" + detail(c.exG, c.exT) : "") +
         '<div class="note"><b>कैसे पढ़ें / How to read:</b><br>• बचत / Balance = कुल आय − कुल खर्च / Total Income − Total Expense<br>• बाकी / Pending = कुल वादा − जमा / Total Pledged − Received<br>• बोली व दान के आँकड़े इस वित्त वर्ष की तारीख वाली प्रविष्टियों के हैं / Boli &amp; Donation figures are for entries dated in this financial year.<br>तैयार / Prepared: ' + e(new Date().toLocaleDateString("en-GB")) + "</div></body></html>";
       const w = window.open("", "_blank"); if (!w) { alert("Pop-up रुका हुआ है — browser में इस साइट के लिए pop-up की अनुमति दें।"); return; }
-      w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch (x) {} }, 600);
+      w.document.open(); w.document.write(html); w.document.close(); w.focus(); let pd = false; const go = () => { if (pd) return; pd = true; setTimeout(() => { try { w.print(); } catch (x) {} }, 250); }; try { w.document.fonts.ready.then(go); } catch (x) {} setTimeout(go, 2500);
     }), m.foot.firstChild);
   };
 
@@ -9379,6 +9392,7 @@ if ('serviceWorker' in navigator) {
     return out;
   }
   async function drawGreeting_(S) {
+    await ensureFonts_();
     const W = 1080, H = 1350, T = S.type, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
     const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, T.bg[0]); gr.addColorStop(1, T.bg[1]); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     g.fillStyle = "rgba(255,255,255,.07)"; [[120, 140, 230], [990, 260, 170], [920, 1170, 260], [60, 980, 150]].forEach(c => { g.beginPath(); g.arc(c[0], c[1], c[2], 0, Math.PI * 2); g.fill(); });
@@ -9433,7 +9447,7 @@ if ('serviceWorker' in navigator) {
     const later = () => { clearTimeout(tmr); tmr = setTimeout(render, 180); };
     $("#cmT").onchange = () => { setType($("#cmT").value); render(); };
     ["#cmN", "#cmS", "#cmX", "#cmM"].forEach(q => $(q).oninput = later);
-    $("#cmP").onchange = e => { const f = e.target.files && e.target.files[0]; if (!f) { S.photo = null; render(); return; } const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { S.photo = im; render(); }; im.src = rd.result; }; rd.readAsDataURL(f); };
+    $("#cmP").onchange = async e => { const f0 = e.target.files && e.target.files[0]; if (!f0) { S.photo = null; render(); return; } const f = await window.cropImage_(f0, { aspect: 1, round: true, title: "फोटो adjust करें (गोल frame में दिखेगी)", maxSide: 900 }); if (!f) { e.target.value = ""; return; } const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { S.photo = im; render(); }; im.src = rd.result; }; rd.readAsDataURL(f); };
     const fname = () => "SMPS_" + S.type.id + "_" + (S.name || "card").replace(/[^\w\u0900-\u097F]+/g, "_").slice(0, 30) + ".png";
     m.foot.insertBefore(modalBtn_("⬇️ डाउनलोड", "#15803d", () => { if (!cur) return; const l = document.createElement("a"); l.href = cur.toDataURL("image/png"); l.download = fname(); document.body.appendChild(l); l.click(); l.remove(); }), m.foot.firstChild);
     m.foot.insertBefore(modalBtn_("📤 शेयर / WhatsApp", "#25a244", () => {
@@ -9527,10 +9541,13 @@ if ('serviceWorker' in navigator) {
       const sub = [orgK && r[orgK], cityK && r[cityK], mob].map(x => String(x || "").trim()).filter(Boolean).join(" · "), occ = String((occK && r[occK]) || "").trim();
       let enc = ""; try { enc = encodeURIComponent(resolveRecordId_(r).recordId || ""); } catch (e) {}
       let acts = ""; try { acts = enc ? renderActionButtons(r, enc) : ""; } catch (e) {}
+      const callA = mob ? '<a class="ab-btn ab-print mc-call" href="tel:+91' + mob + '" title="कॉल" aria-label="कॉल">📞</a>' : "";
+      const waA = (mob && acts.indexOf("ab-wa") < 0) ? '<a class="ab-btn ab-wa mc-waD" target="_blank" rel="noopener" href="' + esc(buildWaUrl_(mob, "")) + '" title="WhatsApp" aria-label="WhatsApp">💬</a>' : "";
+      const line = acts ? acts.replace(/(<div class="abtns[^>]*>)/, "$1" + callA + waA) : ((callA || waA) ? '<div class="abtns ab-flex">' + callA + waA + "</div>" : "");
       const bday = (tvKey_(r, /^birthday$/i) && isTodayBirthday(r[tvKey_(r, /^birthday$/i)])) ? " mc-bd" : "";
       const d = document.createElement("div"); d.className = "mc" + bday; d.dataset.i = i;
       d.innerHTML = "<div class=\"mc-h\"><b>" + esc(name) + "</b><span>" + esc(idK ? r[idK] : "") + "</span></div>" + (sub ? "<div class=\"mc-s\">" + esc(sub) + "</div>" : "") + (occ ? "<div class=\"mc-s\">" + esc(occ) + "</div>" : "") +
-        "<div class=\"mc-b\">" + (mob ? "<a class=\"mc-btn\" href=\"tel:+91" + mob + "\">📞 कॉल</a><a class=\"mc-btn mc-wa\" target=\"_blank\" rel=\"noopener\" href=\"" + esc(buildWaUrl_(mob, "")) + "\">💬 WhatsApp</a>" : "") + "</div>" + (acts ? "<div class=\"mc-a\">" + acts + "</div>" : "");
+        (line ? "<div class=\"mc-a\">" + line + "</div>" : "");
       list.appendChild(d);
     });
     list.onclick = ev => { if (ev.target.closest("a,button")) return; const c = ev.target.closest(".mc"); if (c && rows[+c.dataset.i]) window.openCardDetail_(rows[+c.dataset.i]); };
@@ -9570,10 +9587,104 @@ if ('serviceWorker' in navigator) {
   if (typeof renderTable === "function") { const _rt2 = renderTable; renderTable = function () { const r = _rt2.apply(this, arguments); try { window.tvAfterRender_(); } catch (e) { console.error("tvAfterRender_", e); } return r; }; }
   try { const mq2 = window.matchMedia("(max-width: 600px)"), f2 = () => { try { if (currentTab && Array.isArray(tableData) && document.querySelector("#tableContainer table")) renderTable(); } catch (e) {} }; if (mq2.addEventListener) mq2.addEventListener("change", f2); else if (mq2.addListener) mq2.addListener(f2); } catch (e) {}
 
+  /* ===== v1.326: फोटो crop / adjust (खींचें, zoom, घुमाएँ, अनुपात चुनें) — जहाँ भी फोटो जुड़ती है ===== */
+  window.loadingModal_ = function (title) { const m = openModal_(title || "⏳ लोड हो रहा है..."); m.body.innerHTML = '<p class="muted">⏳ कृपया प्रतीक्षा करें...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close)); return m; };
+  window.cropImage_ = function (file, opts) {
+    opts = opts || {};
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };          // padh nahi paya — jaisa hai waisa
+      img.onload = () => {
+        const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+        let rot = 0, zoom = 1, ox = 0, oy = 0, mode = opts.aspect ? String(opts.aspect) : "orig", stageW = 300, stageH = 300;
+        const ASP = [["orig", "मूल"], ["1", "1:1"], ["1.3333", "4:3"], ["1.7778", "16:9"], ["0.75", "3:4"]];
+        if (opts.aspect && !ASP.some(x => parseFloat(x[0]) === opts.aspect)) ASP.splice(1, 0, [String(opts.aspect), "तय"]);
+        const ov = document.createElement("div"); ov.id = "cropModal";
+        ov.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.8);z-index:3000;display:flex;align-items:center;justify-content:center;padding:10px;";
+        const box = document.createElement("div"); box.style.cssText = "background:#fff;border-radius:14px;width:100%;max-width:460px;max-height:96vh;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;";
+        box.innerHTML = '<div style="font-weight:700;font-size:15px"></div><div style="font-size:12px;color:#64748b">फोटो को उँगली / माउस से खींचकर सरकाएँ · दो उँगली या नीचे की पट्टी से छोटा-बड़ा करें</div>' +
+          '<div id="crAsp" style="display:flex;gap:6px;flex-wrap:wrap"></div><div style="display:flex;justify-content:center"><canvas id="crCv" style="border-radius:8px;border:1px solid #cbd5e1;touch-action:none;cursor:grab;max-width:100%"></canvas></div>' +
+          '<input id="crZ" type="range" min="0.3" max="4" step="0.02" value="1" style="width:100%"><div id="crBt" style="display:flex;gap:6px;flex-wrap:wrap"></div>';
+        box.firstChild.textContent = opts.title || "फोटो adjust करें";
+        ov.appendChild(box); document.body.appendChild(ov);
+        const cv = box.querySelector("#crCv"), zr = box.querySelector("#crZ"), asp = box.querySelector("#crAsp"), bt = box.querySelector("#crBt"), ctx = cv.getContext("2d");
+        const bs = "width:auto;border:0;border-radius:9px;padding:8px 12px;font-weight:700;cursor:pointer;color:#fff;font-size:13px;";
+        const mkb = (txt, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = txt; b.style.cssText = bs + "background:" + bg; b.onclick = fn; return b; };
+        const rdims = () => (rot % 2) ? { rw: ih, rh: iw } : { rw: iw, rh: ih };
+        const aspect = () => mode === "orig" ? (rdims().rw / rdims().rh) : parseFloat(mode);
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const layout = () => {
+          const asr = aspect(), maxW = Math.min(420, window.innerWidth - 44), maxH = Math.max(160, window.innerHeight * 0.5);
+          stageW = maxW; stageH = stageW / asr; if (stageH > maxH) { stageH = maxH; stageW = stageH * asr; }
+          stageW = Math.round(stageW); stageH = Math.round(stageH);
+          cv.width = stageW * dpr; cv.height = stageH * dpr; cv.style.width = stageW + "px"; cv.style.height = stageH + "px";
+        };
+        const paint = (g, sw, sh, f) => {
+          const d = rdims(), sc = Math.max(sw / d.rw, sh / d.rh) * zoom;
+          g.fillStyle = "#fff"; g.fillRect(0, 0, sw * f, sh * f);
+          g.save(); g.translate((sw / 2 + ox) * f, (sh / 2 + oy) * f); g.rotate(rot * Math.PI / 2); g.scale(sc * f, sc * f); g.drawImage(img, -iw / 2, -ih / 2); g.restore();
+        };
+        const clamp = () => { const d = rdims(), sc = Math.max(stageW / d.rw, stageH / d.rh) * zoom, mx = Math.abs(sc * d.rw - stageW) / 2, my = Math.abs(sc * d.rh - stageH) / 2; ox = Math.max(-mx, Math.min(mx, ox)); oy = Math.max(-my, Math.min(my, oy)); };
+        const redraw = () => {
+          ctx.setTransform(1, 0, 0, 1, 0, 0); paint(ctx, stageW, stageH, dpr);
+          if (opts.round) { ctx.save(); ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.beginPath(); ctx.rect(0, 0, cv.width, cv.height); ctx.arc(cv.width / 2, cv.height / 2, Math.min(cv.width, cv.height) / 2, 0, Math.PI * 2, true); ctx.fill("evenodd"); ctx.restore(); }
+        };
+        const drawAsp = () => { asp.innerHTML = ""; ASP.forEach(x => { const b = document.createElement("button"); b.type = "button"; b.textContent = x[1]; b.style.cssText = "width:auto;border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;border:1px solid #94a3b8;" + (mode === x[0] ? "background:#1e293b;color:#fff;" : "background:#fff;color:#1e293b;"); b.onclick = () => { mode = x[0]; zoom = 1; ox = 0; oy = 0; zr.value = 1; layout(); clamp(); drawAsp(); redraw(); }; asp.appendChild(b); }); };
+        const finish = r => { try { URL.revokeObjectURL(url); } catch (e) {} ov.remove(); resolve(r); };
+        const ptrs = new Map(); let pinch = null;
+        cv.addEventListener("pointerdown", e => { try { cv.setPointerCapture(e.pointerId); } catch (x) {} ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) { const v = [...ptrs.values()]; pinch = { d: Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y), z: zoom }; } });
+        cv.addEventListener("pointermove", e => { const q = ptrs.get(e.pointerId); if (!q) return;
+          if (ptrs.size === 2 && pinch) { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); const v = [...ptrs.values()]; zoom = Math.max(0.3, Math.min(5, pinch.z * Math.hypot(v[0].x - v[1].x, v[0].y - v[1].y) / pinch.d)); zr.value = zoom; }
+          else { ox += e.clientX - q.x; oy += e.clientY - q.y; ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
+          clamp(); redraw(); });
+        const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; };
+        cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+        cv.addEventListener("wheel", e => { e.preventDefault(); zoom = Math.max(0.3, Math.min(5, zoom * (e.deltaY < 0 ? 1.08 : 0.93))); zr.value = zoom; clamp(); redraw(); }, { passive: false });
+        zr.oninput = () => { zoom = parseFloat(zr.value) || 1; clamp(); redraw(); };
+        bt.appendChild(mkb("⟲ घुमाएँ", "#0369a1", () => { rot = (rot + 1) % 4; zoom = 1; ox = 0; oy = 0; zr.value = 1; layout(); clamp(); redraw(); }));
+        bt.appendChild(mkb("↺ रीसेट", "#64748b", () => { rot = 0; zoom = 1; ox = 0; oy = 0; zr.value = 1; mode = opts.aspect ? String(opts.aspect) : "orig"; layout(); drawAsp(); redraw(); }));
+        bt.appendChild(mkb("जैसी है वैसी", "#475569", () => finish(file)));
+        bt.appendChild(mkb("✔ लगाएँ", "#15803d", () => {
+          const asr = aspect(), ms = opts.maxSide || 1600; let ow, oh; if (asr >= 1) { ow = ms; oh = Math.round(ms / asr); } else { oh = ms; ow = Math.round(ms * asr); }
+          const c = document.createElement("canvas"); c.width = ow; c.height = oh; paint(c.getContext("2d"), stageW, stageH, ow / stageW);
+          c.toBlob(b => { if (!b) { finish(file); return; } finish(new File([b], String(file.name || "photo").replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" })); }, "image/jpeg", 0.9);
+        }));
+        bt.appendChild(mkb("रद्द", "#b91c1c", () => finish(null)));
+        layout(); drawAsp(); redraw();
+      };
+      img.src = url;
+    });
+  };
+
+  /* ===== v1.326: 📄 PDF — browser ke print se (Hindi ke jodakshar / matra sahi aate hain); popup ruka ho to purana tareeka ===== */
+  window.exportPDFPrint_ = function () {
+    const table = document.querySelector("#contentArea table"); if (!table) return false;
+    const clone = table.cloneNode(true);
+    if (clone.dataset.latestFirst === "1") { const tb = clone.querySelector("tbody"); if (tb) Array.from(tb.querySelectorAll("tr")).sort((x, y) => (+x.dataset.seq) - (+y.dataset.seq)).forEach(tr => tb.appendChild(tr)); }
+    clone.querySelectorAll("tr").forEach(row => { if (row.children.length > 0) row.children[row.children.length - 1].remove(); });   // Actions column
+    clone.querySelectorAll("button,input,select,textarea,script").forEach(x => x.remove());
+    clone.removeAttribute("class"); clone.removeAttribute("style"); clone.removeAttribute("id");
+    const w = window.open("", "_blank"); if (!w) return false;
+    const e = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    let flt = ""; try { flt = getActiveFilterLabel_(); } catch (x) {}
+    const ttl = e(currentTab || "") + (flt ? " — " + e(flt) : "");
+    const html = '<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>' + ttl + '</title>' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+      '<style>@page{size:A4 landscape;margin:10mm 8mm 12mm;@bottom-right{content:"Page " counter(page);font-size:9px;color:#555}}body{font-family:"Noto Sans Devanagari","Mukta","Nirmala UI","Mangal","Segoe UI",Arial,sans-serif;font-size:10.5px;color:#111;margin:0}h2{text-align:center;margin:0;font-size:18px}.m{display:flex;justify-content:space-between;margin:4px 0 8px;font-size:11px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:3px 5px;vertical-align:top;word-break:break-word;text-align:left;letter-spacing:normal}th{background:#f2f2f2}thead{display:table-header-group}tr{page-break-inside:avoid}img{max-width:80px;max-height:64px}</style></head><body>' +
+      '<h2>श्री मेवाड़ प्रजापत समाज-वापी</h2><div class="m"><div>Date: ' + e(new Date().toLocaleDateString("en-GB")) + '</div><div><b>' + ttl + '</b></div></div>' + clone.outerHTML + '</body></html>';
+    w.document.open(); w.document.write(html); w.document.close();
+    let done = false; const go = () => { if (done) return; done = true; setTimeout(() => { try { w.focus(); w.print(); } catch (x) {} }, 250); };
+    try { w.document.fonts.ready.then(go); } catch (x) {} setTimeout(go, 2500);
+    return true;
+  };
+
   window.refreshPendBadge_ = function () {
     const b = document.getElementById("pendMemBtn"); if (!b) return;
     let n = 0; if (currentTab === "Members" && Array.isArray(tableData)) { const k = keyOf(tableData, /^status$/i); if (k) n = tableData.filter(r => /^\s*pending/i.test(String(r[k] || ""))).length; }
     b.textContent = "🆕" + (n ? " " + n : ""); b.style.boxShadow = n ? "0 0 0 3px rgba(245,158,11,.55)" : "";
+    if (n && !window.__pendBusy && (!window.__pendCache || Date.now() - window.__pendCache.t > 60000)) {   // v1.326: popup turant khulne ke liye pehle se la rakho
+      window.__pendBusy = true; callCrudBackend_({ action: "pendingMembers" }).then(r => { if (r && r.success) window.__pendCache = { t: Date.now(), r: r }; }).catch(() => {}).then(() => { window.__pendBusy = false; });
+    }
   };
 
   /* ===== v1.308: Fund Ledger / Receipts / Expenses — mahine / saal ki report + upasthiti ===== */
