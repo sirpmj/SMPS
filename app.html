@@ -277,6 +277,36 @@ document.addEventListener("DOMContentLoaded", function () {
   #toolRow > button { flex: 1 1 0 !important; min-width: 0 !important; width: auto !important; height: 38px !important; padding: 1px 0 !important; font-size: 15px !important; line-height: 1.1 !important; white-space: normal; text-align: center; }
   #toolRow > button::after { content: attr(data-l); display: block; font-size: 10px; margin-top: 1px; white-space: nowrap; }
 }
+
+/* v1.324: Mobile table view — cards, summary patti, chips, density, text size */
+@media (min-width: 601px) { #viewBtn { display: none !important; } }
+#tableContainer.tv-cards > table { display: none !important; }
+#sumStrip { margin: 0 0 8px; }
+#sumStrip .ss-l { background: #e8efff; color: #1e3a8a; border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+#sumStrip .ss-c { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; white-space: nowrap; }
+#sumStrip .ss-chip { width: auto; flex: 0 0 auto; border: 1px solid #b6c2dd; background: #fff; color: #1e293b; border-radius: 999px; padding: 4px 11px; font-size: 12px; cursor: pointer; }
+#sumStrip .ss-chip.on { background: #1e293b; color: #fff; border-color: #1e293b; }
+#cardList { display: flex; flex-direction: column; gap: 8px; }
+.mc { background: #fff; border: 1px solid #dbe3f3; border-radius: 12px; padding: 9px 11px; }
+.mc.mc-bd { background: #fff3cd; border-color: #f0c36d; }
+.mc-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mc-h b { font-size: 14.5px; font-weight: 600; }
+.mc-h span { font-size: 11px; color: #64748b; white-space: nowrap; }
+.mc-s { font-size: 12.5px; color: #475569; margin-top: 2px; }
+.mc-b { display: flex; gap: 6px; margin-top: 7px; }
+.mc-btn { flex: 1; text-align: center; padding: 6px 4px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0f172a; font-size: 12.5px; text-decoration: none; }
+.mc-btn.mc-wa { background: #dcfce7; border-color: #86efac; color: #166534; }
+.mc-a { margin-top: 6px; }
+@media (max-width: 600px) {
+  body.tv-compact #contentArea #tableContainer td, body.tv-compact #contentArea #tableContainer th { padding-top: 3px !important; padding-bottom: 3px !important; line-height: 1.25 !important; }
+  body.tv-fs-1 #contentArea #tableContainer table { font-size: 11px !important; }
+  body.tv-fs1 #contentArea #tableContainer table { font-size: 14px !important; }
+  body.tv-fs-1 .mc, body.tv-fs-1 #sumStrip { font-size: 90%; }
+  body.tv-fs1 .mc-h b { font-size: 16.5px; } body.tv-fs1 .mc-s { font-size: 14px; }
+}
+
+/* v1.325: ⚙️ टेबल व्यू button sirf mobile par (desktop par card/density options kaam hi nahi karte) */
+@media (min-width: 601px) { #viewBtn { display: none !important; } }
 </style>
 
 </head>
@@ -1585,7 +1615,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.323"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.325"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -8482,6 +8512,7 @@ if ('serviceWorker' in navigator) {
     mk("cleanBtn", "🧹", "डेटा सफ़ाई (duplicate / अधूरी rows / Hindi नाम)", () => window.openDataClean_(), "#475569").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
+    mk("viewBtn", "⚙️", "टेबल व्यू — कार्ड / घनत्व / अक्षर / कॉलम", () => window.openTableView_(), "#475569").style.display = "inline-block";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     try { if (window.placeToolRow_) window.placeToolRow_(); } catch (e) {}
   }
@@ -9437,6 +9468,107 @@ if ('serviceWorker' in navigator) {
     }
   };
   try { const mq = window.matchMedia("(max-width: 600px)"), f = () => { try { window.placeToolRow_(); } catch (e) {} }; if (mq.addEventListener) mq.addEventListener("change", f); else if (mq.addListener) mq.addListener(f); } catch (e) {}
+
+  /* ===== v1.324: Mobile table view — Members par CARD view, card dabane par poori jaankari, shahar chips, summary patti,
+     aur ⚙️ "टेबल व्यू" menu (card/table, aaram/compact, akshar, column chunna). renderTable ke BAAD alag parat — table wahi rehta hai ===== */
+  const TVLS_ = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }, del: k => { try { localStorage.removeItem(k); } catch (e) {} } };
+  const tvMobile_ = () => !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches);
+  const tvHidden_ = tab => { try { const v = JSON.parse(TVLS_.get("smps_tv_hide_" + tab, "[]")); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+  const tvView_ = tab => (tab === "Members" ? TVLS_.get("smps_tv_view_Members", "card") : "table");
+  const tvKey_ = (row, re) => Object.keys(row).find(k => re.test(String(k).trim()));
+  const tvIsMoney_ = k => /(amount|received|pledged|paid|credit|debit|payment)/i.test(k) && !/(balance|closing|pending|mode|method|type|date|id$|ref)/i.test(k);
+  const tvMobile10_ = v => String(v || "").replace(/\D/g, "").slice(-10);
+
+  window.tvAfterRender_ = function () {
+    const tc = document.getElementById("tableContainer"); if (!tc) return;
+    const mob = tvMobile_();
+    document.body.classList.toggle("tv-compact", mob && TVLS_.get("smps_tv_dens", "comfy") === "compact");
+    const fs = mob ? TVLS_.get("smps_tv_fs", "0") : "0";
+    document.body.classList.toggle("tv-fs-1", fs === "-1"); document.body.classList.toggle("tv-fs1", fs === "1");
+    tc.classList.remove("tv-cards"); ["sumStrip", "cardList"].forEach(id => { const x = document.getElementById(id); if (x) x.remove(); });
+    const table = tc.querySelector("table"); if (!table || !mob) return;
+    const tab = currentTab, rowsAll = (typeof lastFilteredRows_ !== "undefined" && Array.isArray(lastFilteredRows_)) ? lastFilteredRows_ : [];
+
+    const hide = tvHidden_(tab);                                    /* chune hue column chhupao */
+    if (hide.length && table.tHead && table.tHead.rows[0]) {
+      const idx = []; Array.prototype.forEach.call(table.tHead.rows[0].cells, (th, i) => { const t = th.textContent.trim(); if (t !== "Actions" && hide.indexOf(t) >= 0) idx.push(i); });
+      if (idx.length) Array.prototype.forEach.call(table.rows, r => idx.forEach(i => { if (r.cells[i]) r.cells[i].style.display = "none"; }));
+    }
+
+    const strip = document.createElement("div"); strip.id = "sumStrip";                /* summary patti */
+    let line = "";
+    if (tab === "Members") line = "कुल <b>" + (Array.isArray(tableData) ? tableData.length : rowsAll.length) + "</b> सदस्य · दिख रहे <b>" + rowsAll.length + "</b>";
+    else {
+      line = "<b>" + rowsAll.length + "</b> रिकॉर्ड";
+      if (rowsAll.length) { const sums = []; Object.keys(rowsAll[0]).filter(tvIsMoney_).forEach(k => { const s = rowsAll.reduce((t, r) => t + (toNumber(r[k]) || 0), 0); if (s) sums.push(esc(k) + " ₹" + Math.round(s).toLocaleString("en-IN")); }); if (sums.length) line += " · " + sums.slice(0, 3).join(" · "); }
+    }
+    strip.innerHTML = "<div class=\"ss-l\">" + line + "</div>";
+    if (tab === "Members" && Array.isArray(tableData) && tableData.length) {                /* shahar ke chips */
+      const ck = tvKey_(tableData[0], /city|शहर/i);
+      if (ck) {
+        const cnt = {}; tableData.forEach(r => { const c = String(r[ck] || "").trim(); if (c) cnt[c] = (cnt[c] || 0) + 1; });
+        const top = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x]).slice(0, 6), si = document.getElementById("searchInput"), cur = si ? si.value.trim() : "";
+        const chips = document.createElement("div"); chips.className = "ss-c";
+        [["", "सभी"]].concat(top.map(c => [c, c + " " + cnt[c]])).forEach(pr => { const b = document.createElement("button"); b.type = "button"; b.textContent = pr[1]; b.className = "ss-chip" + ((pr[0] === "" ? cur === "" : cur.toLowerCase() === pr[0].toLowerCase()) ? " on" : "");
+          b.onclick = () => { if (!si) return; si.value = pr[0]; si.dispatchEvent(new Event("input")); }; chips.appendChild(b); });
+        strip.appendChild(chips);
+      }
+    }
+    tc.insertBefore(strip, tc.firstChild);
+
+    if (tvView_(tab) !== "card" || tab !== "Members") return;                                /* card view */
+    const rows = rowsAll.slice((currentPage - 1) * rowsPerPage, (currentPage - 1) * rowsPerPage + rowsPerPage);
+    if (!rows.length) return;
+    tc.classList.add("tv-cards");
+    const list = document.createElement("div"); list.id = "cardList";
+    rows.forEach((r, i) => {
+      const nameK = tvKey_(r, /^member$/i) || tvKey_(r, /^(name|नाम)$/i), idK = tvKey_(r, /^(member ?id|id)$/i), mobK = tvKey_(r, /mobile|मोबाइल|phone/i), cityK = tvKey_(r, /city|शहर/i), orgK = tvKey_(r, /origin|village|गाँव|गांव|मूल/i), occK = tvKey_(r, /occupation|व्यवसाय/i);
+      const name = String((nameK && r[nameK]) || "").trim() || "(बिना नाम)", mob = tvMobile10_(mobK && r[mobK]);
+      const sub = [orgK && r[orgK], cityK && r[cityK], mob].map(x => String(x || "").trim()).filter(Boolean).join(" · "), occ = String((occK && r[occK]) || "").trim();
+      let enc = ""; try { enc = encodeURIComponent(resolveRecordId_(r).recordId || ""); } catch (e) {}
+      let acts = ""; try { acts = enc ? renderActionButtons(r, enc) : ""; } catch (e) {}
+      const bday = (tvKey_(r, /^birthday$/i) && isTodayBirthday(r[tvKey_(r, /^birthday$/i)])) ? " mc-bd" : "";
+      const d = document.createElement("div"); d.className = "mc" + bday; d.dataset.i = i;
+      d.innerHTML = "<div class=\"mc-h\"><b>" + esc(name) + "</b><span>" + esc(idK ? r[idK] : "") + "</span></div>" + (sub ? "<div class=\"mc-s\">" + esc(sub) + "</div>" : "") + (occ ? "<div class=\"mc-s\">" + esc(occ) + "</div>" : "") +
+        "<div class=\"mc-b\">" + (mob ? "<a class=\"mc-btn\" href=\"tel:+91" + mob + "\">📞 कॉल</a><a class=\"mc-btn mc-wa\" target=\"_blank\" rel=\"noopener\" href=\"" + esc(buildWaUrl_(mob, "")) + "\">💬 WhatsApp</a>" : "") + "</div>" + (acts ? "<div class=\"mc-a\">" + acts + "</div>" : "");
+      list.appendChild(d);
+    });
+    list.onclick = ev => { if (ev.target.closest("a,button")) return; const c = ev.target.closest(".mc"); if (c && rows[+c.dataset.i]) window.openCardDetail_(rows[+c.dataset.i]); };
+    tc.appendChild(list);
+  };
+
+  window.openCardDetail_ = function (row) {                                                   /* card dabane par poori jaankari */
+    const nameK = tvKey_(row, /^member$/i) || tvKey_(row, /^(name|नाम)$/i), mobK = tvKey_(row, /mobile|मोबाइल|phone/i), mob = tvMobile10_(mobK && row[mobK]);
+    const m = openModal_(String((nameK && row[nameK]) || "विवरण")), skip = new Set(["password", "pin", "role", "login"]);
+    let hid = new Set(); try { hid = getHiddenColumnsForTab(currentTab) || new Set(); } catch (e) {}
+    m.body.innerHTML = '<table style="width:100%;font-size:13.5px;border-collapse:collapse">' + Object.keys(row).filter(k => k && !skip.has(String(k).toLowerCase()) && !hid.has(k) && String(row[k] == null ? "" : row[k]).trim() !== "").map(k =>
+      '<tr><td style="color:#64748b;padding:5px 8px 5px 0;width:38%;vertical-align:top">' + esc(k) + '</td><td style="padding:5px 0;word-break:break-word">' + esc(row[k]) + "</td></tr>").join("") + "</table>";
+    m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    if (mob) { m.foot.insertBefore(modalBtn_("💬 WhatsApp", "#25a244", () => window.open(buildWaUrl_(mob, ""), "_blank")), m.foot.firstChild); m.foot.insertBefore(modalBtn_("📞 कॉल", "#0369a1", () => { location.href = "tel:+91" + mob; }), m.foot.firstChild); }
+  };
+
+  window.openTableView_ = function () {                                                       /* ⚙️ टेबल व्यू menu */
+    const tab = currentTab, m = openModal_("⚙️ टेबल व्यू — " + tab); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    const th = Array.prototype.map.call(document.querySelectorAll("#tableContainer table thead th"), x => x.textContent.trim()).filter(t => t && t !== "Actions");
+    const rad = (name, val, lbl, on) => '<label style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:14px"><input type="radio" name="' + name + '" value="' + val + '"' + (on ? " checked" : "") + ' style="width:auto;margin:0"> ' + lbl + "</label>";
+    const lab = t => '<div style="font-size:12.5px;color:#475569;margin:10px 0 4px">' + t + "</div>", hid = tvHidden_(tab);
+    m.body.innerHTML = (tab === "Members" ? lab("दिखावट") + rad("tvV", "card", "🗂️ कार्ड", tvView_(tab) === "card") + rad("tvV", "table", "📋 टेबल", tvView_(tab) === "table") : "") +
+      lab("घनत्व (पंक्तियों की ऊँचाई)") + rad("tvD", "comfy", "आराम", TVLS_.get("smps_tv_dens", "comfy") !== "compact") + rad("tvD", "compact", "कॉम्पैक्ट", TVLS_.get("smps_tv_dens", "comfy") === "compact") +
+      lab("अक्षर का आकार") + rad("tvF", "-1", "A−", TVLS_.get("smps_tv_fs", "0") === "-1") + rad("tvF", "0", "सामान्य", TVLS_.get("smps_tv_fs", "0") === "0") + rad("tvF", "1", "A+", TVLS_.get("smps_tv_fs", "0") === "1") +
+      lab("कौन से कॉलम दिखाएँ (टेबल में)") + (th.length ? '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 10px">' + th.map((t, i) => '<label style="display:flex;align-items:center;gap:6px;font-size:13.5px;padding:4px 0"><input type="checkbox" data-c="' + i + '"' + (hid.indexOf(t) < 0 ? " checked" : "") + ' style="width:auto;margin:0"> ' + esc(t) + "</label>").join("") + "</div>" : '<div style="color:#64748b;font-size:13px">पहले टेबल खुलने दें।</div>');
+    const apply = () => {
+      const v = m.body.querySelector('input[name="tvV"]:checked'), d = m.body.querySelector('input[name="tvD"]:checked'), f = m.body.querySelector('input[name="tvF"]:checked');
+      if (v) TVLS_.set("smps_tv_view_Members", v.value); if (d) TVLS_.set("smps_tv_dens", d.value); if (f) TVLS_.set("smps_tv_fs", f.value);
+      const off = []; m.body.querySelectorAll("input[data-c]").forEach(c => { if (!c.checked) off.push(th[+c.dataset.c]); });
+      if (off.length >= th.length && th.length) { off.pop(); }   /* kam se kam ek column */
+      TVLS_.set("smps_tv_hide_" + tab, JSON.stringify(off)); try { renderTable(); } catch (e) {}
+    };
+    m.body.addEventListener("change", apply);
+    m.foot.insertBefore(modalBtn_("↺ रीसेट", "#b45309", () => { ["smps_tv_view_Members", "smps_tv_dens", "smps_tv_fs", "smps_tv_hide_" + tab].forEach(TVLS_.del); try { renderTable(); } catch (e) {} m.close(); }), m.foot.firstChild);
+  };
+
+  if (typeof renderTable === "function") { const _rt2 = renderTable; renderTable = function () { const r = _rt2.apply(this, arguments); try { window.tvAfterRender_(); } catch (e) { console.error("tvAfterRender_", e); } return r; }; }
+  try { const mq2 = window.matchMedia("(max-width: 600px)"), f2 = () => { try { if (currentTab && Array.isArray(tableData) && document.querySelector("#tableContainer table")) renderTable(); } catch (e) {} }; if (mq2.addEventListener) mq2.addEventListener("change", f2); else if (mq2.addListener) mq2.addListener(f2); } catch (e) {}
 
   window.refreshPendBadge_ = function () {
     const b = document.getElementById("pendMemBtn"); if (!b) return;
