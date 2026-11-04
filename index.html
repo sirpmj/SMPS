@@ -627,6 +627,8 @@ dialog.fd::backdrop { background: rgba(7, 20, 43, .6); }
 .vy-n, .vy-p { color: var(--mut); font-size: 14.5px; }
 .vy-d { color: var(--ink); font-size: 14.5px; line-height: 1.55; margin-top: 2px; }
 .vy-a { display: flex; gap: 8px; margin-top: 8px; }
+.pr-c .pr-p { font-weight: 800; font-size: 22px; color: var(--brand); line-height: 1.1; }
+.pr-c .pr-p small { font-size: 12.5px; font-weight: 600; color: var(--mut); display: block; margin-top: 2px; }
 .vy-e { grid-column: 1 / -1; color: var(--mut); text-align: center; padding: 20px 0; margin: 0; }
 .vy-add2 { margin-top: 16px; text-align: center; }
 @media (max-width: 700px) { .vy-bar { flex-direction: column; } .vy-a .sbtn { flex: 1 1 0; } }
@@ -660,7 +662,7 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
   <div class="in">
     <a class="brand" href="#top" aria-label="मेवाड़ प्रजापत समाज वापी"><i></i><b>मेवाड़ प्रजापत समाज</b></a>
     <nav class="links" aria-label="मुख्य मेन्यू">
-      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#vyapar">व्यवसाय</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a class="upi-go" href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
+      <a href="#karyakram">कार्यक्रम</a><a href="#suchna">सूचनाएँ</a><a href="#sangathan">संगठन</a><a href="#vyapar">व्यवसाय</a><a href="#pratibha" hidden>प्रतिभा</a><a href="#gallery">फोटो</a><a href="#parichay">परिचय</a><a class="upi-go" href="#sahyog">सहयोग</a><a href="#sampark">संपर्क</a>
     </nav>
     <button class="tgl" id="themeBtn" type="button" aria-label="डार्क / लाइट मोड बदलें" title="डार्क / लाइट मोड">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
@@ -753,6 +755,14 @@ footer .vis b { display: inline; font: inherit; font-weight: 700; font-variant-n
       <div class="chips" id="vyChips"></div>
       <div class="vy" id="vyList"></div>
       <div class="vy-add2"><button class="btn pri" id="vyAdd2" type="button">+ अपना व्यवसाय जुड़वाएँ</button></div>
+    </div>
+  </section>
+
+  <section class="s gut" id="pratibha" hidden>
+    <div class="in">
+      <div class="sh"><span class="tag">प्रतिभा सम्मान</span><h2>हमारे होनहार बच्चे</h2><p>80% या उससे अधिक अंक लाने वाले हमारे समाज के बच्चों को हार्दिक बधाई।</p></div>
+      <div class="chips" id="prChips"></div>
+      <div class="vy" id="prList"></div>
     </div>
   </section>
 
@@ -948,7 +958,7 @@ function pubFetchOnce(viaGet) {
   const req = viaGet
     ? fetch(WEB_APP_URL + "?action=publicBundle", { signal: ctl ? ctl.signal : undefined })
     : fetch(WEB_APP_URL, { method: "POST", signal: ctl ? ctl.signal : undefined,
-        body: JSON.stringify({ action: "readSheets", bundle: "public", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar"], membersSummary: true }) });
+        body: JSON.stringify({ action: "readSheets", bundle: "public", names: ["HomeStructure", "Meetings", "Announcements", "News", "Settings", "Photos", "Safar", "Boli", "Vyapar", "Pratibha"], membersSummary: true }) });
   return req
     .then(r => r.json())
     .then(j => (j && j.success && j.sheets && Object.keys(j.sheets).length) ? j : null)
@@ -1393,6 +1403,25 @@ function drawSeva(rows, S) {
   sec.hidden = false;
 }
 
+/* ---- प्रतिभा सम्मान: "Pratibha" sheet. Server sirf ShowOnHome = TRUE wali rows aur surakshit columns (Student, Class, Percent, School, Place, Event) bhejta hai — Parent / Mobile kabhi nahi ---- */
+function drawPratibha(rows, S) {
+  const sec = $("pratibha"); if (!sec) return;
+  const off = String((S && S.ShowPratibha) || "").trim().toUpperCase() === "FALSE";
+  const list = (Array.isArray(rows) ? rows : []).map(r => ({ n: String(r.Student || "").trim(), c: String(r.Class || "").trim(), p: String(r.Percent || "").trim().replace(/%/g, ""), s: String(r.School || "").trim(), pl: String(r.Place || "").trim(), e: String(r.Event || "").trim() }))
+    .filter(x => x.n && String(x.n).length < 120).sort((a, b) => (parseFloat(b.p) || 0) - (parseFloat(a.p) || 0));
+  const show = !off && list.length > 0;
+  sec.hidden = !show; document.querySelectorAll('a[href="#pratibha"]').forEach(a => { a.hidden = !show; });
+  if (!show) return;
+  let ev = "";
+  const draw = () => {
+    const evs = Array.from(new Set(list.map(x => x.e).filter(Boolean)));
+    $("prChips").innerHTML = evs.length > 1 ? ["सभी"].concat(evs).map(c => '<button type="button" class="chip" aria-pressed="' + ((c === "सभी" && !ev) || c === ev) + '" data-c="' + esc(c === "सभी" ? "" : c) + '">' + esc(c) + "</button>").join("") : "";
+    $("prList").innerHTML = list.filter(x => !ev || x.e === ev).map(x => '<article class="vy-c pr-c"><div class="vy-top"><div class="vy-b">' + esc(x.n) + "</div>" + (x.p ? '<div class="pr-p">' + esc(x.p) + "%<small>अंक</small></div>" : "") + "</div>" +
+      (x.c ? '<div class="vy-n">' + esc(x.c) + "</div>" : "") + (x.s ? '<div class="vy-d">' + esc(x.s) + "</div>" : "") + (x.pl ? '<div class="vy-p">' + esc(x.pl) + "</div>" : "") + "</article>").join("");
+  };
+  $("prChips").onclick = e => { const b = e.target.closest("button[data-c]"); if (b) { ev = b.dataset.c; draw(); } };
+  draw();
+}
 /* ---- समाज के व्यवसायी: "Vyapar" sheet (ShowOnHome = TRUE wali rows hi dikhti hain) ---- */
 function drawVyapar(rows) {
   const list = (Array.isArray(rows) ? rows : []).filter(r => String(r.ShowOnHome == null ? "" : r.ShowOnHome).trim().toUpperCase() === "TRUE")
@@ -1437,7 +1466,7 @@ function drawJourney(rows) {
 
 /* ---- Sab data load karke render ---- */
 async function load() {
-  const [home, meet, ann, news, _mUnused, set, phSheet, safarSheet, boliSheet, vyaparSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar"].map(sheet));
+  const [home, meet, ann, news, _mUnused, set, phSheet, safarSheet, boliSheet, vyaparSheet, pratibhaSheet] = await Promise.all(["HomeStructure","Meetings","Announcements","News","Members","Settings","Photos","Safar","Boli","Vyapar","Pratibha"].map(sheet));
   const B0 = await pubBundle(), MS = (B0 && B0.membersSummary) || null;      // poori member list nahi: sirf aane wale janmdin + ginti
   const members = MS ? MS.bday : [];
   const t0 = today0(), S = {};
@@ -1453,6 +1482,8 @@ async function load() {
   $("vyapar").hidden = !vyOn;
   document.querySelectorAll('a[href="#vyapar"]').forEach(a => { a.hidden = !vyOn; });
   if (vyOn) drawVyapar(vyaparSheet);
+  /* प्रतिभा सम्मान: sirf anumati (ShowOnHome = TRUE) wali rows; Settings ShowPratibha = FALSE ho to poora section band */
+  try { drawPratibha(pratibhaSheet, S); } catch (e) { console.error("drawPratibha", e); }
   /* सपरिवार आने की सूचना: Settings ShowRsvp = TRUE tabhi button dikhega */
   if ($("evRsvp")) $("evRsvp").hidden = !on(S.ShowRsvp);
 

@@ -316,6 +316,12 @@ document.addEventListener("DOMContentLoaded", function () {
 .mc-a .ab-btn svg { max-height: 16px; width: auto; }
 .mc-a .ab-btn span { margin-left: 3px; font-size: 10.5px; }
 .mc-a .ab-btn.ab-lbl { flex: 1.7 1 0 !important; }
+
+/* v1.328: और दिखाएँ + ऊपर जाएँ */
+.more-bar { margin: 10px 0 6px; text-align: center; }
+.more-bar button { width: auto; padding: 10px 22px; border: 0; border-radius: 10px; background: #0b63d6; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+#toTopBtn { position: fixed; right: 14px; bottom: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 0; background: #0b63d6; color: #fff; font-size: 22px; line-height: 1; box-shadow: 0 3px 10px rgba(0,0,0,.3); display: none; z-index: 1500; cursor: pointer; }
+#toTopBtn.on { display: block; }
 </style>
 
 </head>
@@ -1624,7 +1630,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.327"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.328"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -4049,6 +4055,7 @@ function setActiveTab(name){
 /* ---------- LOAD TAB DATA ---------- */
 async function loadTab(sheetName, forceFresh) {
   if (!sheetName) return;                          // koi tab chuna hi nahi — "No data in" jaisa khaali message nahi
+  if (window.__rppBase) { rowsPerPage = window.__rppBase; window.__rppBase = null; }   // v1.328: naya tab — "और दिखाएँ" se badhi hui limit wapas
   const _seq = (window.__loadSeq = (window.__loadSeq || 0) + 1);   // v1.323: sabse naya load hi jeete (purana der se aaya jawab tab nahi badlega)
   try {
     // 🆕 Naye tab ka data aane tak purane tab ka "Add New" button chhupa do —
@@ -4338,6 +4345,7 @@ async function openMembersDirectory_() {
       ${kCity ? `<select id="dirC"><option value="">सभी शहर</option>${uniq(kCity).map(v => `<option>${esc(v)}</option>`).join("")}</select>` : ""}
       ${kOcc ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="dirB" style="width:auto;margin:0"> सिर्फ़ व्यवसाय वाले</label>` : ""}
       <button type="button" id="dirP">🖨️ Print / PDF</button>
+      <button type="button" id="dirK" style="background:#9a3412">📖 निर्देशिका PDF</button>
     </div>
     <div class="dir-sc"><table class="dir-t"><thead></thead><tbody></tbody></table></div></div>`;
   document.body.appendChild(ov);
@@ -4353,6 +4361,7 @@ async function openMembersDirectory_() {
   };
   [q, g, v, cs, bz].forEach(x => { if (x) x.oninput = x.onchange = draw; });
   ov.querySelector("#dirClose").onclick = () => ov.remove();
+  ov.querySelector("#dirK").onclick = () => { const bt = ov.querySelector("#dirK"), t0 = bt.textContent; bt.textContent = "⏳ बन रही है..."; bt.disabled = true; setTimeout(async () => { try { await window.exportDirectoryPdf_({ rows: cur, keys: { kName, kMob, kGotra, kVil, kCity, kOcc } }); } finally { bt.textContent = t0; bt.disabled = false; } }, 50); };
   ov.querySelector("#dirP").onclick = () => {
     const w = window.open("", "_blank"); if (!w) { alert("Pop-up allow करें।"); return; }
     const flt = [g && g.value ? "गोत्र: " + g.value : "", v && v.value ? "गांव: " + v.value : "", q.value.trim() ? "खोज: " + q.value.trim() : ""].filter(Boolean).join(" | ");
@@ -6079,6 +6088,7 @@ const msg =
    =========================== */
 // 🆕 v1.231: SVG icons (sab device par ek jaisa dikhta hai)
 const AB_ICON = {
+  thanks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 000-7.8z"/></svg>',
   copy:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>',
   note:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
   view:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -6131,6 +6141,9 @@ function renderActionButtons(row, encId) {
       btns.push(abBtn_("ab-print", "khata", "📄 खाता", currentTab === "Receipts" ? "" : "खाता",
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
+  }
+  if (["Boli", "Donation", "Receipts"].includes(currentTab) && window.openThanksCard_ && (currentUser?.role === "Admin" || actions.includes("WHATSAPP") || actions.includes("EDIT"))) {
+    btns.push(abBtn_("ab-wa", "thanks", "🙏 धन्यवाद कार्ड", currentTab === "Receipts" ? "" : "कार्ड", `href="#" onclick="openThanksCard_('${encId}', event)"`));
   }
   if ((currentTab === "News" || currentTab === "Announcements" || currentTab === "Notices") && (currentUser?.role === "Admin" || actions.includes("WHATSAPP"))) {
     const _k = Object.keys(row), _f = re => _k.find(k => re.test(String(k).trim()));
@@ -7980,6 +7993,7 @@ async function exportAllTabsExcel() {
 
 function exportPDF() {
 
+  if (window.exportTablePdf_) { window.exportTablePdf_(); return; }   // v1.328: seedha download (saari rows, sahi Hindi); fail ho to print wala tareeka
   if (window.exportPDFPrint_ && window.exportPDFPrint_()) return;   // v1.326: print se PDF (sahi Hindi)
 
   const table = document.querySelector("#contentArea table");
@@ -8524,6 +8538,7 @@ if ('serviceWorker' in navigator) {
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("viewBtn", "⚙️", "टेबल व्यू — कार्ड / घनत्व / अक्षर / कॉलम", () => window.openTableView_(), "#475569").style.display = "inline-block";
+    mk("talentBtn", "🏆", "प्रतिभा सम्मान — वेबसाइट पर दिखाने की अनुमति", () => window.openTalentAdmin_(), "#b45309").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     try { if (window.placeToolRow_) window.placeToolRow_(); } catch (e) {}
   }
@@ -9384,6 +9399,7 @@ if ('serviceWorker' in navigator) {
     { id: "success", label: "🏆 सफलता / प्रतिभा सम्मान", emoji: "🏆", emoji2: "🎓", title: "सफलता पर हार्दिक बधाई", bg: ["#0f766e", "#1d4ed8"], accent: "#fde68a", msg: "आपकी मेहनत और लगन रंग लाई है। समाज को आप पर गर्व है। आगे भी इसी तरह चमकते रहें।" },
     { id: "biz", label: "🏪 नया व्यवसाय / दुकान", emoji: "🏪", emoji2: "🪔", title: "नए व्यवसाय की हार्दिक बधाई", bg: ["#b45309", "#15803d"], accent: "#fef9c3", msg: "आपके नए व्यवसाय को दिन दुगुनी, रात चौगुनी तरक्की मिले — यही हमारी शुभकामना है।" },
     { id: "home", label: "🏡 गृह प्रवेश / नई शुरुआत", emoji: "🏡", emoji2: "🪔", title: "गृह प्रवेश की हार्दिक बधाई", bg: ["#c2410c", "#a16207"], accent: "#fff7ed", msg: "आपके नए घर में सदा सुख, शांति और समृद्धि का वास रहे। आपको नई शुरुआत की बहुत-बहुत बधाई।" },
+    { id: "thanks", label: "🙏 धन्यवाद (रसीद / दान / बोली)", emoji: "🙏", emoji2: "💐", title: "हृदय से धन्यवाद", bg: ["#0f766e", "#1d4ed8"], accent: "#fde68a", msg: "आपके सहयोग के लिए हृदय से आभार। आपका यह योगदान समाज की सेवा और उन्नति में काम आएगा।" },
     { id: "shraddha", label: "🕯️ श्रद्धांजलि", emoji: "🕯️", emoji2: "🕉️", title: "भावभीनी श्रद्धांजलि", bg: ["#111827", "#374151"], accent: "#e5e7eb", dark: true, msg: "ईश्वर दिवंगत आत्मा को अपने श्रीचरणों में स्थान दें तथा शोक संतप्त परिवार को यह अपार दुःख सहने की शक्ति प्रदान करें।\nॐ शांति शांति शांति" }
   ];
   const EMOJI_FONT_ = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
@@ -9408,9 +9424,11 @@ if ('serviceWorker' in navigator) {
     else { g.fillStyle = "rgba(255,255,255,.18)"; g.fillRect(cx - R, cy - R, 2 * R, 2 * R); g.font = "170px " + EMOJI_FONT_; g.fillStyle = "#fff"; g.fillText(T.emoji2, cx, cy + 60); }
     g.restore();
     g.lineWidth = 10; g.strokeStyle = T.accent; g.beginPath(); g.arc(cx, cy, R + 6, 0, Math.PI * 2); g.stroke();
-    fitText_(g, S.name || "नाम", W / 2, 862, 940, 76, "700", "#ffffff");
-    if (S.sub) fitText_(g, S.sub, W / 2, 914, 900, 38, "500", T.accent);
-    const boxTop = 955, boxH = S.note ? 200 : 245; g.fillStyle = "rgba(255,255,255,.14)"; rrect_(g, 90, boxTop, W - 180, boxH, 26); g.fill();
+    const amtN = Number(String(S.amount || "").replace(/[₹,\s]/g, "")), hasAmt = T.id === "thanks" && String(S.amount || "").trim() !== "";
+    fitText_(g, S.name || "नाम", W / 2, hasAmt ? 850 : 862, 940, 76, "700", "#ffffff");
+    if (hasAmt) fitText_(g, "₹ " + (isFinite(amtN) && amtN ? amtN.toLocaleString("en-IN") : S.amount) + " प्राप्त हुए", W / 2, 930, 900, 52, "700", T.accent);
+    if (S.sub) fitText_(g, S.sub, W / 2, hasAmt ? 982 : 914, 900, hasAmt ? 34 : 38, "500", hasAmt ? "#ffffff" : T.accent);
+    const boxTop = hasAmt ? 1015 : 955, boxH = hasAmt ? (S.note ? 130 : 175) : (S.note ? 200 : 245); g.fillStyle = "rgba(255,255,255,.14)"; rrect_(g, 90, boxTop, W - 180, boxH, 26); g.fill();
     let fs = 38, lines; for (; fs >= 24; fs -= 2) { g.font = "500 " + fs + "px " + CARD_FONT_; lines = wrapLines_(g, S.msg, W - 260); if (lines.length * (fs * 1.45) <= boxH - 28) break; }
     g.fillStyle = "#fff"; const lh = fs * 1.45, y0 = boxTop + (boxH - lines.length * lh) / 2 + fs * 1.05; lines.forEach((l, i) => g.fillText(l, W / 2, y0 + i * lh));
     if (S.note) fitText_(g, S.note, W / 2, 1195, 900, 30, "500", T.accent);
@@ -9426,6 +9444,7 @@ if ('serviceWorker' in navigator) {
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"', lab = 'style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px"';
     m.body.innerHTML = '<label ' + lab + '>कार्ड का प्रकार</label><select id="cmT" ' + sty + '>' + CARD_TYPES_.map(t => '<option value="' + t.id + '">' + esc(t.label) + '</option>').join("") + '</select>' +
       '<label ' + lab + ' id="cmNL">नाम</label><input id="cmN" list="cmMem" type="text" placeholder="नाम लिखें या सदस्य चुनें" ' + sty + '><datalist id="cmMem"></datalist>' +
+      '<div id="cmAW" style="display:none"><label ' + lab + '>राशि (₹)</label><input id="cmA" type="text" inputmode="numeric" placeholder="जैसे: 5100" ' + sty + '></div>' +
       '<label ' + lab + ' id="cmSL">विवरण (वैकल्पिक)</label><input id="cmS" type="text" ' + sty + '>' +
       '<label ' + lab + ' id="cmXL">अतिरिक्त पंक्ति (वैकल्पिक)</label><input id="cmX" type="text" ' + sty + '>' +
       '<label ' + lab + '>संदेश (बदल सकते हैं)</label><textarea id="cmM" rows="4" ' + sty + '></textarea>' +
@@ -9434,20 +9453,20 @@ if ('serviceWorker' in navigator) {
     const $ = q => m.body.querySelector(q);
     let S = { type: CARD_TYPES_[0], photo: null }, cur = null, tok = 0, tmr = null;
     const setType = id => {
-      S.type = CARD_TYPES_.find(t => t.id === id) || CARD_TYPES_[0]; const sh = S.type.id === "shraddha";
+      S.type = CARD_TYPES_.find(t => t.id === id) || CARD_TYPES_[0]; const sh = S.type.id === "shraddha"; $("#cmAW").style.display = S.type.id === "thanks" ? "block" : "none";
       $("#cmM").value = S.type.msg;
       $("#cmNL").textContent = sh ? "दिवंगत का नाम" : "नाम"; $("#cmS").placeholder = sh ? "जैसे: 1950 – 2026" : "जैसे: वापी / 10वीं में 92% / 25वीं वर्षगांठ";
       $("#cmSL").textContent = sh ? "जन्म – निधन (वैकल्पिक)" : "विवरण (वैकल्पिक)";
       $("#cmXL").textContent = sh ? "शोक संतप्त परिवार / उठावना – प्रार्थना सभा (वैकल्पिक)" : "अतिरिक्त पंक्ति (वैकल्पिक)"; $("#cmX").placeholder = sh ? "जैसे: उठावना: रविवार, शाम 4 बजे, वापी" : "";
     };
     const render = async () => {
-      const my = ++tok; S.name = stripPlace_($("#cmN").value.trim()); S.sub = $("#cmS").value.trim(); S.note = $("#cmX").value.trim(); S.msg = $("#cmM").value.trim() || S.type.msg;
+      const my = ++tok; S.name = stripPlace_($("#cmN").value.trim()); S.amount = $("#cmA").value.trim(); S.sub = $("#cmS").value.trim(); S.note = $("#cmX").value.trim(); S.msg = $("#cmM").value.trim() || S.type.msg;
       let cv; try { cv = await drawGreeting_(S); } catch (e) { $("#cmPv").innerHTML = "<p>❌ कार्ड नहीं बन पाया: " + esc(e.message || e) + "</p>"; return; }
       if (my !== tok) return; cur = cv; cv.style.cssText = "width:100%;height:auto;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.25)"; $("#cmPv").replaceChildren(cv);
     };
     const later = () => { clearTimeout(tmr); tmr = setTimeout(render, 180); };
     $("#cmT").onchange = () => { setType($("#cmT").value); render(); };
-    ["#cmN", "#cmS", "#cmX", "#cmM"].forEach(q => $(q).oninput = later);
+    ["#cmN", "#cmA", "#cmS", "#cmX", "#cmM"].forEach(q => $(q).oninput = later);
     $("#cmP").onchange = async e => { const f0 = e.target.files && e.target.files[0]; if (!f0) { S.photo = null; render(); return; } const f = await window.cropImage_(f0, { aspect: 1, round: true, title: "फोटो adjust करें (गोल frame में दिखेगी)", maxSide: 900 }); if (!f) { e.target.value = ""; return; } const rd = new FileReader(); rd.onload = () => { const im = new Image(); im.onload = () => { S.photo = im; render(); }; im.src = rd.result; }; rd.readAsDataURL(f); };
     const fname = () => "SMPS_" + S.type.id + "_" + (S.name || "card").replace(/[^\w\u0900-\u097F]+/g, "_").slice(0, 30) + ".png";
     m.foot.insertBefore(modalBtn_("⬇️ डाउनलोड", "#15803d", () => { if (!cur) return; const l = document.createElement("a"); l.href = cur.toDataURL("image/png"); l.download = fname(); document.body.appendChild(l); l.click(); l.remove(); }), m.foot.firstChild);
@@ -9457,6 +9476,7 @@ if ('serviceWorker' in navigator) {
     }), m.foot.children[1] || null);
     $("#cmT").value = (CARD_TYPES_.find(t => t.id === opts.type) || CARD_TYPES_[0]).id; setType($("#cmT").value);
     if (opts.name) $("#cmN").value = stripPlace_(opts.name);
+    if (opts.amount) $("#cmA").value = opts.amount; if (opts.sub) $("#cmS").value = opts.sub; if (opts.note) $("#cmX").value = opts.note;
     render();
     try {   // सदस्य सूची (नाम चुनने के लिए) — बाद में भर जाती है
       const mem = (await fetchSheet("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i) || keyOf(mem, /^(name|नाम)$/i), dl = $("#cmMem");
@@ -9465,8 +9485,8 @@ if ('serviceWorker' in navigator) {
   };
 
   /* ===== v1.322: Table header — Line 1 = search; Line 2 (tool buttons) SIRF jab 4+ tool buttons hon; warna sab Line 1 mein ===== */
-  const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "wishBtn"];
-  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", wishBtn: "बधाई" };
+  const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "talentBtn", "wishBtn"];
+  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", talentBtn: "प्रतिभा", wishBtn: "बधाई" };
   window.placeToolRow_ = function () {
     const sw = document.getElementById("searchWrapper"), dirBtn = document.getElementById("dirBtn"); if (!sw || !dirBtn || !dirBtn.parentNode) return;
     const mobile = !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches);
@@ -9678,6 +9698,270 @@ if ('serviceWorker' in navigator) {
     let done = false; const go = () => { if (done) return; done = true; setTimeout(() => { try { w.focus(); w.print(); } catch (x) {} }, 250); };
     try { w.document.fonts.ready.then(go); } catch (x) {} setTimeout(go, 2500);
     return true;
+  };
+
+  /* PDF-ENGINE-START — canvas se page banakar JPEG → PDF (browser ka apna Hindi shaping, isliye jodakshar / matra sahi) */
+  function pdfSeg_(s) {
+    try { if (typeof Intl !== "undefined" && Intl.Segmenter) { return Array.from(new Intl.Segmenter("hi", { granularity: "grapheme" }).segment(String(s)), x => x.segment); } } catch (e) {}
+    const out = [];
+    Array.from(String(s)).forEach(ch => {
+      if (out.length && (/[\u0900-\u0903\u093A-\u094F\u0951-\u0957\u0962\u0963\u200C\u200D]/.test(ch) || /\u094D$/.test(out[out.length - 1]))) out[out.length - 1] += ch; else out.push(ch);
+    });
+    return out;
+  }
+  function pdfWrap_(g, text, maxW) {
+    const lines = [];
+    String(text == null ? "" : text).split(/\r?\n/).forEach(par => {
+      let line = "";
+      par.split(/\s+/).filter(Boolean).forEach(word => {
+        const t = line ? line + " " + word : word;
+        if (g.measureText(t).width <= maxW) { line = t; return; }
+        if (line) { lines.push(line); line = ""; }
+        if (g.measureText(word).width <= maxW) { line = word; return; }
+        let part = "";
+        pdfSeg_(word).forEach(ch => { if (part && g.measureText(part + ch).width > maxW) { lines.push(part); part = ch; } else part += ch; });
+        line = part;
+      });
+      lines.push(line);
+    });
+    return lines.length ? lines : [""];
+  }
+  function PdfBuilder_(opt) {
+    const S = opt.scale || 2, L = !!opt.landscape, PW = L ? 1123 : 794, PH = L ? 794 : 1123, M = { l: 34, r: 34, t: 62, b: 50 };
+    const F = opt.font || '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
+    const mk = () => (typeof document !== "undefined" ? document.createElement("canvas") : null);
+    const meas = mk(); meas.width = 10; meas.height = 10; const mg = meas.getContext("2d");
+    const font = (size, wt) => (wt || 400) + " " + size + "px " + F;
+    const B = { dry: true, y: M.t, page: 0, total: 0, jpgs: [], marks: {}, prev: {}, PW: PW, PH: PH, M: M, w: PW - M.l - M.r, landscape: L };
+    let cv = null, g = null;
+    function chrome() {
+      g.textBaseline = "alphabetic";
+      g.fillStyle = "#7c2d12"; g.font = font(12.5, 700); g.textAlign = "left"; g.fillText(opt.org || "", M.l, 30);
+      g.fillStyle = "#475569"; g.font = font(12, 500); g.textAlign = "right"; g.fillText(opt.title || "", PW - M.r, 30);
+      g.strokeStyle = "#e2a96b"; g.lineWidth = 1.2; g.beginPath(); g.moveTo(M.l, 40); g.lineTo(PW - M.r, 40); g.stroke();
+      g.strokeStyle = "#cbd5e1"; g.lineWidth = 0.8; g.beginPath(); g.moveTo(M.l, PH - 34); g.lineTo(PW - M.r, PH - 34); g.stroke();
+      g.fillStyle = "#64748b"; g.font = font(11, 400); g.textAlign = "center"; g.fillText("पृष्ठ " + B.page + " / " + (B.total || ""), PW / 2, PH - 16);
+      g.textAlign = "left"; g.fillText(opt.date || "", M.l, PH - 16);
+    }
+    function startPage() {
+      B.page++; B.y = M.t;
+      if (B.dry) return;
+      cv = mk(); cv.width = Math.round(PW * S); cv.height = Math.round(PH * S); g = cv.getContext("2d"); g.scale(S, S);
+      g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); chrome();
+    }
+    function flush() { if (!B.dry && cv) { B.jpgs.push({ d: cv.toDataURL("image/jpeg", opt.quality || 0.85), w: cv.width, h: cv.height }); cv = null; g = null; } }
+    B.newPage = () => { flush(); startPage(); };
+    B.ensure = h => { if (B.y + h > PH - M.b) B.newPage(); };
+    B.mf = (size, wt) => { mg.font = font(size, wt); return mg; };
+    B.text = (s, x, y, size, wt, color, align) => { if (B.dry) return; g.font = font(size, wt); g.fillStyle = color || "#111"; g.textAlign = align || "left"; g.fillText(String(s), x, y); g.textAlign = "left"; };
+    B.rect = (x, y, w, h, fill, stroke) => { if (B.dry) return; if (fill) { g.fillStyle = fill; g.fillRect(x, y, w, h); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = 0.8; g.strokeRect(x, y, w, h); } };
+    B.line = (x1, y1, x2, y2, color, w) => { if (B.dry) return; g.strokeStyle = color || "#cbd5e1"; g.lineWidth = w || 0.8; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+    B.mark = key => { B.marks[key] = B.page; };
+    B.paragraph = (s, size, wt, color, align, gap) => {
+      const m = B.mf(size, wt), lh = Math.round(size * 1.45), lines = pdfWrap_(m, s, B.w);
+      lines.forEach(ln => { B.ensure(lh); B.text(ln, align === "center" ? PW / 2 : M.l, B.y + size, size, wt, color, align); B.y += lh; });
+      B.y += gap == null ? 6 : gap;
+    };
+    B.band = (title, sub, color) => {
+      B.ensure(34 + 70);
+      B.rect(M.l, B.y, B.w, 28, color || "#9a3412");
+      B.text(title, M.l + 10, B.y + 19.5, 15, 700, "#fff"); if (sub) B.text(sub, PW - M.r - 10, B.y + 19, 12, 500, "#ffedd5", "right");
+      B.y += 34;
+    };
+    B.table = (cols, rows, o) => {
+      o = o || {}; const size = o.size || 11.5, pad = 5, lh = Math.round(size * 1.42), avail = B.w;
+      const mgN = B.mf(size, 400), want = cols.map((c, i) => {
+        B.mf(size, 700); let w = mg.measureText(c.h).width + 2 * pad; B.mf(size, 400);
+        rows.slice(0, 400).forEach(r => { w = Math.max(w, mg.measureText(String(r[i] == null ? "" : r[i]).replace(/\s+/g, " ")).width + 2 * pad); });
+        return Math.min(w, c.max || avail * 0.5);
+      });
+      const minw = cols.map(c => c.min || 34); let tot = want.reduce((a, b) => a + b, 0), W;
+      if (tot <= avail) { const ex = avail - tot; W = want.map(w => w + ex * (w / tot)); }
+      else {
+        const flex = want.map((w, i) => Math.max(0, w - minw[i])), fs = flex.reduce((a, b) => a + b, 0), need = tot - avail;
+        W = want.map((w, i) => fs ? Math.max(minw[i], w - need * flex[i] / fs) : avail / cols.length);
+        const t2 = W.reduce((a, b) => a + b, 0); if (t2 > avail) W = W.map(w => w * avail / t2);
+      }
+      const hdrLines = cols.map((c, i) => { B.mf(size, 700); return pdfWrap_(mg, c.h, W[i] - 2 * pad); }), hH = Math.max(...hdrLines.map(l => l.length)) * lh + 2 * pad;
+      const drawHeader = () => {
+        B.rect(M.l, B.y, avail, hH, "#eaf1fb");
+        let x = M.l; cols.forEach((c, i) => { hdrLines[i].forEach((ln, k) => B.text(ln, c.a === "center" ? x + W[i] / 2 : x + pad, B.y + pad + size + k * lh - 2, size, 700, "#0b3d91", c.a === "center" ? "center" : "left")); x += W[i]; });
+        B.line(M.l, B.y, M.l + avail, B.y, "#94a3b8", 1); B.line(M.l, B.y + hH, M.l + avail, B.y + hH, "#94a3b8", 1); B.y += hH;
+      };
+      const rowLines = r => cols.map((c, i) => { B.mf(size, c.bold ? 700 : 400); return pdfWrap_(mg, r[i] == null ? "" : r[i], W[i] - 2 * pad); });
+      const first = rows.length ? rowLines(rows[0]) : [[""]], firstH = Math.max(...first.map(l => l.length)) * lh + 2 * pad;
+      B.ensure(hH + firstH); drawHeader();
+      rows.forEach((r, ri) => {
+        const cl = ri === 0 ? first : rowLines(r), rh = Math.max(...cl.map(l => l.length)) * lh + 2 * pad;
+        if (B.y + rh > PH - M.b) { B.newPage(); drawHeader(); }
+        if (ri % 2) B.rect(M.l, B.y, avail, rh, "#f8fafc");
+        let x = M.l; cl.forEach((lines, i) => { lines.forEach((ln, k) => B.text(ln, cols[i].a === "center" ? x + W[i] / 2 : x + pad, B.y + pad + size + k * lh - 2, size, cols[i].bold ? 700 : 400, cols[i].color || "#111", cols[i].a === "center" ? "center" : "left")); x += W[i]; });
+        B.line(M.l, B.y + rh, M.l + avail, B.y + rh, "#dbe3ee", 0.7); B.y += rh;
+      });
+      let x = M.l; B.line(M.l, B.y - 0.5, M.l + avail, B.y - 0.5, "#94a3b8", 1); B.y += 10;
+    };
+    B.run = layout => {
+      B.dry = true; B.page = 0; B.marks = {}; startPage(); layout(B); B.total = B.page; const pm = B.marks;
+      B.dry = false; B.page = 0; B.jpgs = []; B.prev = pm; B.marks = {}; startPage(); layout(B); flush();
+      return B;
+    };
+    B.pdfBytes = () => {
+      const enc = s => new TextEncoder().encode(s), b64 = s => { const bin = atob(s.split(",")[1]); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+      const pw = L ? 841.89 : 595.28, ph = L ? 595.28 : 841.89, parts = [], offs = [0]; let pos = 0;
+      const push = u => { parts.push(u); pos += u.length; };
+      const obj = (id, head, stream) => { offs[id] = pos; push(enc(id + " 0 obj\n" + head + (stream ? "\nstream\n" : "\n"))); if (stream) { push(stream); push(enc("\nendstream\n")); } push(enc("endobj\n")); };
+      const n = B.jpgs.length; push(enc("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"));
+      obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+      obj(2, "<< /Type /Pages /Kids [" + B.jpgs.map((_, i) => (3 + i * 3) + " 0 R").join(" ") + "] /Count " + n + " >>");
+      B.jpgs.forEach((j, i) => {
+        const pid = 3 + i * 3, cid = pid + 1, iid = pid + 2, u = b64(j.d), content = enc("q " + pw.toFixed(2) + " 0 0 " + ph.toFixed(2) + " 0 0 cm /Im0 Do Q");
+        obj(pid, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + pw.toFixed(2) + " " + ph.toFixed(2) + "] /Resources << /XObject << /Im0 " + iid + " 0 R >> >> /Contents " + cid + " 0 R >>");
+        obj(cid, "<< /Length " + content.length + " >>", content);
+        obj(iid, "<< /Type /XObject /Subtype /Image /Width " + j.w + " /Height " + j.h + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + u.length + " >>", u);
+      });
+      const xr = pos, total = 3 + n * 3; let x = "xref\n0 " + total + "\n0000000000 65535 f \n";
+      for (let i = 1; i < total; i++) x += String(offs[i]).padStart(10, "0") + " 00000 n \n";
+      push(enc(x + "trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" + xr + "\n%%EOF"));
+      const out = new Uint8Array(pos); let o = 0; parts.forEach(p => { out.set(p, o); o += p.length; }); return out;
+    };
+    return B;
+  }
+  /* PDF-ENGINE-END */
+
+  window.pdfSave_ = function (bytes, name) {
+    const blob = new Blob([bytes], { type: "application/pdf" }), url = URL.createObjectURL(blob), l = document.createElement("a");
+    l.href = url; l.download = name; document.body.appendChild(l); l.click(); l.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+  const pdfDay_ = () => { const d = new Date(), z = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()); };
+  const pdfName_ = s => String(s || "report").replace(/[^\w\u0900-\u097F]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) || "report";
+
+  /* ---- 📄 PDF (table): saari chhaanti hui rows, seedha download, sahi Hindi ---- */
+  window.exportTablePdf_ = async function () {
+    const btn = document.getElementById("exportPDFBtn"), old = btn ? btn.textContent : "";
+    const done = () => { if (btn) btn.textContent = old; };
+    try {
+      if (btn) btn.textContent = "⏳ PDF बन रहा है...";
+      await ensureFonts_();
+      const sRpp = rowsPerPage, sPage = currentPage; let table = null;
+      try { rowsPerPage = 999999; currentPage = 1; renderTable(); const t0 = document.querySelector("#contentArea table"); table = t0 ? t0.cloneNode(true) : null; }
+      finally { rowsPerPage = sRpp; currentPage = sPage; try { renderTable(); } catch (e) {} }
+      if (!table) throw new Error("Table nahi mila");
+      if (table.dataset.latestFirst === "1") { const tb = table.querySelector("tbody"); if (tb) Array.from(tb.querySelectorAll("tr")).sort((x, y) => (+x.dataset.seq) - (+y.dataset.seq)).forEach(tr => tb.appendChild(tr)); }
+      const ths = Array.from(table.querySelectorAll("thead th")), hid = c => !!(c && ((c.style && c.style.display === "none") || c.hidden));
+      const keep = ths.map((th, i) => i < ths.length - 1 && !hid(th) && String(th.textContent).trim() !== "");   // aakhri column = Actions
+      const txt = td => { if (!td) return ""; let t = String(td.textContent || "").replace(/\s+/g, " ").trim(); if (!t && td.querySelector && td.querySelector("img")) t = "[फोटो]"; return t; };
+      const rows = Array.from(table.querySelectorAll("tbody tr")).filter(tr => tr.children.length === ths.length).map(tr => Array.from(tr.children).filter((c, i) => keep[i]).map(txt));
+      const heads = ths.filter((th, i) => keep[i]).map(th => String(th.textContent).replace(/\s+/g, " ").trim());
+      if (!rows.length) { done(); alert("PDF के लिए कोई रिकॉर्ड नहीं है।"); return; }
+      const numLike = i => { const v = rows.slice(0, 80).map(r => r[i]).filter(Boolean); return v.length && v.filter(x => /^[\s₹$,.\-+/0-9:%A-Za-z]{1,16}$/.test(x) && /\d/.test(x)).length >= v.length * 0.8; };
+      const cols = heads.map((h, i) => ({ h: h, a: numLike(i) ? "center" : "left", bold: i === 0 && !numLike(0) ? true : false }));
+      const nameCol = heads.findIndex((h, i) => !numLike(i)); cols.forEach((c, i) => { c.bold = i === nameCol; });
+      const size = heads.length > 14 ? 8.5 : heads.length > 10 ? 9.5 : heads.length > 7 ? 10.5 : 11.5;
+      let flt = ""; try { flt = getActiveFilterLabel_(); } catch (e) {}
+      const ttl = (currentTab || "Report") + (flt ? " — " + flt : ""), day = new Date().toLocaleDateString("en-GB");
+      const pdf = PdfBuilder_({ landscape: heads.length >= 5, org: SAMAJ_NAME_, title: currentTab || "", date: day });
+      pdf.run(b => { b.paragraph(ttl, 18, 700, "#111", "left", 2); b.paragraph("कुल " + rows.length + " रिकॉर्ड", 12, 400, "#475569", "left", 8); b.table(cols, rows, { size: size }); });
+      window.pdfSave_(pdf.pdfBytes(), pdfName_(currentTab) + "_" + pdfDay_() + ".pdf");
+      done();
+    } catch (err) {
+      console.error("exportTablePdf_", err); done();
+      if (!(window.exportPDFPrint_ && window.exportPDFPrint_())) alert("PDF नहीं बन पाया: " + (err && err.message || err));
+    }
+  };
+
+  /* ---- 📖 सदस्य निर्देशिका (शहर-वार, Hindi, छपने लायक) ---- */
+  window.exportDirectoryPdf_ = async function (ctx) {
+    try {
+      await ensureFonts_();
+      const rows = ctx.rows || [], K = ctx.keys || {}, part = s => { const m = String(s || "").match(/\(([^)]*)\)\s*$/); return m ? m[1].split("-").map(x => x.trim()).filter(Boolean) : []; };
+      const cm = {};
+      rows.forEach(r => { const en = String(r[K.kCity] || "").trim().toLowerCase(), pl = part(r[K.kName]); if (!en || pl.length < 2 || !hasDev_(pl[pl.length - 1])) return; const hi = pl[pl.length - 1]; (cm[en] = cm[en] || {})[hi] = (cm[en][hi] || 0) + 1; });
+      const cityHi = en => { const m = cm[String(en || "").trim().toLowerCase()]; return m ? Object.keys(m).sort((x, y) => m[y] - m[x])[0] : ""; };
+      const fm = v => { const d = String(v || "").replace(/\D/g, "").slice(-10); return d.length === 10 ? d.slice(0, 5) + " " + d.slice(5) : String(v || ""); };
+      const recs = rows.map(r => {
+        const parts = part(r[K.kName]), cEn = String(r[K.kCity] || "").trim(), vil = String(r[K.kVil] || "").trim(); let cH = "", oH = "";
+        if (parts.length >= 2) { oH = parts[0]; cH = parts[parts.length - 1]; } else if (parts.length === 1) { if (cEn && !vil) cH = parts[0]; else oH = parts[0]; }
+        return { city: cH || cityHi(cEn) || cEn || "अन्य", name: stripPlace_(r[K.kName]), mob: fm(r[K.kMob]), gotra: String(r[K.kGotra] || "").trim(), origin: oH || vil, occ: String(r[K.kOcc] || "").trim() };
+      });
+      if (!recs.length) { alert("निर्देशिका के लिए कोई सदस्य नहीं है।"); return; }
+      const groups = {}; recs.forEach(x => { (groups[x.city] = groups[x.city] || []).push(x); });
+      const cities = Object.keys(groups).sort((x, y) => x === "अन्य" ? 1 : y === "अन्य" ? -1 : x.localeCompare(y, "hi"));
+      cities.forEach(c => groups[c].sort((x, y) => x.name.localeCompare(y.name, "hi")));
+      const hasG = recs.some(x => x.gotra), hasO = recs.some(x => x.occ), day = new Date().toLocaleDateString("en-GB");
+      const cols = [{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "मोबाइल", max: 110 }].concat(hasG ? [{ h: "गोत्र", max: 90 }] : [], [{ h: "गाँव / मूल स्थान", max: 130 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);
+      const pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day });
+      pdf.run(b => {
+        b.y = 150; b.paragraph(SAMAJ_NAME_, 30, 700, "#7c2d12", "center", 4); b.paragraph("सदस्य निर्देशिका", 44, 700, "#111", "center", 10);
+        b.paragraph("कुल " + recs.length + " सदस्य  •  " + day, 16, 500, "#475569", "center", 22);
+        b.paragraph("अनुक्रमणिका", 18, 700, "#9a3412", "left", 4);
+        b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 80 }, { h: "पृष्ठ", a: "center", max: 70 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: 13 });
+        b.newPage();
+        cities.forEach(c => { b.ensure(120); b.mark("c:" + c); b.band(c, groups[c].length + " सदस्य"); b.table(cols, groups[c].map((x, i) => [i + 1, x.name, x.mob].concat(hasG ? [x.gotra] : [], [x.origin], hasO ? [x.occ] : [])), { size: 11.5 }); });
+      });
+      window.pdfSave_(pdf.pdfBytes(), "Sadasya_Nirdeshika_" + pdfDay_() + ".pdf");
+    } catch (err) { console.error("exportDirectoryPdf_", err); alert("निर्देशिका PDF नहीं बन पाई: " + (err && err.message || err)); }
+  };
+
+  /* ---- 🙏 धन्यवाद कार्ड: Boli / Donation / Receipts की row से ---- */
+  window.openThanksCard_ = function (incomingEnc, e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const inc = decodeURIComponent(incomingEnc || ""); let rec = tableData.find(r => (r["ID"] || "") === inc);
+    if (!rec && SETTINGS && SETTINGS["MemberColumn"]) rec = tableData.find(r => (r[SETTINGS["MemberColumn"]] || "") === inc);
+    if (!rec) rec = tableData.find(r => Object.values(r).some(v => String(v) === inc));
+    if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
+    const keys = Object.keys(rec), K = re => keys.find(k => re.test(String(k).trim()));
+    let nm = ""; try { nm = displayMemberFromRow_(rec) || getRowMemberName_(rec) || ""; } catch (x) {}
+    if (!nm) nm = String(rec[K(/^(member|name|donor|नाम)/i)] || "");
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0;
+    const kPaid = K(/^paid/i), kPl = K(/^pledged/i), kAmt = K(/^(received|amount|credit|जमा|राशि)/i);
+    const amt = kPaid && num(rec[kPaid]) > 0 ? num(rec[kPaid]) : (kAmt ? num(rec[kAmt]) : (kPl ? num(rec[kPl]) : 0));
+    const kFor = K(/^(for|purpose|seva|सेवा|item|event|category|head|उद्देश्य)/i), kDt = K(/^(date|तारीख|दिनांक)/i), kRc = K(/^(receipt|rcpt|रसीद|slip)/i);
+    const sub = [kFor ? String(rec[kFor] || "").trim() : "", kDt ? String(rec[kDt] || "").trim() : ""].filter(Boolean).join(" · ");
+    const note = kRc && String(rec[kRc] || "").trim() ? "रसीद क्र. " + String(rec[kRc]).trim() : "";
+    window.openCardMaker_({ type: "thanks", name: nm, amount: amt ? String(amt) : "", sub: sub, note: note });
+  };
+
+  /* ---- ⬇️ और दिखाएँ (mobile) + ⬆️ ऊपर जाएँ ---- */
+  window.moreBar_ = function () {
+    const old = document.getElementById("moreBar"); if (old) old.remove();
+    const pg = document.getElementById("pagination"); if (!pg || !(window.matchMedia && window.matchMedia("(max-width: 600px)").matches)) return;
+    const total = Array.isArray(lastFilteredRows_) ? lastFilteredRows_.length : 0;
+    if (!total || currentPage !== 1 || rowsPerPage >= total) return;
+    const bar = document.createElement("div"); bar.id = "moreBar"; bar.className = "more-bar";
+    const b = document.createElement("button"); b.type = "button"; b.textContent = "और दिखाएँ (" + Math.min(rowsPerPage, total) + " / " + total + ")";
+    b.onclick = () => { window.__rppBase = window.__rppBase || rowsPerPage; rowsPerPage = rowsPerPage + window.__rppBase; currentPage = 1; renderTable(); };
+    bar.appendChild(b); pg.parentNode.insertBefore(bar, pg);
+  };
+  if (typeof renderTable === "function") { const _rt3 = renderTable; renderTable = function () { const r = _rt3.apply(this, arguments); try { window.moreBar_(); } catch (e) {} return r; }; }
+  document.addEventListener("change", e => { if (e.target && e.target.id === "pageSize") window.__rppBase = null; });
+  (function () {
+    const mkTop = () => {
+      if (document.getElementById("toTopBtn")) return; const b = document.createElement("button"); b.id = "toTopBtn"; b.type = "button"; b.textContent = "↑"; b.title = "ऊपर जाएँ"; b.setAttribute("aria-label", "ऊपर जाएँ");
+      b.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" }); document.body.appendChild(b); let t = false;
+      window.addEventListener("scroll", () => { if (t) return; t = true; requestAnimationFrame(() => { t = false; b.classList.toggle("on", (window.scrollY || document.documentElement.scrollTop) > 500); }); }, { passive: true });
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mkTop); else mkTop();
+  })();
+
+  /* ---- 🏆 प्रतिभा सम्मान: admin — कौन सा बच्चा वेबसाइट पर दिखे (अनुमति) ---- */
+  window.openTalentAdmin_ = async function () {
+    const m = openModal_("🏆 प्रतिभा सम्मान — वेबसाइट पर दिखाना"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "talentList" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const rows = r.rows || []; if (!rows.length) { m.body.innerHTML = '<p class="muted">अभी कोई प्रविष्टि नहीं आई। (वेबसाइट के फ़ॉर्म से आती हैं।)</p>'; return; }
+    const sum = document.createElement("div"); sum.style.cssText = "font-size:12.5px;color:#475569;margin-bottom:6px";
+    const upd = () => { sum.textContent = "कुल " + rows.length + " · वेबसाइट पर दिख रहे " + rows.filter(x => x.show).length + " · मार्कशीट मिली " + rows.filter(x => x.marksheet).length; };
+    m.body.innerHTML = '<div style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-bottom:6px">⚠️ यहाँ चालू करने पर बच्चे का नाम, कक्षा, अंक, स्कूल और जगह वेबसाइट पर सबको दिखेगी (माता-पिता का नाम / मोबाइल कभी नहीं)। पहले मार्कशीट जाँच लें।</div>';
+    m.body.appendChild(sum); upd();
+    rows.forEach(x => {
+      const d = document.createElement("div"); d.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px";
+      d.innerHTML = "<b>" + esc(x.student) + "</b> · " + esc(x.cls) + " · <b>" + esc(x.percent) + "%</b><div style=\"color:#64748b;margin:2px 0\">" + esc([x.school, x.place, x.event].filter(Boolean).join(" · ")) + "</div><div style=\"color:#64748b\">माता-पिता: " + esc(x.parent) + " · 📱 " + esc(x.mobile) + "</div>";
+      const row = document.createElement("div"); row.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;margin-top:6px";
+      const tg = (label, key) => { const l = document.createElement("label"); l.style.cssText = "display:inline-flex;align-items:center;gap:5px;cursor:pointer"; const c = document.createElement("input"); c.type = "checkbox"; c.style.cssText = "width:auto;margin:0"; c.checked = !!x[key];
+        c.onchange = async () => { const v = c.checked; c.disabled = true; try { const rr = await callCrudBackend_({ action: "talentSet", row: x.row, student: x.student, field: key === "show" ? "show" : "marksheet", value: v }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); x[key] = v; upd(); } catch (er) { c.checked = !v; alert("❌ " + (er.message || er)); } c.disabled = false; };
+        l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; };
+      row.appendChild(tg("मार्कशीट मिली", "marksheet")); row.appendChild(tg("वेबसाइट पर दिखाएँ", "show")); d.appendChild(row); m.body.appendChild(d);
+    });
   };
 
   window.refreshPendBadge_ = function () {
