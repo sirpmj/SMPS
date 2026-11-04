@@ -627,8 +627,19 @@ dialog.fd::backdrop { background: rgba(7, 20, 43, .6); }
 .vy-n, .vy-p { color: var(--mut); font-size: 14.5px; }
 .vy-d { color: var(--ink); font-size: 14.5px; line-height: 1.55; margin-top: 2px; }
 .vy-a { display: flex; gap: 8px; margin-top: 8px; }
-.pr-c .pr-p { font-weight: 800; font-size: 22px; color: var(--brand); line-height: 1.1; }
-.pr-c .pr-p small { font-size: 12.5px; font-weight: 600; color: var(--mut); display: block; margin-top: 2px; }
+.pr-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--cr); box-shadow: var(--shadow); padding: 14px 14px 14px 18px; display: flex; gap: 14px; align-items: center; position: relative; overflow: hidden; }
+.pr-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pr, var(--brand)); }
+.pr-card.t1 { --pr: #d4a017; }
+.pr-card.t2 { --pr: #e07b1a; }
+.pr-card.t3 { --pr: var(--brand); }
+.pr-ring { flex: 0 0 76px; height: 76px; border-radius: 50%; border: 4px solid var(--pr); display: grid; place-content: center; text-align: center; line-height: 1; color: var(--ink); background: var(--surface); }
+.pr-ring b { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
+.pr-ring small { font-size: 11px; color: var(--mut); margin-top: 4px; font-weight: 600; }
+.pr-info { min-width: 0; display: grid; gap: 5px; }
+.pr-name { font-weight: 800; font-size: 18px; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+.pr-cls { justify-self: start; font-size: 13px; font-weight: 700; color: var(--pr); border: 1.5px solid var(--pr); border-radius: 999px; padding: 1px 11px; line-height: 1.5; }
+.pr-row { font-size: 14.5px; color: var(--mut); display: flex; gap: 7px; align-items: baseline; line-height: 1.4; }
+.pr-row i { font-style: normal; font-size: 13px; }
 .vy-e { grid-column: 1 / -1; color: var(--mut); text-align: center; padding: 20px 0; margin: 0; }
 .vy-add2 { margin-top: 16px; text-align: center; }
 @media (max-width: 700px) { .vy-bar { flex-direction: column; } .vy-a .sbtn { flex: 1 1 0; } }
@@ -1416,8 +1427,15 @@ function drawPratibha(rows, S) {
   const draw = () => {
     const evs = Array.from(new Set(list.map(x => x.e).filter(Boolean)));
     $("prChips").innerHTML = evs.length > 1 ? ["सभी"].concat(evs).map(c => '<button type="button" class="chip" aria-pressed="' + ((c === "सभी" && !ev) || c === ev) + '" data-c="' + esc(c === "सभी" ? "" : c) + '">' + esc(c) + "</button>").join("") : "";
-    $("prList").innerHTML = list.filter(x => !ev || x.e === ev).map(x => '<article class="vy-c pr-c"><div class="vy-top"><div class="vy-b">' + esc(x.n) + "</div>" + (x.p ? '<div class="pr-p">' + esc(x.p) + "%<small>अंक</small></div>" : "") + "</div>" +
-      (x.c ? '<div class="vy-n">' + esc(x.c) + "</div>" : "") + (x.s ? '<div class="vy-d">' + esc(x.s) + "</div>" : "") + (x.pl ? '<div class="vy-p">' + esc(x.pl) + "</div>" : "") + "</article>").join("");
+    $("prList").innerHTML = list.filter(x => !ev || x.e === ev).map(x => {
+      const pv = parseFloat(x.p), tier = pv >= 90 ? "t1" : pv >= 85 ? "t2" : "t3";
+      const pTxt = isFinite(pv) ? (Math.round(pv * 10) / 10) + "%" : x.p;
+      const cls = /^\d{1,2}$/.test(x.c) ? "कक्षा " + x.c : x.c;
+      const nm = /^[A-Za-z .'\-]+$/.test(x.n) && (x.n === x.n.toLowerCase() || x.n === x.n.toUpperCase()) ? x.n.toLowerCase().replace(/(^|[\s.'\-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : x.n;
+      return '<article class="pr-card ' + tier + '">' + (x.p ? '<div class="pr-ring" aria-label="' + esc(pTxt) + ' अंक"><b>' + esc(pTxt) + "</b><small>अंक</small></div>" : "") +
+        '<div class="pr-info"><div class="pr-name">' + esc(nm) + "</div>" + (cls ? '<div class="pr-cls">' + esc(cls) + "</div>" : "") +
+        (x.s ? '<div class="pr-row"><i aria-hidden="true">🏫</i><span>' + esc(x.s) + "</span></div>" : "") + (x.pl ? '<div class="pr-row"><i aria-hidden="true">📍</i><span>' + esc(x.pl) + "</span></div>" : "") + "</div></article>";
+    }).join("");
   };
   $("prChips").onclick = e => { const b = e.target.closest("button[data-c]"); if (b) { ev = b.dataset.c; draw(); } };
   draw();
