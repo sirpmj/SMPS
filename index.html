@@ -635,6 +635,9 @@ dialog.fd::backdrop { background: rgba(7, 20, 43, .6); }
 .pr-ring { flex: 0 0 76px; height: 76px; border-radius: 50%; border: 4px solid var(--pr); display: grid; place-content: center; text-align: center; line-height: 1; color: var(--ink); background: var(--surface); }
 .pr-ring b { font-size: 22px; font-weight: 800; letter-spacing: -.3px; }
 .pr-ring small { font-size: 11px; color: var(--mut); margin-top: 4px; font-weight: 600; }
+.pr-ph { flex: 0 0 76px; width: 76px; height: 76px; position: relative; }
+.pr-ph img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--pr); display: block; background: var(--surface); }
+.pr-bd { position: absolute; right: -6px; bottom: -4px; background: var(--pr); color: #fff; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 1px 7px; line-height: 1.5; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
 .pr-info { min-width: 0; display: grid; gap: 5px; }
 .pr-name { font-weight: 800; font-size: 18px; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
 .pr-cls { justify-self: start; font-size: 13px; font-weight: 700; color: var(--pr); border: 1.5px solid var(--pr); border-radius: 999px; padding: 1px 11px; line-height: 1.5; }
@@ -1357,7 +1360,8 @@ function talentForm() {
   return { title: "प्रतिभा सम्मान के लिए नाम", intro: "80% या उससे अधिक अंक पाने वाले विद्यार्थी (कक्षा 1 से उच्च शिक्षा तक)।", action: "talentEntry", extra: { event: EV.name }, waPrimary: true,
     done: "आपका नाम दर्ज हो गया। कृपया अंकतालिका की फोटो WhatsApp पर भेज दें।",
     fields: [{ k: "student", label: "विद्यार्थी का नाम", req: 1 }, { k: "cls", label: "कक्षा / पाठ्यक्रम", req: 1, ph: "जैसे: कक्षा 10, B.Com" }, { k: "percent", label: "प्राप्त प्रतिशत (%)", type: "number", req: 1, min: 0, max: 100 },
-      { k: "school", label: "स्कूल / कॉलेज (वैकल्पिक)" }, { k: "parent", label: "माता / पिता का नाम", req: 1 }, { k: "mobile", label: "मोबाइल नंबर", type: "tel", req: 1 }, { k: "place", label: "गाँव / शहर", req: 1 }],
+      { k: "school", label: "स्कूल / कॉलेज (वैकल्पिक)" }, { k: "parent", label: "माता / पिता का नाम", req: 1 }, { k: "mobile", label: "मोबाइल नंबर", type: "tel", req: 1 }, { k: "place", label: "गाँव / शहर", req: 1 },
+      { k: "consent", label: "मैं (माता / पिता / अभिभावक) बच्चे का नाम, कक्षा, अंक और स्कूल समाज की वेबसाइट पर दिखाने की सहमति देता/देती हूँ। (मोबाइल और माता-पिता का नाम कभी नहीं दिखेगा)", type: "check", req: 1 }],
     validate: v => +v.percent < 80 ? "प्रतिभा सम्मान के लिए 80% या उससे अधिक अंक चाहिए" : "",
     wa: v => "🙏 जय श्रीयादे माता की 🙏\nप्रतिभा सम्मान के लिए नाम:\nविद्यार्थी: " + v.student + "\nकक्षा/पाठ्यक्रम: " + v.cls + "\nप्रतिशत: " + v.percent + "%\nमाता/पिता: " + v.parent + "\nगाँव/शहर: " + v.place + "\nमोबाइल: " + v.mobile + "\n(अंकतालिका की फोटो इसी चैट में भेज रहा/रही हूँ)" };
 }
@@ -1418,7 +1422,7 @@ function drawSeva(rows, S) {
 function drawPratibha(rows, S) {
   const sec = $("pratibha"); if (!sec) return;
   const off = String((S && S.ShowPratibha) || "").trim().toUpperCase() === "FALSE";
-  const list = (Array.isArray(rows) ? rows : []).map(r => ({ n: String(r.Student || "").trim(), c: String(r.Class || "").trim(), p: String(r.Percent || "").trim().replace(/%/g, ""), s: String(r.School || "").trim(), pl: String(r.Place || "").trim(), e: String(r.Event || "").trim() }))
+  const list = (Array.isArray(rows) ? rows : []).map(r => ({ ph: String(r.Photo || "").trim(), n: String(r.Student || "").trim(), c: String(r.Class || "").trim(), p: String(r.Percent || "").trim().replace(/%/g, ""), s: String(r.School || "").trim(), pl: String(r.Place || "").trim(), e: String(r.Event || "").trim() }))
     .filter(x => x.n && String(x.n).length < 120).sort((a, b) => (parseFloat(b.p) || 0) - (parseFloat(a.p) || 0));
   const show = !off && list.length > 0;
   sec.hidden = !show; document.querySelectorAll('a[href="#pratibha"]').forEach(a => { a.hidden = !show; });
@@ -1432,7 +1436,8 @@ function drawPratibha(rows, S) {
       const pTxt = isFinite(pv) ? (Math.round(pv * 10) / 10) + "%" : x.p;
       const cls = /^\d{1,2}$/.test(x.c) ? "कक्षा " + x.c : x.c;
       const nm = /^[A-Za-z .'\-]+$/.test(x.n) && (x.n === x.n.toLowerCase() || x.n === x.n.toUpperCase()) ? x.n.toLowerCase().replace(/(^|[\s.'\-])([a-z])/g, (m, a, b) => a + b.toUpperCase()) : x.n;
-      return '<article class="pr-card ' + tier + '">' + (x.p ? '<div class="pr-ring" aria-label="' + esc(pTxt) + ' अंक"><b>' + esc(pTxt) + "</b><small>अंक</small></div>" : "") +
+      const photo = /^https:\/\/(drive\.google\.com|lh3\.googleusercontent\.com)\//.test(x.ph) ? x.ph : "";
+      return '<article class="pr-card ' + tier + '">' + (photo ? '<div class="pr-ph"><img src="' + esc(photo) + '" alt="' + esc(nm) + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest(\'.pr-ph\').remove()">' + (x.p ? '<span class="pr-bd">' + esc(pTxt) + "</span>" : "") + "</div>" : (x.p ? '<div class="pr-ring" aria-label="' + esc(pTxt) + ' अंक"><b>' + esc(pTxt) + "</b><small>अंक</small></div>" : "")) +
         '<div class="pr-info"><div class="pr-name">' + esc(nm) + "</div>" + (cls ? '<div class="pr-cls">' + esc(cls) + "</div>" : "") +
         (x.s ? '<div class="pr-row"><i aria-hidden="true">🏫</i><span>' + esc(x.s) + "</span></div>" : "") + (x.pl ? '<div class="pr-row"><i aria-hidden="true">📍</i><span>' + esc(x.pl) + "</span></div>" : "") + "</div></article>";
     }).join("");

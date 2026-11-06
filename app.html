@@ -268,7 +268,7 @@ document.addEventListener("DOMContentLoaded", function () {
 }
 
 /* v1.322: Table header (mobile) — buttons chhote; Line 2 (toolRow) sirf jab 4+ tool buttons hon (jaise Members) */
-#toolRow { display: none; gap: 4px; margin: 0 0 4px; }
+#toolRow { display: none; gap: 4px; margin: 0 0 4px; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); }
 #searchWrapper[style*="display:none"] + #toolRow, #searchWrapper[style*="display: none"] + #toolRow { display: none !important; }
 @media (max-width: 600px) {
   #myProfBtn { display: none !important; }
@@ -1630,7 +1630,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.328"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.330"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -2387,7 +2387,9 @@ z-index:999999;align-items:center;justify-content:center">
     <label>जन्मदिन :</label>
     <input id="rBirthday" type="date" style="width:100%">
     <label>विवाह वर्षगांठ :</label>
-    <input id="rAnniversary" type="date" style="width:100%"><br>
+    <input id="rAnniversary" type="date" style="width:100%">
+    <label>रक्त समूह (वैकल्पिक) :</label>
+    <select id="rBlood" style="width:100%"><option value="">— चुनें —</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option><option value="">पता नहीं</option></select><br>
     <button id="regSubmit"
       style="background:#008000;color:#fff;padding:8px 14px;border:none;border-radius:6px">
       Submit
@@ -5200,6 +5202,7 @@ async function openAddRecordForm(sheetName) {
     // bilkul mat dikhao.
     // v1.309: "Member" (Hindi label) Add form se hata diya — server khud Hindi mein banata hai (Edit mein badal sakte hain)
     if (sheetName === "Members" && kl === "member") return;
+    if (sheetName === "Receipts" && /^(receipt|rcpt|रसीद)\s*(no\.?|number|#|क्र\.?)?\s*$/i.test(String(k).trim())) return;   // v1.329: rasid kramank server apne aap deta hai
     if (formulaColumns.includes(k)) return; // 🆕 formula-driven column — Add form mein nahi dikhana
     const id = "af_" + k.replace(/\s+/g, "_");
     inputIds.push({ key: k, id });
@@ -5489,6 +5492,7 @@ async function openAddRecordForm(sheetName) {
           try {
             const newRow = { ...data };
             if (res.id) newRow[sheetName === "Members" ? "MemberID" : "ID"] = res.id;
+            if (res.receiptNo && res.receiptHeader) newRow[res.receiptHeader] = res.receiptNo;
             if (sheetName === "Members" && res.member) newRow["Member"] = res.member;
             tableData.push(newRow);
             renderTable();
@@ -5498,6 +5502,7 @@ async function openAddRecordForm(sheetName) {
           }
         }
         try { refreshDashboardAfterCrud_(); } catch (dashErr) { console.error(dashErr); } // 🆕 dashboard cards bhi live update
+        if (res.receiptNo) { try { alert("✅ सेव हो गया — रसीद क्रमांक: " + res.receiptNo); } catch (e) {} }
         setTimeout(() => { try { offerReceiptThanks_(sheetName, data); } catch (thx) { console.error(thx); } }, 400); // 🆕 धन्यवाद message
       } else {
         alert("❌ Error: " + (res.msg || "Add nahi ho paya"));
@@ -6088,6 +6093,7 @@ const msg =
    =========================== */
 // 🆕 v1.231: SVG icons (sab device par ek jaisa dikhta hai)
 const AB_ICON = {
+  bill: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>',
   thanks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 00-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 000-7.8z"/></svg>',
   copy:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>',
   note:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
@@ -6141,6 +6147,9 @@ function renderActionButtons(row, encId) {
       btns.push(abBtn_("ab-print", "khata", "📄 खाता", currentTab === "Receipts" ? "" : "खाता",
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
     }
+  }
+  if (currentTab === "Expenses" && window.openBill_ && (currentUser?.role === "Admin" || actions.includes("EDIT"))) {
+    btns.push(abBtn_("ab-print", "bill", "🧾 बिल की फोटो", "बिल", `href="#" onclick="openBill_('${encId}', event)"`));
   }
   if (["Boli", "Donation", "Receipts"].includes(currentTab) && window.openThanksCard_ && (currentUser?.role === "Admin" || actions.includes("WHATSAPP") || actions.includes("EDIT"))) {
     btns.push(abBtn_("ab-wa", "thanks", "🙏 धन्यवाद कार्ड", currentTab === "Receipts" ? "" : "कार्ड", `href="#" onclick="openThanksCard_('${encId}', event)"`));
@@ -8194,7 +8203,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const address = v("rAddress");
     const occupation = v("rOccupation");
     const birthday = isoToDDMMYYYY_(v("rBirthday"));
-    const anniversary = isoToDDMMYYYY_(v("rAnniversary"));
+    const anniversary = isoToDDMMYYYY_(v("rAnniversary")), blood = v("rBlood");
 
     if (!name || mobile.length !== 10) {
       alert("पूरा नाम और 10 अंकों का मोबाइल जरूरी है");
@@ -8215,7 +8224,7 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       const res = await fetch(WEB_APP_URL, {
         method: "POST",
-        body: JSON.stringify({ action: "newRegistration", name, mobile, gotra, origin, city, district, address, occupation, birthday, anniversary })
+        body: JSON.stringify({ action: "newRegistration", name, mobile, gotra, origin, city, district, address, occupation, birthday, anniversary, blood })
       }).then(r => r.json());
 
       if (res && res.success) {
@@ -8539,6 +8548,8 @@ if ('serviceWorker' in navigator) {
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("viewBtn", "⚙️", "टेबल व्यू — कार्ड / घनत्व / अक्षर / कॉलम", () => window.openTableView_(), "#475569").style.display = "inline-block";
     mk("talentBtn", "🏆", "प्रतिभा सम्मान — वेबसाइट पर दिखाने की अनुमति", () => window.openTalentAdmin_(), "#b45309").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
+    mk("eventBtn", "🎪", "सम्मेलन: QR उपस्थिति, नाम-बैज, RSVP", () => window.openSammelan_ && window.openSammelan_(), "#7c3aed").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
+    mk("bloodBtn", "🩸", "रक्तदान सूची (रक्त समूह से खोजें)", () => window.openBloodList_(), "#b91c1c").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("wishBtn", "🎂", "जन्मदिन / वर्षगांठ बधाई", window.openWishes_, "#e0752b").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     try { if (window.placeToolRow_) window.placeToolRow_(); } catch (e) {}
   }
@@ -9021,6 +9032,7 @@ if ('serviceWorker' in navigator) {
     const act = async (x, op, b) => {
       if (op === "reject" && !confirm("“" + x.name + "” का आवेदन अस्वीकार करें?")) return;
       if (op === "approve" && x.dup && !confirm("⚠️ यह मोबाइल (" + x.mobile + ") सदस्य सूची में पहले से है।\n\nफिर भी मंज़ूर करें?")) return;
+      if (op === "approve" && !x.dup && x.similar && x.similar.length && !confirm("⚠️ मिलते-जुलते सदस्य पहले से हैं:\n" + x.similar.map(s => "• " + (s.id || "") + " " + s.name + " (" + s.why + ")").join("\n") + "\n\nफिर भी नया सदस्य मंज़ूर करें?")) return;
       b.disabled = true;
       try {
         const rr = await callCrudBackend_({ action: "memberDecision", op: op, mobile: x.mobile });
@@ -9035,6 +9047,7 @@ if ('serviceWorker' in navigator) {
       let h = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between"><div><b style="font-size:15px">' + esc(x.display || x.name) + '</b><div style="color:#475569;font-size:13px">📱 ' + esc(x.mobile) + (x.date ? ' · 🗓️ ' + esc(x.date) : "") + '</div></div>' +
         (st === "approved" ? '<span style="color:#15803d;font-weight:700">✅ स्वीकृत</span>' : st === "rejected" ? '<span style="color:#b91c1c;font-weight:700">❌ अस्वीकृत</span>' : "") + '</div>';
       if (x.dup && !st) h += '<div style="margin-top:4px;font-size:12.5px;color:#b45309;font-weight:600">⚠️ यह मोबाइल पहले से सदस्य सूची में है — दोहरा आवेदन हो सकता है</div>';
+      if (!st && x.similar && x.similar.length) h += '<div style="margin-top:4px;font-size:12.5px;color:#b45309">🔍 मिलते-जुलते: ' + x.similar.map(s => esc((s.id || "") + " " + s.name) + " <i>(" + esc(s.why) + ")</i>").join(" · ") + "</div>";
       if (editing[x.mobile] && !st) {
         h += '<div class="ef" style="margin-top:8px">' + F.map(f => '<label style="display:block;font-size:12px;color:#475569;margin:6px 0 2px">' + f[1] + '</label><input type="text" data-k="' + f[0] + '" value="' + esc(x[f[0]] || "") + '" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">').join("") + '</div>';
       } else {
@@ -9158,7 +9171,7 @@ if ('serviceWorker' in navigator) {
       if (window.QRCode) {
         const holder = document.createElement("div"); holder.style.cssText = "position:fixed;left:-9999px;top:0";
         document.body.appendChild(holder);
-        new QRCode(holder, { text: SAMAJ_NAME_ + " | " + (P.id || "") + " | " + (P.mobile || ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
+        new QRCode(holder, { text: "SMPS|" + (P.id || "") + "|" + (P.mobile || ""), width: 240, height: 240, correctLevel: QRCode.CorrectLevel.M });
         await new Promise(r => setTimeout(r, 80));
         const src = holder.querySelector("canvas") || holder.querySelector("img");
         if (src) { g.drawImage(src, 705, 205, 240, 240); ok = true; }
@@ -9191,14 +9204,15 @@ if ('serviceWorker' in navigator) {
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     let r; const pcc = window.__profCache; if (pcc && Date.now() - pcc.t < 120000) { r = pcc.r; } else { try { r = await callCrudBackend_({ action: "myProfile" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; } }
     if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
-    const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ" };
+    const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ", blood: "रक्त समूह" };
     const keys = (r.has || []).filter(k => L[k]), isD = k => k === "birthday" || k === "anniversary", full = v => /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v);
     const sty = 'style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"';
     m.body.innerHTML = '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.6;margin-bottom:8px"><b>' + esc(stripPlace_(r.label) || r.name) + '</b><br>📱 ' + esc(r.mobile) + (r.memberId ? " · 🆔 " + esc(r.memberId) : "") + '</div>' +
       '<div style="font-size:12.5px;color:#475569;margin-bottom:4px">अधूरी जानकारी <b>⚠️</b> से दिखाई गई है — भरकर सेव करें।</div>' +
       keys.map(k => { const v = r.fields[k] || "", asDate = isD(k) && (!v || full(v));
+        if (k === "blood") return '<label style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px">' + (v ? "" : "⚠️ ") + L[k] + '</label><select data-k="blood" ' + sty + ">" + ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(o => '<option value="' + o + '"' + (o === v ? " selected" : "") + ">" + (o || "— चुनें —") + "</option>").join("") + "</select>";
         return '<label style="display:block;font-size:12.5px;color:#475569;margin:8px 0 2px">' + (v ? "" : "⚠️ ") + L[k] + '</label>' + (asDate ? '<input type="date" data-k="' + k + '" value="' + esc(ddmmyyyyToISO_(v)) + '" ' + sty + '>' : '<input type="text" data-k="' + k + '" value="' + esc(v) + '"' + (isD(k) ? ' placeholder="दिन/महीना/साल (जैसे 05/04/1987)"' : "") + " " + sty + ">"); }).join("");
-    const read = () => { const f = {}; m.body.querySelectorAll("input[data-k]").forEach(i => { f[i.dataset.k] = i.type === "date" ? isoToDDMMYYYY_(i.value) : i.value.trim(); }); return f; };
+    const read = () => { const f = {}; m.body.querySelectorAll("[data-k]").forEach(i => { f[i.dataset.k] = i.type === "date" ? isoToDDMMYYYY_(i.value) : i.value.trim(); }); return f; };
     const save = modalBtn_("💾 सेव करें", "#0369a1", async () => {
       save.disabled = true; save.textContent = "Saving...";
       try { const rr = await callCrudBackend_({ action: "updateMyProfile", fields: read() }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); try { delete CACHE["Members"]; } catch (e) {} window.__profCache = null; alert("✅ " + (rr.msg || "सेव हो गया")); }
@@ -9355,6 +9369,7 @@ if ('serviceWorker' in navigator) {
       "🤝 दान / Donation — कुल / Total ₹" + inr(c.dn.p) + " · जमा / Received ₹" + inr(c.dn.a) + " · बाकी / Pending ₹" + inr(pend(c.dn)) + "<br>" +
       "👥 सक्रिय सदस्य / Active Members: " + c.active + " · नए / New: " + c.newM + " · बैठकें / Meetings: " + c.meets + (c.avgAtt ? " (औसत उपस्थिति / Avg. attendance " + c.avgAtt + ")" : ""); };
     sel.onchange = paint; paint();
+    const billB = modalBtn_("🧾 बिल PDF", "#0f766e", () => window.exportBillsPdf_(+sel.value, lbl(+sel.value), billB)); m.foot.insertBefore(billB, m.foot.firstChild);
     m.foot.insertBefore(modalBtn_("📄 PDF / प्रिंट", "#b91c1c", () => {
       const y = +sel.value, c = compute(y), e = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), logo = new URL("Logo-512.png", location.href).href;
       const pend = x => Math.max(0, x.p - x.a), bal = c.rcT - c.exT;
@@ -9485,8 +9500,8 @@ if ('serviceWorker' in navigator) {
   };
 
   /* ===== v1.322: Table header — Line 1 = search; Line 2 (tool buttons) SIRF jab 4+ tool buttons hon; warna sab Line 1 mein ===== */
-  const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "talentBtn", "wishBtn"];
-  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", talentBtn: "प्रतिभा", wishBtn: "बधाई" };
+  const SEC_IDS_ = ["attRepBtn", "duesRepBtn", "moneyRepBtn", "pendMemBtn", "incBtn", "cleanBtn", "annRepBtn", "cardBtn", "talentBtn", "eventBtn", "bloodBtn", "wishBtn"];
+  const TOOL_LBL_ = { attRepBtn: "उपस्थिति", duesRepBtn: "रिपोर्ट", moneyRepBtn: "रिपोर्ट", pendMemBtn: "मंज़ूरी", incBtn: "अधूरी", cleanBtn: "सफ़ाई", annRepBtn: "वार्षिक", cardBtn: "कार्ड", talentBtn: "प्रतिभा", eventBtn: "सम्मेलन", bloodBtn: "रक्तदान", wishBtn: "बधाई" };
   window.placeToolRow_ = function () {
     const sw = document.getElementById("searchWrapper"), dirBtn = document.getElementById("dirBtn"); if (!sw || !dirBtn || !dirBtn.parentNode) return;
     const mobile = !!(window.matchMedia && window.matchMedia("(max-width: 600px)").matches);
@@ -9496,7 +9511,7 @@ if ('serviceWorker' in navigator) {
     if (mobile && tools.filter(b => b.style.display !== "none").length >= 4) {   // 2 line sirf jab 4+ tool buttons hon (jaise Members)
       if (!row) { row = document.createElement("div"); row.id = "toolRow"; sw.parentNode.insertBefore(row, sw.nextSibling); }
       all.forEach(b => { if (b.parentNode !== row) row.appendChild(b); });
-      row.style.display = "flex";
+      row.style.display = "grid";
     } else {
       all.forEach(b => { if (b.parentNode !== dirBtn.parentNode) dirBtn.parentNode.insertBefore(b, dirBtn); });
       if (row) row.style.display = "none";
@@ -9727,7 +9742,7 @@ if ('serviceWorker' in navigator) {
     return lines.length ? lines : [""];
   }
   function PdfBuilder_(opt) {
-    const S = opt.scale || 2, L = !!opt.landscape, PW = L ? 1123 : 794, PH = L ? 794 : 1123, M = { l: 34, r: 34, t: 62, b: 50 };
+    const S = opt.scale || 2, L = !!opt.landscape, PW = L ? 1123 : 794, PH = L ? 794 : 1123, M = opt.bare ? { l: 28, r: 28, t: 28, b: 28 } : { l: 34, r: 34, t: 62, b: 50 };
     const F = opt.font || '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
     const mk = () => (typeof document !== "undefined" ? document.createElement("canvas") : null);
     const meas = mk(); meas.width = 10; meas.height = 10; const mg = meas.getContext("2d");
@@ -9747,7 +9762,7 @@ if ('serviceWorker' in navigator) {
       B.page++; B.y = M.t;
       if (B.dry) return;
       cv = mk(); cv.width = Math.round(PW * S); cv.height = Math.round(PH * S); g = cv.getContext("2d"); g.scale(S, S);
-      g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); chrome();
+      g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); if (!opt.bare) chrome();
     }
     function flush() { if (!B.dry && cv) { B.jpgs.push({ d: cv.toDataURL("image/jpeg", opt.quality || 0.85), w: cv.width, h: cv.height }); cv = null; g = null; } }
     B.newPage = () => { flush(); startPage(); };
@@ -9756,6 +9771,7 @@ if ('serviceWorker' in navigator) {
     B.text = (s, x, y, size, wt, color, align) => { if (B.dry) return; g.font = font(size, wt); g.fillStyle = color || "#111"; g.textAlign = align || "left"; g.fillText(String(s), x, y); g.textAlign = "left"; };
     B.rect = (x, y, w, h, fill, stroke) => { if (B.dry) return; if (fill) { g.fillStyle = fill; g.fillRect(x, y, w, h); } if (stroke) { g.strokeStyle = stroke; g.lineWidth = 0.8; g.strokeRect(x, y, w, h); } };
     B.line = (x1, y1, x2, y2, color, w) => { if (B.dry) return; g.strokeStyle = color || "#cbd5e1"; g.lineWidth = w || 0.8; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); };
+    B.image = (img, x, y, w, h) => { if (B.dry || !img) return; try { g.drawImage(img, x, y, w, h); } catch (e) {} };
     B.mark = key => { B.marks[key] = B.page; };
     B.paragraph = (s, size, wt, color, align, gap) => {
       const m = B.mf(size, wt), lh = Math.round(size * 1.45), lines = pdfWrap_(m, s, B.w);
@@ -9850,8 +9866,9 @@ if ('serviceWorker' in navigator) {
       const ths = Array.from(table.querySelectorAll("thead th")), hid = c => !!(c && ((c.style && c.style.display === "none") || c.hidden));
       const keep = ths.map((th, i) => i < ths.length - 1 && !hid(th) && String(th.textContent).trim() !== "");   // aakhri column = Actions
       const txt = td => { if (!td) return ""; let t = String(td.textContent || "").replace(/\s+/g, " ").trim(); if (!t && td.querySelector && td.querySelector("img")) t = "[फोटो]"; return t; };
-      const rows = Array.from(table.querySelectorAll("tbody tr")).filter(tr => tr.children.length === ths.length).map(tr => Array.from(tr.children).filter((c, i) => keep[i]).map(txt));
       const heads = ths.filter((th, i) => keep[i]).map(th => String(th.textContent).replace(/\s+/g, " ").trim());
+      const billIx = heads.findIndex(h => /^(bill|बिल)$/i.test(h));
+      const rows = Array.from(table.querySelectorAll("tbody tr")).filter(tr => tr.children.length === ths.length).map(tr => Array.from(tr.children).filter((c, i) => keep[i]).map(txt)).map(r => { if (billIx >= 0) r[billIx] = r[billIx] ? "✔ लगा है" : "—"; return r; });
       if (!rows.length) { done(); alert("PDF के लिए कोई रिकॉर्ड नहीं है।"); return; }
       const numLike = i => { const v = rows.slice(0, 80).map(r => r[i]).filter(Boolean); return v.length && v.filter(x => /^[\s₹$,.\-+/0-9:%A-Za-z]{1,16}$/.test(x) && /\d/.test(x)).length >= v.length * 0.8; };
       const cols = heads.map((h, i) => ({ h: h, a: numLike(i) ? "center" : "left", bold: i === 0 && !numLike(0) ? true : false }));
@@ -9950,18 +9967,291 @@ if ('serviceWorker' in navigator) {
     if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
     const rows = r.rows || []; if (!rows.length) { m.body.innerHTML = '<p class="muted">अभी कोई प्रविष्टि नहीं आई। (वेबसाइट के फ़ॉर्म से आती हैं।)</p>'; return; }
     const sum = document.createElement("div"); sum.style.cssText = "font-size:12.5px;color:#475569;margin-bottom:6px";
-    const upd = () => { sum.textContent = "कुल " + rows.length + " · वेबसाइट पर दिख रहे " + rows.filter(x => x.show).length + " · मार्कशीट मिली " + rows.filter(x => x.marksheet).length; };
-    m.body.innerHTML = '<div style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-bottom:6px">⚠️ यहाँ चालू करने पर बच्चे का नाम, कक्षा, अंक, स्कूल और जगह वेबसाइट पर सबको दिखेगी (माता-पिता का नाम / मोबाइल कभी नहीं)। पहले मार्कशीट जाँच लें।</div>';
+    const upd = () => { sum.textContent = "कुल " + rows.length + " · वेबसाइट पर दिख रहे " + rows.filter(x => x.show).length + " · मार्कशीट मिली " + rows.filter(x => x.marksheet).length + " · सहमति दर्ज " + rows.filter(x => x.sahmati).length; };
+    m.body.innerHTML = '<div style="font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 8px;margin-bottom:6px">⚠️ यहाँ चालू करने पर बच्चे का नाम, कक्षा, अंक, स्कूल, जगह (और फोटो, अगर जोड़ी हो) वेबसाइट पर सबको दिखेगी — माता-पिता का नाम / मोबाइल कभी नहीं। पहले मार्कशीट और सहमति जाँच लें।</div>';
     m.body.appendChild(sum); upd();
+    const sty = "width:100%;box-sizing:border-box;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-top:4px";
+    const b64 = f => new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(",")[1]); rd.readAsDataURL(f); });
     rows.forEach(x => {
       const d = document.createElement("div"); d.style.cssText = "border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:13px";
-      d.innerHTML = "<b>" + esc(x.student) + "</b> · " + esc(x.cls) + " · <b>" + esc(x.percent) + "%</b><div style=\"color:#64748b;margin:2px 0\">" + esc([x.school, x.place, x.event].filter(Boolean).join(" · ")) + "</div><div style=\"color:#64748b\">माता-पिता: " + esc(x.parent) + " · 📱 " + esc(x.mobile) + "</div>";
-      const row = document.createElement("div"); row.style.cssText = "display:flex;gap:14px;flex-wrap:wrap;margin-top:6px";
+      const head = document.createElement("div"); head.style.cssText = "display:flex;gap:10px;align-items:center";
+      const img = document.createElement("img"); img.style.cssText = "width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #d4a017;flex:none"; img.alt = ""; img.onerror = () => { img.style.display = "none"; }; if (x.photo) img.src = x.photo; else img.style.display = "none";
+      const info = document.createElement("div"); info.style.cssText = "min-width:0;flex:1";
+      const draw = () => { info.innerHTML = "<b>" + esc(x.student) + "</b> · " + esc(x.cls) + " · <b>" + esc(x.percent) + "%</b><div style=\"color:#64748b;margin:2px 0\">" + esc([x.school, x.place, x.event].filter(Boolean).join(" · ")) + "</div><div style=\"color:#64748b\">माता-पिता: " + esc(x.parent) + " · 📱 " + esc(x.mobile) + "</div><div style=\"margin-top:2px;font-weight:600;color:" + (x.sahmati ? "#15803d" : "#b45309") + "\">" + (x.sahmati ? "✅ सहमति: " + esc(x.sahmati) : "⚠️ सहमति दर्ज नहीं (पुरानी प्रविष्टि)") + "</div>"; };
+      draw(); head.appendChild(img); head.appendChild(info); d.appendChild(head);
+      const row = document.createElement("div"); row.style.cssText = "display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;align-items:center";
       const tg = (label, key) => { const l = document.createElement("label"); l.style.cssText = "display:inline-flex;align-items:center;gap:5px;cursor:pointer"; const c = document.createElement("input"); c.type = "checkbox"; c.style.cssText = "width:auto;margin:0"; c.checked = !!x[key];
-        c.onchange = async () => { const v = c.checked; c.disabled = true; try { const rr = await callCrudBackend_({ action: "talentSet", row: x.row, student: x.student, field: key === "show" ? "show" : "marksheet", value: v }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); x[key] = v; upd(); } catch (er) { c.checked = !v; alert("❌ " + (er.message || er)); } c.disabled = false; };
+        c.onchange = async () => { const v = c.checked;
+          if (key === "show" && v && !x.sahmati && !confirm("⚠️ इस प्रविष्टि में माता-पिता की सहमति दर्ज नहीं है।\n\nफिर भी वेबसाइट पर दिखाएँ?")) { c.checked = false; return; }
+          c.disabled = true; try { const rr = await callCrudBackend_({ action: "talentSet", row: x.row, student: x.student, field: key === "show" ? "show" : "marksheet", value: v }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ"); x[key] = v; upd(); } catch (er) { c.checked = !v; alert("❌ " + (er.message || er)); } c.disabled = false; };
         l.appendChild(c); l.appendChild(document.createTextNode(" " + label)); return l; };
-      row.appendChild(tg("मार्कशीट मिली", "marksheet")); row.appendChild(tg("वेबसाइट पर दिखाएँ", "show")); d.appendChild(row); m.body.appendChild(d);
+      const sb = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:auto;border:0;border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:700;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; return b; };
+      row.appendChild(tg("मार्कशीट मिली", "marksheet")); row.appendChild(tg("वेबसाइट पर दिखाएँ", "show"));
+      const ed = document.createElement("div"); ed.style.cssText = "display:none;margin-top:8px;background:#f8fafc;border-radius:8px;padding:8px";
+      const fld = (k, ph) => { const i = document.createElement("input"); i.type = "text"; i.placeholder = ph; i.value = x[k] || ""; i.style.cssText = sty; return i; };
+      const iS = fld("student", "बच्चे का नाम"), iC = fld("cls", "कक्षा"), iP = fld("percent", "प्रतिशत (0-100)"), iSc = fld("school", "स्कूल"), iPl = fld("place", "जगह");
+      [iS, iC, iP, iSc, iPl].forEach(i => ed.appendChild(i));
+      const save = sb("💾 सुधार सेव करें", "#0369a1", async () => {
+        save.disabled = true; save.textContent = "Saving...";
+        try { const vals = { student: iS.value.trim(), cls: iC.value.trim(), percent: iP.value.trim(), school: iSc.value.trim(), place: iPl.value.trim() };
+          const rr = await callCrudBackend_({ action: "talentSet", row: x.row, student: x.student, field: "edit", values: vals }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "सेव नहीं हुआ");
+          x.student = vals.student; x.cls = vals.cls; x.percent = vals.percent.replace(/%/g, ""); x.school = vals.school; x.place = vals.place; draw(); ed.style.display = "none"; }
+        catch (er) { alert("❌ " + (er.message || er)); } save.disabled = false; save.textContent = "💾 सुधार सेव करें"; });
+      ed.appendChild(save);
+      row.appendChild(sb("✏️ सुधारें", "#475569", () => { ed.style.display = ed.style.display === "none" ? "block" : "none"; }));
+      const fin = document.createElement("input"); fin.type = "file"; fin.accept = "image/*"; fin.style.display = "none";
+      const pb = sb(x.photo ? "📷 फोटो बदलें" : "📷 फोटो जोड़ें", "#b45309", () => fin.click());
+      fin.onchange = async () => {
+        const f0 = fin.files && fin.files[0]; fin.value = ""; if (!f0) return;
+        const f = await window.cropImage_(f0, { aspect: 1, round: true, maxSide: 700, title: "बच्चे की फोटो (गोल frame में दिखेगी)" }); if (!f) return;
+        pb.disabled = true; pb.textContent = "⏳ अपलोड...";
+        try { const rr = await callCrudBackend_({ action: "talentPhoto", row: x.row, student: x.student, base64: await b64(f), mimeType: "image/jpeg" }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "अपलोड नहीं हुआ"); x.photo = rr.url; img.src = rr.url; img.style.display = ""; pb.textContent = "📷 फोटो बदलें"; }
+        catch (er) { alert("❌ " + (er.message || er)); pb.textContent = x.photo ? "📷 फोटो बदलें" : "📷 फोटो जोड़ें"; } pb.disabled = false;
+      };
+      row.appendChild(pb); row.appendChild(fin); d.appendChild(row); d.appendChild(ed); m.body.appendChild(d);
     });
+  };
+
+  /* ---- v1.329: Add / Edit form mein "Blood Group" dropdown ---- */
+  if (typeof buildSmartField_ === "function") { const _bsf = buildSmartField_; buildSmartField_ = function (key, cur) {
+    if (/blood|रक्त/i.test(String(key))) { const s = document.createElement("select"); ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].forEach(o => { const op = document.createElement("option"); op.value = o; op.textContent = o || "— चुनें —"; s.appendChild(op); }); s.value = String(cur || ""); return { el: s, isSmart: false, isTextarea: false, recentValues: [] }; }
+    return _bsf.apply(this, arguments);
+  }; }
+
+  /* ---- 🩸 रक्तदान सूची ---- */
+  window.openBloodList_ = async function () {
+    const m = openModal_("🩸 रक्तदान सूची"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    const kB = keyOf(mem, /blood|रक्त/i);
+    if (!kB) {
+      m.body.innerHTML = '<p>Members sheet में अभी <b>Blood Group</b> का column नहीं है।</p><p style="font-size:13px;color:#475569">column जुड़ने के बाद सदस्य अपनी जानकारी में (👤 मेरी जानकारी) या Add / Edit में रक्त समूह भर सकते हैं।</p>';
+      if (currentUser && (currentUser.role === "Admin")) m.foot.insertBefore(modalBtn_("➕ column जोड़ें", "#15803d", async () => { try { const r = await callCrudBackend_({ action: "ensureColumn", sheet: "Members", header: "Blood Group" }); if (!r || !r.success) throw new Error((r && r.msg) || "नहीं हो पाया"); delete CACHE["Members"]; window.openBloodList_(); } catch (e) { alert("❌ " + (e.message || e)); } }), m.foot.firstChild);
+      return;
+    }
+    const kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i);
+    const norm = v => { let s = String(v || "").toUpperCase().replace(/\s+/g, "").replace(/POSITIVE|POS/, "+").replace(/NEGATIVE|NEG/, "-").replace(/[–—]/g, "-"); const mm = s.match(/^(AB|A|B|O)([+-])$/); return mm ? mm[1] + mm[2] : ""; };
+    const all = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => ({ g: norm(r[kB]), n: stripPlace_(r[kD] || r[kN] || ""), c: String(kC ? r[kC] || "" : "").trim(), mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10) })).filter(x => x.g && x.n && !/^[\s\-]+$/.test(x.n));
+    if (!all.length) { m.body.innerHTML = "<p>अभी किसी सदस्य ने रक्त समूह नहीं भरा है।</p>"; return; }
+    const GR = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], cities = Array.from(new Set(all.map(x => x.c).filter(Boolean))).sort(), st = { g: "", c: "", q: "" };
+    m.body.innerHTML = '<div id="blChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div><div style="display:flex;gap:6px;margin-bottom:6px"><select id="blC" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:8px"><option value="">सभी शहर</option>' + cities.map(c => "<option>" + esc(c) + "</option>").join("") + '</select><input id="blQ" type="search" placeholder="नाम खोजें" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:8px"></div><div id="blCnt" style="font-weight:700;margin:4px 0"></div><div id="blList"></div>';
+    const $ = q => m.body.querySelector(q), draw = () => {
+      $("#blChips").innerHTML = ["सभी"].concat(GR).map(g => { const n = g === "सभी" ? all.length : all.filter(x => x.g === g).length; if (!n && g !== "सभी") return ""; const on = (g === "सभी" && !st.g) || g === st.g; return '<button type="button" data-g="' + (g === "सभी" ? "" : g) + '" style="width:auto;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;border:1px solid #b91c1c;' + (on ? "background:#b91c1c;color:#fff" : "background:#fff;color:#b91c1c") + '">' + g + " (" + n + ")</button>"; }).join("");
+      const q = st.q.toLowerCase(), rows = all.filter(x => (!st.g || x.g === st.g) && (!st.c || x.c === st.c) && (!q || x.n.toLowerCase().includes(q))).sort((p, r) => p.g.localeCompare(r.g) || p.n.localeCompare(r.n, "hi"));
+      $("#blCnt").textContent = rows.length + " रक्तदाता"; const host = $("#blList"); host.innerHTML = "";
+      rows.forEach(x => { const d = document.createElement("div"); d.style.cssText = "display:flex;align-items:center;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px;margin:5px 0";
+        d.innerHTML = '<div style="flex:0 0 42px;height:42px;border-radius:50%;border:3px solid #b91c1c;display:grid;place-content:center;font-weight:800;color:#b91c1c;font-size:14px">' + esc(x.g) + '</div><div style="flex:1;min-width:0"><b>' + esc(x.n) + '</b><div style="font-size:12.5px;color:#64748b">' + esc(x.c) + (x.mob ? " · 📱 " + esc(x.mob) : "") + "</div></div>";
+        if (x.mob) { const mk2 = (t, href, bg) => { const a = document.createElement("a"); a.textContent = t; a.href = href; a.target = "_blank"; a.rel = "noopener"; a.style.cssText = "flex:none;text-decoration:none;color:#fff;border-radius:8px;padding:7px 10px;font-size:13px;background:" + bg; return a; }; d.appendChild(mk2("📞", "tel:+91" + x.mob, "#0369a1")); d.appendChild(mk2("💬", buildWaUrl_(x.mob, "🙏 नमस्कार " + x.n + " जी,\nसमाज की रक्तदाता सूची से आपका संपर्क मिला। हमें " + x.g + " रक्त की आवश्यकता है। कृपया सहायता करें।"), "#25a244")); }
+        host.appendChild(d); });
+    };
+    $("#blChips").onclick = e => { const b = e.target.closest("button[data-g]"); if (b) { st.g = b.dataset.g; draw(); } }; $("#blC").onchange = e => { st.c = e.target.value; draw(); }; $("#blQ").oninput = e => { st.q = e.target.value.trim(); draw(); }; draw();
+  };
+
+  window.openBill_ = function (incomingEnc, e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const inc = decodeURIComponent(incomingEnc || ""), rec = tableData.find(r => (r["ID"] || "") === inc) || tableData.find(r => Object.values(r).some(v => String(v) === inc));
+    if (!rec) { alert("रिकॉर्ड नहीं मिला।"); return; }
+    const id = String(rec["ID"] || inc), kB = Object.keys(rec).find(k => /^(bill|बिल)$/i.test(String(k).trim())), cur = kB ? String(rec[kB] || "") : "";
+    const m = openModal_("🧾 बिल — " + id), body = m.body; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    const showImg = () => {
+      body.innerHTML = "";
+      const info = document.createElement("div"); info.style.cssText = "font-size:13px;color:#475569;margin-bottom:6px"; info.textContent = [rec["Date"], rec["For"] || rec["Purpose"], rec["Payment"] || rec["Amount"]].filter(Boolean).join(" · "); body.appendChild(info);
+      if (cur) { const im = document.createElement("img"); im.src = cur; im.alt = "बिल"; im.style.cssText = "width:100%;border-radius:10px;border:1px solid #cbd5e1"; im.onerror = () => { im.replaceWith(Object.assign(document.createElement("p"), { textContent: "फोटो खुल नहीं रही — लिंक: " + cur })); }; body.appendChild(im); }
+      else { const p = document.createElement("p"); p.className = "muted"; p.textContent = "अभी इस खर्च का बिल नहीं जुड़ा है।"; body.appendChild(p); }
+    };
+    showImg();
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.style.display = "none"; body.appendChild(inp);
+    const up = modalBtn_(cur ? "🔄 बिल बदलें" : "📷 बिल जोड़ें", "#15803d", () => inp.click()); m.foot.insertBefore(up, m.foot.firstChild);
+    inp.onchange = async () => {
+      const f0 = inp.files && inp.files[0]; inp.value = ""; if (!f0) return;
+      const f = await window.cropImage_(f0, { title: "बिल की फोटो adjust करें", maxSide: 1600 }); if (!f) return;
+      up.disabled = true; up.textContent = "⏳ अपलोड...";
+      try {
+        const b64 = await new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.readAsDataURL(f); });
+        const ce = await callCrudBackend_({ action: "ensureColumn", sheet: "Expenses", header: "Bill" }); if (!ce || !ce.success) throw new Error((ce && ce.msg) || "Bill column नहीं बन पाया");
+        const u = await callCrudBackend_({ action: "uploadImage", sheetName: "Expenses", fileName: "bill_" + id.replace(/[^\w-]+/g, "_") + "_" + Date.now() + ".jpg", mimeType: "image/jpeg", base64: b64 });
+        if (!u || !u.success || !u.url) throw new Error((u && u.msg) || "अपलोड नहीं हुआ");
+        const er = await callCrudBackend_({ action: "editRow", sheetName: "Expenses", idColumn: "ID", id: id, data: { Bill: u.url } }); if (!er || !er.success) throw new Error((er && er.msg) || "सेव नहीं हुआ");
+        delete CACHE["Expenses"]; rec[kB || "Bill"] = u.url; m.close(); try { loadTab("Expenses", true); } catch (x) {} alert("✅ बिल जुड़ गया।");
+      } catch (err) { alert("❌ " + (err.message || err)); up.disabled = false; up.textContent = cur ? "🔄 बिल बदलें" : "📷 बिल जोड़ें"; }
+    };
+  };
+  /* ---- 🧾 खर्च के सभी बिल एक PDF में (वित्त वर्ष) ---- */
+  window.exportBillsPdf_ = async function (fyStart, label, btn) {
+    const old = btn ? btn.textContent : ""; const say = t => { if (btn) btn.textContent = t; };
+    try {
+      say("⏳ बिल जुट रहे हैं..."); await ensureFonts_();
+      const ex = (await fetchSheet("Expenses")) || [], kBill = keyOf(ex, /^(bill|बिल)$/i), kD = keyOf(ex, /^(date|तारीख|दिनांक)/i), kF = keyOf(ex, /^(for|purpose|उद्देश्य|head|category)$/i);
+      const kA = ex.length ? Object.keys(ex[0]).find(k => /^(payment|paid|amount|debit|expense|खर्च|राशि)/i.test(k.trim()) && !/mode|method|type|ref|balance/i.test(k)) : null, kI = keyOf(ex, /^id$/i);
+      if (!kBill) { alert("Expenses में अभी किसी बिल की फोटो नहीं जुड़ी है।"); say(old); return; }
+      const dtf = window.__dt, fy = d => (d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1);
+      const list = ex.filter(r => { const u = String(r[kBill] || "").trim(); if (!u) return false; if (fyStart == null) return true; const d = kD ? dtf(r[kD]) : null; return d && fy(d) === fyStart; });
+      if (!list.length) { alert("इस अवधि में कोई बिल नहीं जुड़ा है।"); say(old); return; }
+      const imgs = [];
+      for (let i = 0; i < list.length; i++) {
+        say("⏳ बिल " + (i + 1) + " / " + list.length); const mm = String(list[i][kBill]).match(/[?&]id=([\w-]{15,})/) || String(list[i][kBill]).match(/\/d\/([\w-]{15,})/); let im = null;
+        if (mm) { try { const j = await (await fetch(WEB_APP_URL + "?action=photoThumb&id=" + mm[1] + "&big=1")).json(); if (j && j.success && j.data) im = await new Promise(res => { const x = new Image(); x.onload = () => res(x); x.onerror = () => res(null); x.src = j.data; }); } catch (e) {} }
+        imgs.push(im);
+      }
+      say("⏳ PDF बन रहा है...");
+      const pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "खर्च के बिल — " + label, date: new Date().toLocaleDateString("en-GB") });
+      pdf.run(b => {
+        list.forEach((r, i) => {
+          if (i) b.newPage();
+          b.text((kI ? r[kI] + " · " : "") + (kD ? r[kD] : "") + (kF ? " · " + r[kF] : "") + (kA && r[kA] ? " · ₹ " + r[kA] : ""), b.M.l, b.y + 14, 14, 700, "#111");
+          const top = b.y + 28, maxW = b.w, maxH = b.PH - b.M.b - top - 6, im = imgs[i];
+          if (im) { const s = Math.min(maxW / im.width, maxH / im.height, 1.6), w = im.width * s, h = im.height * s; b.rect(b.M.l + (maxW - w) / 2 - 2, top - 2, w + 4, h + 4, null, "#cbd5e1"); b.image(im, b.M.l + (maxW - w) / 2, top, w, h); }
+          else b.text("बिल की फोटो लोड नहीं हो पाई", b.M.l, top + 20, 13, 400, "#b91c1c");
+        });
+      });
+      window.pdfSave_(pdf.pdfBytes(), "Expense_Bills_" + pdfName_(label) + "_" + pdfDay_() + ".pdf"); say(old);
+    } catch (err) { console.error(err); say(old); alert("बिल PDF नहीं बन पाया: " + (err && err.message || err)); }
+  };
+
+  /* ===== 🎪 सम्मेलन: QR उपस्थिति · उपस्थिति सूची · नाम-बैज · RSVP ===== */
+  const getEv_ = () => { try { return localStorage.getItem("smps_event") || ""; } catch (e) { return ""; } };
+  const setEv_ = v => { try { localStorage.setItem("smps_event", v); } catch (e) {} };
+  window.openSammelan_ = function () {
+    const m = openModal_("🎪 सम्मेलन — उपस्थिति, बैज, RSVP"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.body.innerHTML = '<label style="display:block;font-size:12.5px;color:#475569;margin-bottom:2px">कार्यक्रम का नाम (हर काम इसी नाम से जुड़ेगा)</label><input id="svEv" list="svEvL" type="text" placeholder="जैसे: स्नेह सम्मेलन 2027" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><datalist id="svEvL"></datalist><div id="svB" style="display:grid;gap:8px;margin-top:12px"></div>';
+    const inp = m.body.querySelector("#svEv"); inp.value = getEv_();
+    const ev = need => { const v = inp.value.trim(); if (need && !v) { alert("पहले कार्यक्रम का नाम लिखें"); inp.focus(); return null; } if (v) setEv_(v); return v; };
+    const btn = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:100%;text-align:left;border:0;border-radius:10px;padding:12px 14px;font-size:14.5px;font-weight:700;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; m.body.querySelector("#svB").appendChild(b); };
+    btn("📷  QR स्कैन से उपस्थिति लगाएँ", "#15803d", () => { const v = ev(true); if (v) window.openScanner_(v); });
+    btn("✅  उपस्थिति सूची (आए / नहीं आए)", "#0369a1", () => { const v = ev(true); if (v) window.openAttReport_(v); });
+    btn("🏷️  नाम-बैज PDF (QR के साथ)", "#9a3412", () => window.openBadges_(ev(false) || ""));
+    btn("📊  RSVP सारांश (कितने लोग आएँगे)", "#7c3aed", () => window.openRsvp_(ev(false) || ""));
+    callCrudBackend_({ action: "rsvpList" }).then(r => { if (r && r.success) m.body.querySelector("#svEvL").innerHTML = (r.events || []).map(e => '<option value="' + esc(e) + '"></option>').join(""); }).catch(() => {});
+  };
+  function loadJsQR_() {
+    return new Promise(res => { if (window.jsQR) return res(true); const urls = ["https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js", "https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"]; let i = 0;
+      const next = () => { if (i >= urls.length) return res(false); const s = document.createElement("script"); s.src = urls[i++]; s.onload = () => res(!!window.jsQR); s.onerror = next; document.head.appendChild(s); }; next(); });
+  }
+  window.attHandle_ = async function (event, code) { return await callCrudBackend_({ action: "attScan", event: event, code: code }); };
+  window.openScanner_ = async function (event) {
+    const m = openModal_("📷 QR स्कैन — " + event);
+    m.body.innerHTML = '<video id="scV" playsinline muted style="width:100%;border-radius:10px;background:#000;max-height:44vh;object-fit:cover"></video><div id="scRes" style="margin:8px 0;padding:10px;border-radius:10px;background:#f1f5f9;font-size:15px;font-weight:700;text-align:center">कैमरा चालू हो रहा है...</div><div id="scCnt" style="font-size:13px;color:#475569;margin-bottom:6px"></div>' +
+      '<div style="display:flex;gap:6px"><input id="scIn" type="text" inputmode="numeric" placeholder="हाथ से: मोबाइल या MEM/001" style="flex:1;min-width:0;padding:8px;border:1px solid #cbd5e1;border-radius:8px"><button id="scGo" type="button" style="width:auto;border:0;border-radius:8px;padding:8px 14px;font-weight:700;color:#fff;background:#0369a1">दर्ज करें</button></div><div id="scLog" style="margin-top:8px;font-size:13px"></div>';
+    const $ = q => m.body.querySelector(q), v = $("#scV"), res = $("#scRes"); let stream = null, stopped = false, busy = false, last = { code: "", t: 0 }, total = 0;
+    const stop = () => { stopped = true; try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch (e) {} };
+    const closeBtn = modalBtn_("बंद करें", "#64748b", () => { stop(); m.close(); }); m.foot.appendChild(closeBtn);
+    const beep = ok => { try { const A = window.AudioContext || window.webkitAudioContext, c = new A(), o = c.createOscillator(), g = c.createGain(); o.frequency.value = ok ? 880 : 300; g.gain.value = 0.15; o.connect(g); g.connect(c.destination); o.start(); setTimeout(() => { o.stop(); c.close(); }, ok ? 120 : 300); } catch (e) {} try { navigator.vibrate && navigator.vibrate(ok ? 60 : [80, 60, 80]); } catch (e) {} };
+    const show = (bg, fg, t) => { res.style.background = bg; res.style.color = fg; res.innerHTML = t; };
+    const log = (t) => { const d = document.createElement("div"); d.style.cssText = "padding:3px 0;border-bottom:1px solid #eef2f7"; d.textContent = t; const L = $("#scLog"); L.insertBefore(d, L.firstChild); while (L.children.length > 8) L.lastChild.remove(); };
+    const handle = async (code, force) => {
+      code = String(code || "").trim(); if (!code || busy) return; const now = Date.now(); if (!force && code === last.code && now - last.t < 4000) return; last = { code: code, t: now }; busy = true;
+      try { const r = await window.attHandle_(event, code);
+        if (r && r.success) { total = r.count; const nm = esc(r.member.name) + (r.member.city ? " (" + esc(r.member.city) + ")" : "");
+          if (r.status === "added") { show("#dcfce7", "#166534", "✔ " + nm + "<br><span style=\"font-size:13px\">उपस्थित दर्ज</span>"); beep(true); log("✔ " + r.member.name); } else { show("#fef3c7", "#92400e", "ℹ️ " + nm + "<br><span style=\"font-size:13px\">पहले से दर्ज है</span>"); beep(false); }
+          $("#scCnt").textContent = "अब तक उपस्थित: " + total; }
+        else { show("#fee2e2", "#991b1b", "❌ " + esc((r && r.msg) || "दर्ज नहीं हुआ")); beep(false); } }
+      catch (e) { show("#fee2e2", "#991b1b", "❌ नेटवर्क की दिक्कत — दोबारा स्कैन करें"); beep(false); }
+      busy = false;
+    };
+    $("#scGo").onclick = () => { const x = $("#scIn").value; $("#scIn").value = ""; handle(x, true); };
+    $("#scIn").onkeydown = e => { if (e.key === "Enter") $("#scGo").click(); };
+    try { const L = await callCrudBackend_({ action: "attList", event: event }); if (L && L.success) { total = L.present.length; $("#scCnt").textContent = "अब तक उपस्थित: " + total + " · नहीं आए: " + L.absent.length; } } catch (e) {}
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { show("#fef3c7", "#92400e", "इस ब्राउज़र में कैमरा नहीं चल सकता — नीचे हाथ से दर्ज करें"); return; }
+    try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false }); v.srcObject = stream; await v.play(); }
+    catch (e) { show("#fef3c7", "#92400e", "कैमरा चालू नहीं हो पाया (अनुमति दें) — नीचे हाथ से दर्ज करें"); return; }
+    let det = null; if ("BarcodeDetector" in window) { try { det = new window.BarcodeDetector({ formats: ["qr_code"] }); } catch (e) { det = null; } }
+    if (!det && !(await loadJsQR_())) { show("#fef3c7", "#92400e", "QR पढ़ने की सुविधा लोड नहीं हुई — नीचे हाथ से दर्ज करें"); return; }
+    show("#e0f2fe", "#075985", "QR कार्ड कैमरे के सामने रखें");
+    const cv = document.createElement("canvas"), cx = cv.getContext("2d", { willReadFrequently: true });
+    const tick = async () => {
+      if (stopped) return; if (!document.body.contains(v)) { stop(); return; }
+      if (v.readyState >= 2 && !busy && v.videoWidth) {
+        try { if (det) { const c = await det.detect(v); if (c && c[0]) handle(c[0].rawValue); }
+          else { const sc = Math.min(1, 640 / v.videoWidth); cv.width = Math.round(v.videoWidth * sc); cv.height = Math.round(v.videoHeight * sc); cx.drawImage(v, 0, 0, cv.width, cv.height); const id = cx.getImageData(0, 0, cv.width, cv.height), q = window.jsQR(id.data, cv.width, cv.height, { inversionAttempts: "dontInvert" }); if (q && q.data) handle(q.data); } } catch (e) {}
+      }
+      setTimeout(tick, det ? 200 : 150);
+    };
+    tick();
+  };
+  window.openAttReport_ = async function (event) {
+    const m = openModal_("✅ उपस्थिति — " + event); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "attList", event: event }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const P = r.present || [], A = r.absent || []; let tab = "p", q = "";
+    m.body.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px"><button id="atP" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button><button id="atA" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button></div><input id="atQ" type="search" placeholder="नाम / शहर खोजें" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:6px"><div id="atL"></div>';
+    const $ = x => m.body.querySelector(x), draw = () => {
+      $("#atP").textContent = "✔ उपस्थित (" + P.length + ")"; $("#atA").textContent = "✖ नहीं आए (" + A.length + ")";
+      $("#atP").style.cssText += ";background:" + (tab === "p" ? "#15803d;color:#fff" : "#e2e8f0;color:#0f172a"); $("#atA").style.cssText += ";background:" + (tab === "a" ? "#b45309;color:#fff" : "#e2e8f0;color:#0f172a");
+      const L = $("#atL"); L.innerHTML = ""; const src = (tab === "p" ? P : A).filter(x => !q || (x.name + " " + (x.city || "")).toLowerCase().includes(q));
+      src.forEach((x, i) => { const d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef2f7;padding:6px 2px;font-size:13.5px"; d.innerHTML = '<span style="flex:none;width:26px;color:#94a3b8">' + (i + 1) + '</span><span style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.city || "") + (x.mobile ? " · " + esc(x.mobile) : "") + "</span></span>";
+        if (tab === "p") { const u = document.createElement("button"); u.type = "button"; u.textContent = "↩"; u.title = "उपस्थिति हटाएँ"; u.style.cssText = "flex:none;width:auto;border:0;border-radius:8px;padding:4px 9px;background:#fee2e2;color:#991b1b;cursor:pointer"; u.onclick = async () => { if (!confirm(x.name + " की उपस्थिति हटाएँ?")) return; try { const rr = await callCrudBackend_({ action: "attRemove", event: event, id: x.id }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हुआ"); P.splice(P.indexOf(x), 1); A.push({ id: x.id, name: x.name, city: x.city, mobile: x.mobile }); draw(); } catch (er) { alert("❌ " + (er.message || er)); } }; d.appendChild(u); }
+        else if (x.mobile) { const w = document.createElement("a"); w.textContent = "💬"; w.href = buildWaUrl_(x.mobile, ""); w.target = "_blank"; w.rel = "noopener"; w.style.cssText = "flex:none;text-decoration:none;background:#25a244;color:#fff;border-radius:8px;padding:4px 9px"; d.appendChild(w); }
+        L.appendChild(d); });
+      if (!src.length) L.innerHTML = '<p class="muted">कोई नहीं।</p>';
+    };
+    $("#atP").onclick = () => { tab = "p"; draw(); }; $("#atA").onclick = () => { tab = "a"; draw(); }; $("#atQ").oninput = e => { q = e.target.value.trim().toLowerCase(); draw(); }; draw();
+    const pb = modalBtn_("📄 PDF", "#b91c1c", async () => {
+      pb.disabled = true; try { await ensureFonts_(); const day = new Date().toLocaleDateString("en-GB"), pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "उपस्थिति — " + event, date: day });
+        pdf.run(b => { b.paragraph("उपस्थिति — " + event, 20, 700, "#111", "left", 2); b.paragraph("उपस्थित " + P.length + " · नहीं आए " + A.length + " · " + day, 12, 400, "#475569", "left", 8);
+          b.band("उपस्थित (" + P.length + ")", "", "#15803d"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "मोबाइल", max: 110 }], P.map((x, i) => [i + 1, x.name, x.city || "", x.mobile || ""]), { size: 11 });
+          b.band("नहीं आए (" + A.length + ")", "", "#b45309"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "मोबाइल", max: 110 }], A.map((x, i) => [i + 1, x.name, x.city || "", x.mobile || ""]), { size: 11 }); });
+        window.pdfSave_(pdf.pdfBytes(), "Upasthiti_" + pdfName_(event) + "_" + pdfDay_() + ".pdf"); } catch (e) { alert("PDF नहीं बन पाया: " + (e.message || e)); } pb.disabled = false; });
+    m.foot.insertBefore(pb, m.foot.firstChild);
+  };
+  window.openBadges_ = async function (event) {
+    const m = openModal_("🏷️ नाम-बैज PDF"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    const kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i), kV = keyOf(mem, /origin|village|मूल|गाँव|गांव/i), kI = keyOf(mem, /^(member ?id|id)$/i);
+    const part = s => { const mm = String(s || "").match(/\(([^)]*)\)\s*$/); return mm ? mm[1].split("-").map(x => x.trim()).filter(Boolean) : []; };
+    const recs = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""), pl = part(lab), cEn = String(kC ? r[kC] || "" : "").trim(), vil = String(kV ? r[kV] || "" : "").trim(); let cH = "", oH = "";
+      if (pl.length >= 2) { oH = pl[0]; cH = pl[pl.length - 1]; } else if (pl.length === 1) { if (cEn && !vil) cH = pl[0]; else oH = pl[0]; }
+      return { id: String(kI ? r[kI] || "" : ""), name: stripPlace_(lab), city: cH || cEn, origin: oH || vil, mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10) }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && x.id);
+    const cities = Array.from(new Set(recs.map(x => x.city).filter(Boolean))).sort((x, y) => x.localeCompare(y, "hi"));
+    m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">हर बैज पर: नाम, गाँव / शहर, MemberID और उपस्थिति वाला QR। A4 के एक पन्ने पर 8 बैज (कैंची से काटने की रेखा के साथ)।</div><label style="display:block;font-size:12.5px;color:#475569">बैज के ऊपर का शीर्षक</label><input id="bgT" type="text" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:8px"><label style="display:block;font-size:12.5px;color:#475569">किनके बैज</label><select id="bgC" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px"><option value="">सभी सक्रिय सदस्य (' + recs.length + ')</option>' + cities.map(c => "<option>" + esc(c) + " (" + recs.filter(x => x.city === c).length + ")</option>").join("") + '</select>';
+    m.body.querySelector("#bgT").value = event || "स्नेह सम्मेलन";
+    const go = modalBtn_("🏷️ PDF बनाएँ", "#9a3412", async () => {
+      go.disabled = true; go.textContent = "⏳ बन रहा है...";
+      try { await ensureFonts_(); const sel = m.body.querySelector("#bgC").value.replace(/\s*\(\d+\)$/, ""), title = m.body.querySelector("#bgT").value.trim() || "स्नेह सम्मेलन";
+        const list = recs.filter(x => !sel || x.city === sel).sort((x, y) => (x.city || "").localeCompare(y.city || "", "hi") || x.name.localeCompare(y.name, "hi")); if (!list.length) { alert("कोई सदस्य नहीं मिला"); throw new Error("empty"); }
+        const pdf = PdfBuilder_({ landscape: false, bare: true, org: SAMAJ_NAME_, title: title, date: "" });
+        pdf.run(b => {
+          const gap = 10, cw = (b.PW - 2 * b.M.l - gap) / 2, ch = (b.PH - 2 * b.M.t - 3 * gap) / 4, qs = 104;
+          list.forEach((x, i) => {
+            const pos = i % 8; if (pos === 0 && i > 0) b.newPage(); const col = pos % 2, rw = Math.floor(pos / 2), X = b.M.l + col * (cw + gap), Y = b.M.t + rw * (ch + gap);
+            b.rect(X, Y, cw, ch, "#ffffff", "#94a3b8"); b.rect(X, Y, cw, 36, "#7c2d12");
+            const tm = b.mf(14, 700); let ts = 14; while (ts > 9 && tm.measureText(title).width > cw - 16) { ts -= 1; b.mf(ts, 700); } b.text(title, X + cw / 2, Y + 23, ts, 700, "#ffffff", "center");
+            const tw = cw - qs - 36, nm = b.mf(22, 700); let ns = 22; while (ns > 13 && pdfWrap_(b.mf(ns, 700), x.name, tw).length > 2) ns -= 1; const nl = pdfWrap_(b.mf(ns, 700), x.name, tw).slice(0, 2);
+            nl.forEach((ln, k) => b.text(ln, X + 14, Y + 66 + k * (ns + 5), ns, 700, "#111"));
+            const sy = Y + 66 + nl.length * (ns + 5) + 6; if (x.origin) b.text("गाँव: " + x.origin, X + 14, sy, 13, 500, "#334155"); if (x.city) b.text("शहर: " + x.city, X + 14, sy + 18, 13, 500, "#334155"); b.text(x.id, X + 14, Y + ch - 34, 12, 700, "#7c2d12");
+            if (!b.dry) { const q = window.qrCanvas_ ? window.qrCanvas_("SMPS|" + x.id + "|" + x.mob, qs) : null; if (q) b.image(q, X + cw - qs - 14, Y + 48, qs, qs); }
+            b.line(X + 10, Y + ch - 24, X + cw - 10, Y + ch - 24, "#e2e8f0", 0.8); b.text(SAMAJ_NAME_, X + cw / 2, Y + ch - 8, 11, 600, "#64748b", "center");
+          });
+        });
+        window.pdfSave_(pdf.pdfBytes(), "Name_Badges_" + pdfName_(title) + "_" + pdfDay_() + ".pdf"); }
+      catch (e) { if (e.message !== "empty") alert("बैज PDF नहीं बन पाया: " + (e.message || e)); }
+      go.disabled = false; go.textContent = "🏷️ PDF बनाएँ";
+    });
+    m.foot.insertBefore(go, m.foot.firstChild);
+  };
+  window.qrCanvas_ = function (text, size) {
+    try { if (!window.QRCode) return null; const h = document.createElement("div"); new QRCode(h, { text: text, width: size * 2, height: size * 2, correctLevel: QRCode.CorrectLevel.M }); return h.querySelector("canvas") || h.querySelector("img"); } catch (e) { return null; }
+  };
+  window.openRsvp_ = async function (event) {
+    const m = openModal_("📊 RSVP सारांश"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "rsvpList" }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
+    if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const all = r.rows || [], evs = r.events || []; if (!all.length) { m.body.innerHTML = '<p class="muted">अभी कोई RSVP नहीं आया।</p>'; return; }
+    let cur = evs.indexOf(event) >= 0 ? event : (evs[0] || "");
+    const calc = () => { const rows = all.filter(x => !cur || x.event === cur), by = {}; rows.forEach(x => { const k = String(x.place || "—").trim().toLowerCase(); const o = by[k] || (by[k] = { place: String(x.place || "—").trim() || "—", fam: 0, ad: 0, ch: 0 }); o.fam++; o.ad += x.adults; o.ch += x.children; });
+      const cities = Object.keys(by).map(k => by[k]).sort((p, q) => (q.ad + q.ch) - (p.ad + p.ch)); return { rows: rows, cities: cities, fam: rows.length, ad: rows.reduce((s, x) => s + x.adults, 0), ch: rows.reduce((s, x) => s + x.children, 0) }; };
+    const render = () => { const c = calc();
+      m.body.innerHTML = '<select id="rvE" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:8px">' + evs.map(e => '<option' + (e === cur ? " selected" : "") + ">" + esc(e) + "</option>").join("") + '</select>' +
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-bottom:8px">' + [["परिवार", c.fam], ["बड़े", c.ad], ["बच्चे", c.ch], ["कुल लोग", c.ad + c.ch]].map(x => '<div style="background:#f1f5f9;border-radius:10px;padding:8px 2px"><div style="font-size:20px;font-weight:800">' + x[1] + '</div><div style="font-size:11.5px;color:#475569">' + x[0] + "</div></div>").join("") + "</div>" +
+        '<div style="font-weight:700;margin:6px 0 3px">शहर-वार (खाने की गिनती के लिए)</div>' + c.cities.map(x => '<div style="display:flex;justify-content:space-between;border-bottom:1px solid #eef2f7;padding:4px 2px;font-size:13.5px"><span>' + esc(x.place) + '</span><span style="color:#475569">' + x.fam + " परिवार · <b>" + (x.ad + x.ch) + "</b> लोग</span></div>").join("");
+      m.body.querySelector("#rvE").onchange = e => { cur = e.target.value; render(); }; };
+    render();
+    const pb = modalBtn_("📄 PDF", "#b91c1c", async () => {
+      pb.disabled = true; try { await ensureFonts_(); const c = calc(), day = new Date().toLocaleDateString("en-GB"), pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "RSVP — " + cur, date: day });
+        pdf.run(b => { b.paragraph("RSVP सारांश — " + cur, 20, 700, "#111", "left", 2); b.paragraph(day, 12, 400, "#475569", "left", 8);
+          b.table([{ h: "विवरण", bold: true }, { h: "संख्या", a: "center", max: 110 }], [["परिवार", c.fam], ["बड़े", c.ad], ["बच्चे", c.ch], ["कुल लोग", c.ad + c.ch]], { size: 13 });
+          b.band("शहर-वार", "", "#7c3aed"); b.table([{ h: "शहर", bold: true }, { h: "परिवार", a: "center", max: 80 }, { h: "बड़े", a: "center", max: 70 }, { h: "बच्चे", a: "center", max: 70 }, { h: "कुल", a: "center", max: 70 }], c.cities.map(x => [x.place, x.fam, x.ad, x.ch, x.ad + x.ch]), { size: 12 });
+          b.band("सभी RSVP (" + c.fam + ")", "", "#475569"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "बड़े", a: "center", max: 55 }, { h: "बच्चे", a: "center", max: 55 }, { h: "मोबाइल", max: 110 }], c.rows.map((x, i) => [i + 1, x.name, x.place, x.adults, x.children, x.mobile]), { size: 11 }); });
+        window.pdfSave_(pdf.pdfBytes(), "RSVP_" + pdfName_(cur) + "_" + pdfDay_() + ".pdf"); } catch (e) { alert("PDF नहीं बन पाया: " + (e.message || e)); } pb.disabled = false; });
+    m.foot.insertBefore(pb, m.foot.firstChild);
   };
 
   window.refreshPendBadge_ = function () {
