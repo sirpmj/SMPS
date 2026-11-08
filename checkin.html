@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#7c2d12">
+<title>उपस्थिति दर्ज करें — श्री मेवाड़ प्रजापत समाज</title>
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --brand: #7c2d12; --brand2: #b45309; --ink: #0f172a; --mut: #475569; --line: #e2e8f0; --ok: #15803d; --bad: #b91c1c; --bg: #fff7ed; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: "Mukta", "Noto Sans Devanagari", "Segoe UI", Arial, sans-serif; background: linear-gradient(180deg, var(--bg), #fff); color: var(--ink); min-height: 100vh; display: flex; justify-content: center; padding: max(14px, env(safe-area-inset-top)) 14px 24px; }
+main { width: 100%; max-width: 440px; }
+.top { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+.top img { width: 52px; height: 52px; border-radius: 50%; border: 2px solid #fbbf24; background: #fff; }
+.top b { display: block; font-size: 16px; color: var(--brand); line-height: 1.25; }
+.top small { color: var(--mut); font-size: 13px; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; box-shadow: 0 6px 20px rgba(124, 45, 18, .08); }
+h1 { margin: 0 0 4px; font-size: 22px; line-height: 1.3; color: var(--brand); }
+.ev { margin: 0 0 14px; font-size: 16px; font-weight: 600; color: var(--ink); }
+label { display: block; font-weight: 600; font-size: 14px; margin: 10px 0 5px; }
+input[type=tel] { width: 100%; font: inherit; font-size: 22px; letter-spacing: 1px; padding: 12px 14px; border: 2px solid #cbd5e1; border-radius: 12px; }
+input[type=tel]:focus { outline: none; border-color: var(--brand2); }
+button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 12px; color: #fff; background: var(--brand); }
+button.sec { background: #e2e8f0; color: var(--ink); }
+button:disabled { opacity: .6; cursor: default; }
+.msg { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 15px; background: #fef3c7; color: #92400e; }
+.msg.bad { background: #fee2e2; color: #991b1b; }
+.who { margin: 12px 0; padding: 14px; border-radius: 14px; background: #fff7ed; border: 1px solid #fed7aa; text-align: center; }
+.who .nm { font-size: 24px; font-weight: 800; line-height: 1.3; color: var(--brand); overflow-wrap: anywhere; }
+.who .sub { margin-top: 4px; color: var(--mut); font-size: 15px; }
+.step { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.step button { width: 52px; margin: 0; padding: 8px 0; font-size: 24px; background: #e2e8f0; color: var(--ink); }
+.step output { font-size: 26px; font-weight: 800; min-width: 40px; text-align: center; }
+.ok { text-align: center; }
+.tick { width: 84px; height: 84px; margin: 4px auto 8px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-content: center; font-size: 48px; animation: pop .35s ease-out; }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.ok h2 { margin: 6px 0 2px; font-size: 22px; color: var(--ok); }
+.links { display: grid; gap: 8px; margin-top: 14px; }
+.links a { display: block; text-decoration: none; text-align: center; padding: 13px; border-radius: 12px; font-weight: 700; font-size: 16px; color: #fff; background: var(--brand2); }
+.links a.b { background: #0369a1; }
+.hint { margin-top: 12px; font-size: 13px; color: var(--mut); text-align: center; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <img src="Logo-192.png" alt="">
+    <div><b>श्री मेवाड़ प्रजापत समाज, वापी</b><small>स्नेह सम्मेलन · उपस्थिति</small></div>
+  </div>
+
+  <div class="card" aria-live="polite">
+    <section id="vLoad"><h1>कृपया प्रतीक्षा करें…</h1></section>
+
+    <section id="vErr" hidden>
+      <h1 id="eTitle">उपस्थिति दर्ज नहीं हो सकी</h1>
+      <p class="ev" id="eEv"></p>
+      <div class="msg bad" id="eMsg"></div>
+      <button type="button" id="eRetry" class="sec">🔄 फिर से जाँचें</button>
+    </section>
+
+    <section id="vMob" hidden>
+      <h1>अपनी उपस्थिति दर्ज करें</h1>
+      <p class="ev" id="mEv"></p>
+      <label for="mobile">अपना मोबाइल नंबर लिखें (जो समाज में दर्ज है)</label>
+      <input id="mobile" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
+      <div class="msg bad" id="mMsg" hidden></div>
+      <button type="button" id="mGo">आगे बढ़ें →</button>
+    </section>
+
+    <section id="vConf" hidden>
+      <h1>क्या आप यही हैं?</h1>
+      <div class="who"><div class="nm" id="cNm"></div><div class="sub" id="cSub"></div></div>
+      <label>साथ में कितने लोग आए हैं? (वैकल्पिक, खाने की गिनती के लिए)</label>
+      <div class="step"><button type="button" id="gMinus" aria-label="कम करें">−</button><output id="gVal">0</output><button type="button" id="gPlus" aria-label="बढ़ाएँ">+</button></div>
+      <div class="msg bad" id="cMsg" hidden></div>
+      <button type="button" id="cGo">✔ हाँ, मेरी उपस्थिति दर्ज करें</button>
+      <button type="button" id="cBack" class="sec">← दूसरा नंबर</button>
+    </section>
+
+    <section id="vOk" class="ok" hidden>
+      <div class="tick" aria-hidden="true">✓</div>
+      <h2 id="oH">स्वागत है!</h2>
+      <div class="who"><div class="nm" id="oNm"></div><div class="sub" id="oSub"></div></div>
+      <p class="ev" id="oEv" style="margin-bottom:2px"></p>
+      <div id="oNote" class="hint" style="margin-top:2px"></div>
+      <div class="links">
+        <a id="lApp" href="app.html">📱 समाज का ऐप खोलें</a>
+        <a id="lWeb" class="b" href="index.html">🌐 समाज की वेबसाइट देखें</a>
+      </div>
+      <div class="hint">ऐप में अपना खाता, कार्ड और जानकारी देखें। फ़ोन के ब्राउज़र मेन्यू से “होम स्क्रीन पर जोड़ें” दबाकर इसे ऐप की तरह रख सकते हैं।</div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var API_URL = "https://script.google.com/macros/s/AKfycbzDmstaOr5WR8oIEF65Qspdr_UeAuo8-sFOaE96qMUEatrz3JT73f7FrTElGUSNiIg_XQ/exec";
+  var $ = function (id) { return document.getElementById(id); };
+  var q = new URLSearchParams(location.search), CODE = String(q.get("c") || location.hash.replace(/^#/, "") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  var EVENT = "", guests = 0, MOB = "";
+  function show(id) { ["vLoad", "vErr", "vMob", "vConf", "vOk"].forEach(function (x) { $(x).hidden = x !== id; }); }
+  function call(o) {
+    o.action = "publicCheckin"; o.code = CODE;
+    return fetch(API_URL, { method: "POST", body: JSON.stringify(o) }).then(function (r) { return r.json(); });
+  }
+  function fail(title, msg, ev) { $("eTitle").textContent = title; $("eMsg").textContent = msg; $("eEv").textContent = ev || ""; show("vErr"); }
+  function setMsg(el, t) { el.textContent = t || ""; el.hidden = !t; }
+  function init() {
+    show("vLoad");
+    if (!CODE) { fail("QR ठीक से नहीं खुला", "कृपया स्टैंडी का QR फिर से स्कैन करें, या स्वागत डेस्क पर बताएँ।"); return; }
+    call({ step: "info" }).then(function (r) {
+      if (!r || !r.success) { fail("यह QR काम नहीं कर रहा", (r && r.msg) || "थोड़ी देर बाद फिर कोशिश करें।"); return; }
+      EVENT = r.event; $("mEv").textContent = EVENT;
+      if (!r.open) { fail("अभी उपस्थिति बंद है", "कार्यक्रम शुरू होने पर उपस्थिति चालू होगी। चालू होने पर “फिर से जाँचें” दबाएँ।", EVENT); return; }
+      try { $("mobile").value = localStorage.getItem("smps_ci_mobile") || ""; } catch (e) {}
+      show("vMob");
+    }).catch(function () { fail("इंटरनेट की दिक्कत", "नेटवर्क जाँचकर “फिर से जाँचें” दबाएँ।"); });
+  }
+  function done(r, already) {
+    $("oNm").textContent = r.member.name; $("oSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · ");
+    $("oEv").textContent = EVENT; $("oH").textContent = already ? "आपकी उपस्थिति पहले से दर्ज है" : "स्वागत है! उपस्थिति दर्ज हो गई";
+    var t = new Date().toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
+    $("oNote").textContent = already ? "दोबारा दर्ज करने की ज़रूरत नहीं।" : "समय: " + t + (guests ? " · साथ में " + guests + " लोग" : "");
+    show("vOk");
+  }
+  $("eRetry").onclick = init;
+  $("mGo").onclick = function () {
+    var m = $("mobile").value.replace(/\D/g, "").slice(-10); setMsg($("mMsg"), "");
+    if (m.length !== 10) { setMsg($("mMsg"), "10 अंकों का मोबाइल नंबर लिखें"); return; }
+    $("mGo").disabled = true; $("mGo").textContent = "खोज रहे हैं…";
+    call({ step: "find", mobile: m }).then(function (r) {
+      $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →";
+      if (!r || !r.success) {
+        if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; }
+        setMsg($("mMsg"), ((r && r.msg) || "दोबारा कोशिश करें") + (r && r.notfound ? " — कृपया स्वागत डेस्क पर बताएँ।" : "")); return;
+      }
+      MOB = m; try { localStorage.setItem("smps_ci_mobile", m); } catch (e) {}
+      if (r.already) { done(r, true); return; }
+      $("cNm").textContent = r.member.name; $("cSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · "); guests = 0; $("gVal").textContent = "0"; setMsg($("cMsg"), ""); show("vConf");
+    }).catch(function () { $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →"; setMsg($("mMsg"), "इंटरनेट की दिक्कत — फिर कोशिश करें"); });
+  };
+  $("mobile").addEventListener("keydown", function (e) { if (e.key === "Enter") $("mGo").click(); });
+  $("gMinus").onclick = function () { guests = Math.max(0, guests - 1); $("gVal").textContent = guests; };
+  $("gPlus").onclick = function () { guests = Math.min(30, guests + 1); $("gVal").textContent = guests; };
+  $("cBack").onclick = function () { show("vMob"); };
+  $("cGo").onclick = function () {
+    $("cGo").disabled = true; $("cGo").textContent = "दर्ज हो रहा है…"; setMsg($("cMsg"), "");
+    call({ step: "mark", mobile: MOB, guests: guests }).then(function (r) {
+      $("cGo").disabled = false; $("cGo").textContent = "✔ हाँ, मेरी उपस्थिति दर्ज करें";
+      if (!r || !r.success) { setMsg($("cMsg"), (r && r.msg) || "दर्ज नहीं हुआ — फिर कोशिश करें"); return; }
+      done(r, r.status === "dup");
+    }).catch(function () { $("cGo").disabled = false; $("cGo").textContent = "✔ हाँ, मेरी उपस्थिति दर्ज करें"; setMsg($("cMsg"), "इंटरनेट की दिक्कत — फिर कोशिश करें"); });
+  };
+  init();
+})();
+</script>
+</body>
+</html>

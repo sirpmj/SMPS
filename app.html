@@ -322,6 +322,10 @@ document.addEventListener("DOMContentLoaded", function () {
 .more-bar button { width: auto; padding: 10px 22px; border: 0; border-radius: 10px; background: #0b63d6; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
 #toTopBtn { position: fixed; right: 14px; bottom: 18px; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 0; background: #0b63d6; color: #fff; font-size: 22px; line-height: 1; box-shadow: 0 3px 10px rgba(0,0,0,.3); display: none; z-index: 1500; cursor: pointer; }
 #toTopBtn.on { display: block; }
+
+/* v1.331: message center footer — 2 line */
+.foot2 { display: grid !important; grid-template-columns: repeat(12, 1fr); gap: 6px; }
+.foot2 > button { width: auto !important; min-width: 0; margin: 0 !important; padding: 9px 4px !important; font-size: 12.5px; line-height: 1.25; white-space: normal; }
 </style>
 
 </head>
@@ -1630,7 +1634,7 @@ table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-alig
 .mv-phl a { color: #0b63d6; font-weight: 600; }
 /* ===== 🆕 v1.257 ===== */
 /* version number — footer ke neeche */
-.site-footer::after { content: "App v1.330"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
+.site-footer::after { content: "App v1.331"; display: block; margin-top: 3px; font-size: 11px; opacity: .8; letter-spacing: .3px; }
 /* remember checkbox */
 #loginView .sp-rem { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #475569; margin: 2px 0 8px; cursor: pointer; }
 #loginView .sp-rem input { width: 16px; height: 16px; margin: 0; flex: none; }
@@ -10117,6 +10121,7 @@ if ('serviceWorker' in navigator) {
     const ev = need => { const v = inp.value.trim(); if (need && !v) { alert("पहले कार्यक्रम का नाम लिखें"); inp.focus(); return null; } if (v) setEv_(v); return v; };
     const btn = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:100%;text-align:left;border:0;border-radius:10px;padding:12px 14px;font-size:14.5px;font-weight:700;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; m.body.querySelector("#svB").appendChild(b); };
     btn("📷  QR स्कैन से उपस्थिति लगाएँ", "#15803d", () => { const v = ev(true); if (v) window.openScanner_(v); });
+    btn("🪧  खुद-उपस्थिति स्टैंडी (सदस्य खुद QR स्कैन करें)", "#0f766e", () => { const v = ev(true); if (v) window.openStandee_(v); });
     btn("✅  उपस्थिति सूची (आए / नहीं आए)", "#0369a1", () => { const v = ev(true); if (v) window.openAttReport_(v); });
     btn("🏷️  नाम-बैज PDF (QR के साथ)", "#9a3412", () => window.openBadges_(ev(false) || ""));
     btn("📊  RSVP सारांश (कितने लोग आएँगे)", "#7c3aed", () => window.openRsvp_(ev(false) || ""));
@@ -10172,12 +10177,13 @@ if ('serviceWorker' in navigator) {
     let r; try { r = await callCrudBackend_({ action: "attList", event: event }); } catch (e) { r = { success: false, msg: String(e.message || e) }; }
     if (!r || !r.success) { m.body.innerHTML = "<p>❌ " + esc((r && r.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
     const P = r.present || [], A = r.absent || []; let tab = "p", q = "";
-    m.body.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px"><button id="atP" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button><button id="atA" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button></div><input id="atQ" type="search" placeholder="नाम / शहर खोजें" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:6px"><div id="atL"></div>';
+    m.body.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:6px"><button id="atP" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button><button id="atA" type="button" style="flex:1;border:0;border-radius:8px;padding:8px;font-weight:700"></button></div><div id="atS" style="font-size:12.5px;color:#475569;margin-bottom:6px"></div><input id="atQ" type="search" placeholder="नाम / शहर खोजें" style="width:100%;box-sizing:border-box;padding:7px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:6px"><div id="atL"></div>';
     const $ = x => m.body.querySelector(x), draw = () => {
+      $("#atS").textContent = "कुल लोग (सदस्य + साथ आए): " + (P.length + P.reduce((s, x) => s + (x.guests || 0), 0)) + " · खुद दर्ज: " + P.filter(x => x.by === "SELF").length;
       $("#atP").textContent = "✔ उपस्थित (" + P.length + ")"; $("#atA").textContent = "✖ नहीं आए (" + A.length + ")";
       $("#atP").style.cssText += ";background:" + (tab === "p" ? "#15803d;color:#fff" : "#e2e8f0;color:#0f172a"); $("#atA").style.cssText += ";background:" + (tab === "a" ? "#b45309;color:#fff" : "#e2e8f0;color:#0f172a");
       const L = $("#atL"); L.innerHTML = ""; const src = (tab === "p" ? P : A).filter(x => !q || (x.name + " " + (x.city || "")).toLowerCase().includes(q));
-      src.forEach((x, i) => { const d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef2f7;padding:6px 2px;font-size:13.5px"; d.innerHTML = '<span style="flex:none;width:26px;color:#94a3b8">' + (i + 1) + '</span><span style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.city || "") + (x.mobile ? " · " + esc(x.mobile) : "") + "</span></span>";
+      src.forEach((x, i) => { const d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;border-bottom:1px solid #eef2f7;padding:6px 2px;font-size:13.5px"; d.innerHTML = '<span style="flex:none;width:26px;color:#94a3b8">' + (i + 1) + '</span><span style="flex:1;min-width:0"><b>' + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.city || "") + (x.mobile ? " · " + esc(x.mobile) : "") + (x.guests ? " · साथ +" + x.guests : "") + (x.by === "SELF" ? " · खुद" : "") + "</span></span>";
         if (tab === "p") { const u = document.createElement("button"); u.type = "button"; u.textContent = "↩"; u.title = "उपस्थिति हटाएँ"; u.style.cssText = "flex:none;width:auto;border:0;border-radius:8px;padding:4px 9px;background:#fee2e2;color:#991b1b;cursor:pointer"; u.onclick = async () => { if (!confirm(x.name + " की उपस्थिति हटाएँ?")) return; try { const rr = await callCrudBackend_({ action: "attRemove", event: event, id: x.id }); if (!rr || !rr.success) throw new Error((rr && rr.msg) || "नहीं हुआ"); P.splice(P.indexOf(x), 1); A.push({ id: x.id, name: x.name, city: x.city, mobile: x.mobile }); draw(); } catch (er) { alert("❌ " + (er.message || er)); } }; d.appendChild(u); }
         else if (x.mobile) { const w = document.createElement("a"); w.textContent = "💬"; w.href = buildWaUrl_(x.mobile, ""); w.target = "_blank"; w.rel = "noopener"; w.style.cssText = "flex:none;text-decoration:none;background:#25a244;color:#fff;border-radius:8px;padding:4px 9px"; d.appendChild(w); }
         L.appendChild(d); });
@@ -10186,8 +10192,8 @@ if ('serviceWorker' in navigator) {
     $("#atP").onclick = () => { tab = "p"; draw(); }; $("#atA").onclick = () => { tab = "a"; draw(); }; $("#atQ").oninput = e => { q = e.target.value.trim().toLowerCase(); draw(); }; draw();
     const pb = modalBtn_("📄 PDF", "#b91c1c", async () => {
       pb.disabled = true; try { await ensureFonts_(); const day = new Date().toLocaleDateString("en-GB"), pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "उपस्थिति — " + event, date: day });
-        pdf.run(b => { b.paragraph("उपस्थिति — " + event, 20, 700, "#111", "left", 2); b.paragraph("उपस्थित " + P.length + " · नहीं आए " + A.length + " · " + day, 12, 400, "#475569", "left", 8);
-          b.band("उपस्थित (" + P.length + ")", "", "#15803d"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "मोबाइल", max: 110 }], P.map((x, i) => [i + 1, x.name, x.city || "", x.mobile || ""]), { size: 11 });
+        pdf.run(b => { b.paragraph("उपस्थिति — " + event, 20, 700, "#111", "left", 2); b.paragraph("उपस्थित " + P.length + " (साथ के लोग मिलाकर कुल " + (P.length + P.reduce((s, x) => s + (x.guests || 0), 0)) + ") · नहीं आए " + A.length + " · " + day, 12, 400, "#475569", "left", 8);
+          b.band("उपस्थित (" + P.length + ")", "", "#15803d"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "मोबाइल", max: 110 }, { h: "साथ", a: "center", max: 50 }], P.map((x, i) => [i + 1, x.name, x.city || "", x.mobile || "", x.guests || ""]), { size: 11 });
           b.band("नहीं आए (" + A.length + ")", "", "#b45309"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "मोबाइल", max: 110 }], A.map((x, i) => [i + 1, x.name, x.city || "", x.mobile || ""]), { size: 11 }); });
         window.pdfSave_(pdf.pdfBytes(), "Upasthiti_" + pdfName_(event) + "_" + pdfDay_() + ".pdf"); } catch (e) { alert("PDF नहीं बन पाया: " + (e.message || e)); } pb.disabled = false; });
     m.foot.insertBefore(pb, m.foot.firstChild);
@@ -10251,6 +10257,47 @@ if ('serviceWorker' in navigator) {
           b.band("शहर-वार", "", "#7c3aed"); b.table([{ h: "शहर", bold: true }, { h: "परिवार", a: "center", max: 80 }, { h: "बड़े", a: "center", max: 70 }, { h: "बच्चे", a: "center", max: 70 }, { h: "कुल", a: "center", max: 70 }], c.cities.map(x => [x.place, x.fam, x.ad, x.ch, x.ad + x.ch]), { size: 12 });
           b.band("सभी RSVP (" + c.fam + ")", "", "#475569"); b.table([{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "शहर", max: 120 }, { h: "बड़े", a: "center", max: 55 }, { h: "बच्चे", a: "center", max: 55 }, { h: "मोबाइल", max: 110 }], c.rows.map((x, i) => [i + 1, x.name, x.place, x.adults, x.children, x.mobile]), { size: 11 }); });
         window.pdfSave_(pdf.pdfBytes(), "RSVP_" + pdfName_(cur) + "_" + pdfDay_() + ".pdf"); } catch (e) { alert("PDF नहीं बन पाया: " + (e.message || e)); } pb.disabled = false; });
+    m.foot.insertBefore(pb, m.foot.firstChild);
+  };
+
+  /* ===== 🪧 खुद-उपस्थिति: प्रिंट होने वाला QR स्टैंडी — सदस्य अपने फोन से स्कैन करके (बिना लॉगिन) उपस्थिति लगाते हैं ===== */
+  window.openStandee_ = async function (event) {
+    const m = openModal_("🪧 खुद-उपस्थिति — QR स्टैंडी"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let st; try { st = await callCrudBackend_({ action: "checkinSet", event: event }); } catch (e) { st = { success: false, msg: String(e.message || e) }; }
+    if (!st || !st.success) { m.body.innerHTML = "<p>❌ " + esc((st && st.msg) || "लोड नहीं हो पाया") + "</p>"; return; }
+    const urlOf = c => new URL("checkin.html?c=" + c, location.href).href;
+    const paint = () => {
+      const u = urlOf(st.code);
+      m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:8px">इस QR का <b>पोस्टर / स्टैंडी</b> छपवाकर कार्यक्रम स्थल पर रखें। सदस्य अपने फोन के कैमरे से स्कैन करके, मोबाइल नंबर डालकर <b>खुद उपस्थिति</b> दर्ज करेंगे — लॉगिन की ज़रूरत नहीं। स्क्रीन पर उनका नाम और समाज के ऐप / वेबसाइट के बटन दिखेंगे।</div>' +
+        '<div id="stS" style="padding:10px;border-radius:10px;font-weight:700;margin-bottom:8px"></div><div style="display:flex;gap:12px;align-items:center"><div id="stQ" style="flex:none"></div><div style="min-width:0;font-size:12.5px;color:#475569;word-break:break-all"><div style="font-weight:700;color:#0f172a;margin-bottom:2px">' + esc(event) + "</div>" + esc(u) + '</div></div><div id="stB" style="display:grid;gap:8px;margin-top:10px"></div>' +
+        '<div style="font-size:12px;color:#92400e;margin-top:8px">⚠️ कार्यक्रम शुरू होने पर <b>चालू</b> करना और ख़त्म होने पर <b>बंद</b> करना न भूलें। किसी की गलत उपस्थिति लगे तो ✅ उपस्थिति सूची से हटा सकते हैं।</div>';
+      const s = m.body.querySelector("#stS"); s.style.background = st.open ? "#dcfce7" : "#fef3c7"; s.style.color = st.open ? "#166534" : "#92400e"; s.textContent = st.open ? "✅ चालू — सदस्य अभी उपस्थिति दर्ज कर सकते हैं" : "⏸️ बंद — स्कैन करने पर “उपस्थिति बंद है” दिखेगा";
+      const q = window.qrCanvas_ ? window.qrCanvas_(u, 120) : null; if (q) { q.style.cssText = "width:120px;height:120px;border:1px solid #cbd5e1;border-radius:8px"; m.body.querySelector("#stQ").appendChild(q); }
+      const B = m.body.querySelector("#stB"), add = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:100%;border:0;border-radius:10px;padding:11px;font-weight:700;font-size:14px;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; B.appendChild(b); return b; };
+      add(st.open ? "⏸ उपस्थिति बंद करें" : "▶ उपस्थिति चालू करें", st.open ? "#b45309" : "#15803d", async () => { try { const r = await callCrudBackend_({ action: "checkinSet", event: event, open: !st.open }); if (!r || !r.success) throw new Error((r && r.msg) || "नहीं हो पाया"); st = r; paint(); } catch (e) { alert("❌ " + (e.message || e)); } });
+      add("📋 लिंक कॉपी करें", "#0369a1", () => { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(() => alert("✔ लिंक कॉपी हो गया")).catch(() => prompt("लिंक कॉपी करें:", u)); else prompt("लिंक कॉपी करें:", u); });
+      add("🔄 नया code बनाएँ (पुराना स्टैंडी बेकार हो जाएगा)", "#64748b", async () => { if (!confirm("नया code बनाने पर पहले छपे QR काम नहीं करेंगे — नया स्टैंडी फिर छपवाना होगा।\n\nबनाएँ?")) return; try { const r = await callCrudBackend_({ action: "checkinSet", event: event, regen: true }); if (!r || !r.success) throw new Error((r && r.msg) || "नहीं हो पाया"); st = r; paint(); } catch (e) { alert("❌ " + (e.message || e)); } });
+    };
+    paint();
+    const pb = modalBtn_("📄 स्टैंडी PDF (A4)", "#b91c1c", async () => {
+      pb.disabled = true; const old = pb.textContent; pb.textContent = "⏳ बन रहा है...";
+      try {
+        await ensureFonts_(); const logo = await loadImg_(new URL("Logo-192.png", location.href).href), u = urlOf(st.code), pdf = PdfBuilder_({ landscape: false, bare: true, org: SAMAJ_NAME_, title: event, date: "" });
+        pdf.run(b => {
+          const W = b.PW, cx = W / 2; b.rect(0, 0, W, 168, "#7c2d12"); if (logo) b.image(logo, 40, 30, 108, 108);
+          let ss = 30; b.mf(ss, 700); while (ss > 16 && b.mf(ss, 700).measureText(SAMAJ_NAME_).width > W - 200) ss -= 1; b.text(SAMAJ_NAME_, 168, 92, ss, 700, "#ffffff"); b.text("सदस्य उपस्थिति", 168, 130, 20, 500, "#fde68a");
+          b.text("अपनी उपस्थिति दर्ज करें", cx, 262, 46, 700, "#111111", "center");
+          pdfWrap_(b.mf(30, 700), event, W - 120).slice(0, 2).forEach((l, i) => b.text(l, cx, 316 + i * 38, 30, 700, "#7c2d12", "center"));
+          const qs = 440, qx = (W - qs) / 2, qy = 384; b.rect(qx - 18, qy - 18, qs + 36, qs + 36, "#ffffff", "#7c2d12");
+          if (!b.dry) { const qc = window.qrCanvas_ ? window.qrCanvas_(u, qs) : null; if (qc) b.image(qc, qx, qy, qs, qs); }
+          b.text("इस QR पर फोन का कैमरा रखें", cx, qy + qs + 62, 26, 700, "#334155", "center");
+          ["फोन का कैमरा (या Google Lens) खोलें", "QR पर कैमरा रखें और खुलने वाले लिंक को दबाएँ", "अपना मोबाइल नंबर लिखें और अपना नाम पहचानकर दबाएँ", "स्क्रीन पर “उपस्थिति दर्ज हो गई” देखें"].forEach((t, i) => b.text((i + 1) + ".  " + t, 96, qy + qs + 108 + i * 34, 21, 500, "#111111"));
+          b.line(60, 1062, W - 60, 1062, "#e2e8f0", 1); b.text(u, cx, 1084, 12, 400, "#64748b", "center"); b.text("लिंक न खुले तो ऊपर लिखा पता फोन के ब्राउज़र में खोलें", cx, 1104, 12, 400, "#64748b", "center");
+        });
+        window.pdfSave_(pdf.pdfBytes(), "Checkin_Standee_" + pdfName_(event) + "_" + pdfDay_() + ".pdf");
+      } catch (e) { alert("PDF नहीं बन पाया: " + (e.message || e)); }
+      pb.disabled = false; pb.textContent = old;
+    });
     m.foot.insertBefore(pb, m.foot.firstChild);
   };
 
@@ -10701,6 +10748,11 @@ if ('serviceWorker' in navigator) {
     m.foot.appendChild(modalBtn_("📜 भेजने का record", "#475569", () => { m.close(); window.openSendLog_(tab, () => window.openMsgCenter_()); }));
     m.foot.appendChild(modalBtn_("▶ Queue शुरू करें", "#1a9c4b", () => { if (Q && Q.pos < Q.ids.length) { qGo(); } else { qStart(); } m.body.scrollTop = 0; }));
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    { // v1.331: buttons 2 line mein — upar 4 chhote (cheezein chunna / template / record), neeche kaam wale bade
+      const kids = Array.from(m.foot.children), by = t => kids.find(b => String(b.textContent).indexOf(t) >= 0);
+      const order = [by("सभी"), by("Template में"), by("Templates"), by("भेजने का"), by("संदेश कॉपी"), by("Queue"), by("बंद")].filter(Boolean), sp = money ? [3, 3, 3, 3, 8, 4] : [3, 3, 3, 3, 4, 5, 3];
+      order.forEach((b, i) => { m.foot.appendChild(b); b.style.gridColumn = "span " + sp[i]; }); m.foot.classList.add("foot2");
+    }
   };
 
   /* ---- toolbar button (Boli / Donation par purana 📨 Reminders button hi ab yahi kholta hai) ---- */
