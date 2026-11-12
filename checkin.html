@@ -24,8 +24,11 @@ main { width: 100%; max-width: 440px; }
 h1 { margin: 0 0 4px; font-size: 22px; line-height: 1.3; color: var(--brand); }
 .ev { margin: 0 0 14px; font-size: 16px; font-weight: 600; color: var(--ink); }
 label { display: block; font-weight: 600; font-size: 14px; margin: 10px 0 5px; }
-input[type=tel] { width: 100%; font: inherit; font-size: 22px; letter-spacing: 1px; padding: 12px 14px; border: 2px solid #cbd5e1; border-radius: 12px; }
-input[type=tel]:focus { outline: none; border-color: var(--brand2); }
+input[type=tel], input[type=text] { width: 100%; font: inherit; font-size: 22px; letter-spacing: 1px; padding: 12px 14px; border: 2px solid #cbd5e1; border-radius: 12px; }
+input[type=text] { font-size: 19px; letter-spacing: 0; }
+input[type=tel]:focus, input[type=text]:focus { outline: none; border-color: var(--brand2); }
+button.guest { background: #0369a1; }
+.or { margin: 16px 0 2px; text-align: center; color: var(--mut); font-size: 14px; }
 button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 12px; color: #fff; background: var(--brand); }
 button.sec { background: #e2e8f0; color: var(--ink); }
 button:disabled { opacity: .6; cursor: default; }
@@ -72,6 +75,26 @@ button:disabled { opacity: .6; cursor: default; }
       <input id="mobile" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
       <div class="msg bad" id="mMsg" hidden></div>
       <button type="button" id="mGo">आगे बढ़ें →</button>
+      <div class="or">— या —</div>
+      <button type="button" id="mGuest" class="guest">🙏 मैं अतिथि हूँ (सदस्य नहीं / नंबर नहीं मिल रहा)</button>
+    </section>
+
+    <section id="vGuest" hidden>
+      <h1>अतिथि के रूप में उपस्थिति</h1>
+      <p class="ev" id="gEv"></p>
+      <label for="gName">आपका नाम *</label>
+      <input id="gName" type="text" maxlength="60" autocomplete="name" placeholder="पूरा नाम">
+      <label for="gCity">शहर / गाँव</label>
+      <input id="gCity" type="text" maxlength="40" placeholder="कहाँ से आए हैं">
+      <label for="gMob">मोबाइल नंबर (वैकल्पिक)</label>
+      <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
+      <label for="gHost">किस सदस्य / परिवार के मेहमान हैं? (वैकल्पिक)</label>
+      <input id="gHost" type="text" maxlength="60" placeholder="सदस्य का नाम">
+      <label>कुल कितने लोग आए हैं? (आप समेत, खाने की गिनती के लिए)</label>
+      <div class="step"><button type="button" id="pMinus" aria-label="कम करें">−</button><output id="pVal">1</output><button type="button" id="pPlus" aria-label="बढ़ाएँ">+</button></div>
+      <div class="msg bad" id="gMsg" hidden></div>
+      <button type="button" id="gGo">✔ मेरी उपस्थिति दर्ज करें</button>
+      <button type="button" id="gBack" class="sec">← वापस</button>
     </section>
 
     <section id="vConf" hidden>
@@ -106,7 +129,7 @@ button:disabled { opacity: .6; cursor: default; }
   var $ = function (id) { return document.getElementById(id); };
   var q = new URLSearchParams(location.search), CODE = String(q.get("c") || location.hash.replace(/^#/, "") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   var EVENT = "", guests = 0, MOB = "";
-  function show(id) { ["vLoad", "vErr", "vMob", "vConf", "vOk"].forEach(function (x) { $(x).hidden = x !== id; }); }
+  function show(id) { ["vLoad", "vErr", "vMob", "vGuest", "vConf", "vOk"].forEach(function (x) { $(x).hidden = x !== id; }); }
   function call(o) {
     o.action = "publicCheckin"; o.code = CODE;
     return fetch(API_URL, { method: "POST", body: JSON.stringify(o) }).then(function (r) { return r.json(); });
@@ -125,6 +148,7 @@ button:disabled { opacity: .6; cursor: default; }
     }).catch(function () { fail("इंटरनेट की दिक्कत", "नेटवर्क जाँचकर “फिर से जाँचें” दबाएँ।"); });
   }
   function done(r, already) {
+    $("lApp").hidden = false;
     $("oNm").textContent = r.member.name; $("oSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · ");
     $("oEv").textContent = EVENT; $("oH").textContent = already ? "आपकी उपस्थिति पहले से दर्ज है" : "स्वागत है! उपस्थिति दर्ज हो गई";
     var t = new Date().toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
@@ -140,7 +164,7 @@ button:disabled { opacity: .6; cursor: default; }
       $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →";
       if (!r || !r.success) {
         if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; }
-        setMsg($("mMsg"), ((r && r.msg) || "दोबारा कोशिश करें") + (r && r.notfound ? " — कृपया स्वागत डेस्क पर बताएँ।" : "")); return;
+        setMsg($("mMsg"), ((r && r.msg) || "दोबारा कोशिश करें") + (r && r.notfound ? " — अगर आप सदस्य नहीं हैं तो नीचे “मैं अतिथि हूँ” दबाएँ, या स्वागत डेस्क पर बताएँ।" : "")); return;
       }
       MOB = m; try { localStorage.setItem("smps_ci_mobile", m); } catch (e) {}
       if (r.already) { done(r, true); return; }
@@ -158,6 +182,29 @@ button:disabled { opacity: .6; cursor: default; }
       if (!r || !r.success) { setMsg($("cMsg"), (r && r.msg) || "दर्ज नहीं हुआ — फिर कोशिश करें"); return; }
       done(r, r.status === "dup");
     }).catch(function () { $("cGo").disabled = false; $("cGo").textContent = "✔ हाँ, मेरी उपस्थिति दर्ज करें"; setMsg($("cMsg"), "इंटरनेट की दिक्कत — फिर कोशिश करें"); });
+  };
+  var persons = 1;
+  function gMsg(t) { setMsg($("gMsg"), t); }
+  $("mGuest").onclick = function () { $("gEv").textContent = EVENT; gMsg(""); persons = 1; $("pVal").textContent = "1"; show("vGuest"); setTimeout(function () { try { $("gName").focus(); } catch (e) {} }, 50); };
+  $("gBack").onclick = function () { show("vMob"); };
+  $("pMinus").onclick = function () { persons = Math.max(1, persons - 1); $("pVal").textContent = persons; };
+  $("pPlus").onclick = function () { persons = Math.min(30, persons + 1); $("pVal").textContent = persons; };
+  $("gGo").onclick = function () {
+    var name = $("gName").value.trim(), mob = $("gMob").value.replace(/\D/g, "").slice(-10); gMsg("");
+    if (name.length < 2) { gMsg("कृपया अपना नाम लिखें"); return; }
+    if ($("gMob").value.trim() && mob.length !== 10) { gMsg("मोबाइल 10 अंकों का लिखें, या खाली छोड़ दें"); return; }
+    $("gGo").disabled = true; $("gGo").textContent = "दर्ज हो रहा है…";
+    call({ step: "guest", name: name, city: $("gCity").value.trim(), mobile: mob, host: $("gHost").value.trim(), persons: persons }).then(function (r) {
+      $("gGo").disabled = false; $("gGo").textContent = "✔ मेरी उपस्थिति दर्ज करें";
+      if (!r || !r.success) { if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; } gMsg((r && r.msg) || "दर्ज नहीं हुआ — फिर कोशिश करें"); return; }
+      var g = r.guest || {}, dup = r.status === "dup";
+      $("lApp").hidden = true;
+      $("oNm").textContent = g.name || name; $("oSub").textContent = ["अतिथि", g.city || $("gCity").value.trim()].filter(Boolean).join(" · ");
+      $("oEv").textContent = EVENT; $("oH").textContent = dup ? "आपकी उपस्थिति पहले से दर्ज है" : "स्वागत है! उपस्थिति दर्ज हो गई";
+      var t = new Date().toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
+      $("oNote").textContent = dup ? "दोबारा दर्ज करने की ज़रूरत नहीं।" : "समय: " + t + " · कुल " + (g.persons || persons) + " लोग";
+      show("vOk");
+    }).catch(function () { $("gGo").disabled = false; $("gGo").textContent = "✔ मेरी उपस्थिति दर्ज करें"; gMsg("इंटरनेट की दिक्कत — फिर कोशिश करें"); });
   };
   init();
 })();
