@@ -88,7 +88,7 @@ button:disabled { opacity: .6; cursor: default; }
 
     <section id="vGuest" hidden>
       <div class="homebar"><button type="button" id="gHome">🏠 चेक-इन होम</button></div>
-      <h1>अतिथि के रूप में उपस्थिति</h1>
+      <h1>अतिथि / परिवार का सदस्य के रूप में उपस्थिति</h1>
       <p class="ev" id="gEv"></p>
       <div class="note" id="gNote" hidden></div>
       <label for="gName">आपका नाम *</label>
@@ -97,7 +97,7 @@ button:disabled { opacity: .6; cursor: default; }
       <input id="gCity" type="text" maxlength="40" autocapitalize="words" enterkeyhint="next" placeholder="कहाँ से आए हैं">
       <label for="gMob">मोबाइल नंबर (वैकल्पिक)</label>
       <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
-      <label for="gHost">किस परिवार का सदस्य / परिवार के मेहमान हैं? (वैकल्पिक)</label>
+      <label for="gHost">किस परिवार का सदस्य / किस परिवार के मेहमान हैं? (वैकल्पिक)</label>
       <input id="gHost" type="text" maxlength="60" autocapitalize="words" enterkeyhint="done" placeholder="सदस्य का नाम">
       <label>कुल कितने लोग आए हैं? (आप समेत)</label>
       <div class="step"><button type="button" id="pMinus" aria-label="कम करें">−</button><output id="pVal">1</output><button type="button" id="pPlus" aria-label="बढ़ाएँ">+</button></div>
@@ -175,7 +175,7 @@ button:disabled { opacity: .6; cursor: default; }
       $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →";
       if (!r || !r.success) {
         if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; }
-        if (r && r.notfound) { openGuest(m, "यह मोबाइल नंबर सदस्य सूची में नहीं मिला। अतिथि के रूप में अपनी उपस्थिति नीचे दर्ज करें (अगर आप सदस्य हैं तो “चेक-इन होम” पर जाकर सही नंबर डालें)।"); return; }
+        if (r && r.notfound) { openGuest(m, "यह मोबाइल नंबर सदस्य सूची में नहीं मिला। अतिथि / परिवार के सदस्य के रूप में अपनी उपस्थिति नीचे दर्ज करें (अगर आप सदस्य हैं तो “चेक-इन होम” पर जाकर सही नंबर डालें)।"); return; }
         setMsg($("mMsg"), (r && r.msg) || "दोबारा कोशिश करें"); return;
       }
       MOB = m; try { localStorage.setItem("smps_ci_mobile", m); } catch (e) {}
