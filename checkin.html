@@ -28,6 +28,13 @@ input[type=tel], input[type=text] { width: 100%; font: inherit; font-size: 22px;
 input[type=text] { font-size: 19px; letter-spacing: 0; }
 input[type=tel]:focus, input[type=text]:focus { outline: none; border-color: var(--brand2); }
 button.guest { background: #0369a1; }
+.note { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; font-size: 15px; background: #e0f2fe; color: #075985; line-height: 1.45; }
+.homebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
+.homebar button { width: auto; margin: 0; padding: 8px 12px; font-size: 14px; border-radius: 10px; background: #e2e8f0; color: var(--ink); }
+.stick { position: sticky; bottom: 0; margin: 14px -16px -18px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(255,255,255,0), #fff 28%); border-radius: 0 0 18px 18px; }
+.stick button { margin-top: 8px; }
+.stick button:first-child { margin-top: 0; }
+@media (max-width: 400px) { body { padding-left: 10px; padding-right: 10px; } .card { padding: 14px 12px; } .stick { margin: 14px -12px -14px; padding-left: 12px; padding-right: 12px; } h1 { font-size: 20px; } input[type=tel] { font-size: 20px; } input[type=text] { font-size: 17px; } .who .nm { font-size: 21px; } }
 .or { margin: 16px 0 2px; text-align: center; color: var(--mut); font-size: 14px; }
 button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 12px; color: #fff; background: var(--brand); }
 button.sec { background: #e2e8f0; color: var(--ink); }
@@ -80,21 +87,25 @@ button:disabled { opacity: .6; cursor: default; }
     </section>
 
     <section id="vGuest" hidden>
+      <div class="homebar"><button type="button" id="gHome">🏠 चेक-इन होम</button></div>
       <h1>अतिथि के रूप में उपस्थिति</h1>
       <p class="ev" id="gEv"></p>
+      <div class="note" id="gNote" hidden></div>
       <label for="gName">आपका नाम *</label>
-      <input id="gName" type="text" maxlength="60" autocomplete="name" placeholder="पूरा नाम">
+      <input id="gName" type="text" maxlength="60" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="पूरा नाम">
       <label for="gCity">शहर / गाँव</label>
-      <input id="gCity" type="text" maxlength="40" placeholder="कहाँ से आए हैं">
+      <input id="gCity" type="text" maxlength="40" autocapitalize="words" enterkeyhint="next" placeholder="कहाँ से आए हैं">
       <label for="gMob">मोबाइल नंबर (वैकल्पिक)</label>
       <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
       <label for="gHost">किस सदस्य / परिवार के मेहमान हैं? (वैकल्पिक)</label>
-      <input id="gHost" type="text" maxlength="60" placeholder="सदस्य का नाम">
+      <input id="gHost" type="text" maxlength="60" autocapitalize="words" enterkeyhint="done" placeholder="सदस्य का नाम">
       <label>कुल कितने लोग आए हैं? (आप समेत, खाने की गिनती के लिए)</label>
       <div class="step"><button type="button" id="pMinus" aria-label="कम करें">−</button><output id="pVal">1</output><button type="button" id="pPlus" aria-label="बढ़ाएँ">+</button></div>
       <div class="msg bad" id="gMsg" hidden></div>
-      <button type="button" id="gGo">✔ मेरी उपस्थिति दर्ज करें</button>
-      <button type="button" id="gBack" class="sec">← वापस</button>
+      <div class="stick">
+        <button type="button" id="gGo">✔ मेरी उपस्थिति दर्ज करें</button>
+        <button type="button" id="gBack" class="sec">← चेक-इन होम पर वापस जाएँ</button>
+      </div>
     </section>
 
     <section id="vConf" hidden>
@@ -164,7 +175,8 @@ button:disabled { opacity: .6; cursor: default; }
       $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →";
       if (!r || !r.success) {
         if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; }
-        setMsg($("mMsg"), ((r && r.msg) || "दोबारा कोशिश करें") + (r && r.notfound ? " — अगर आप सदस्य नहीं हैं तो नीचे “मैं अतिथि हूँ” दबाएँ, या स्वागत डेस्क पर बताएँ।" : "")); return;
+        if (r && r.notfound) { openGuest(m, "यह मोबाइल नंबर सदस्य सूची में नहीं मिला। अतिथि के रूप में अपनी उपस्थिति नीचे दर्ज करें (अगर आप सदस्य हैं तो “चेक-इन होम” पर जाकर सही नंबर डालें)।"); return; }
+        setMsg($("mMsg"), (r && r.msg) || "दोबारा कोशिश करें"); return;
       }
       MOB = m; try { localStorage.setItem("smps_ci_mobile", m); } catch (e) {}
       if (r.already) { done(r, true); return; }
@@ -185,8 +197,16 @@ button:disabled { opacity: .6; cursor: default; }
   };
   var persons = 1;
   function gMsg(t) { setMsg($("gMsg"), t); }
-  $("mGuest").onclick = function () { $("gEv").textContent = EVENT; gMsg(""); persons = 1; $("pVal").textContent = "1"; show("vGuest"); setTimeout(function () { try { $("gName").focus(); } catch (e) {} }, 50); };
-  $("gBack").onclick = function () { show("vMob"); };
+  function openGuest(mob, note) {
+    $("gEv").textContent = EVENT; gMsg(""); persons = 1; $("pVal").textContent = "1";
+    $("gMob").value = mob && mob.length === 10 ? mob : "";
+    var nEl = $("gNote"); nEl.textContent = note || ""; nEl.hidden = !note;
+    show("vGuest"); try { window.scrollTo(0, 0); } catch (e) {}
+    setTimeout(function () { try { $("gName").focus({ preventScroll: true }); } catch (e) {} }, 80);
+  }
+  function goHome() { setMsg($("mMsg"), ""); show("vMob"); try { window.scrollTo(0, 0); } catch (e) {} }
+  $("mGuest").onclick = function () { openGuest($("mobile").value.replace(/\D/g, "").slice(-10), ""); };
+  $("gBack").onclick = goHome; $("gHome").onclick = goHome;
   $("pMinus").onclick = function () { persons = Math.max(1, persons - 1); $("pVal").textContent = persons; };
   $("pPlus").onclick = function () { persons = Math.min(30, persons + 1); $("pVal").textContent = persons; };
   $("gGo").onclick = function () {

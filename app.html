@@ -2465,7 +2465,29 @@ function forceRelogin_(msg) {
   if (msg) alert(msg);
   location.reload();
 }
+/* ⚡ Popup turant khulne ke liye: jo backend calls sirf "padhti" hain unka jawab yaad rakhte hain.
+   Popup pehle wala jawab TURANT dikhata hai aur peeche se naya laakar agli baar ke liye bhar deta hai.
+   Koi bhi badlav (add/edit/approve/save...) hote hi yeh yaadasht saaf ho jati hai. */
+const RC_TTL_ = { myAccount: 900000, myProfile: 900000, talentList: 900000, pendingMembers: 90000, rsvpList: 90000 };
+const RC_KEEP_ = /^(login|attList|checkinSet|getMessageLog|getFormulaColumns|getFormulaColumnsBulk|readSheets|visit|photoThumb)$/;
+const _RC = {};
+function _rcKey(p) { const o = Object.assign({}, p); delete o.token; return JSON.stringify(o); }
 async function callCrudBackend_(payload) {
+  const ttl = RC_TTL_[payload && payload.action];
+  if (ttl) {
+    const k = _rcKey(payload), c = _RC[k], age = c ? Date.now() - c.t : 1e12;
+    if (c && age < ttl) {
+      if (age > 20000 && !c.busy) { c.busy = true; callCrudBackendRaw_(payload).then(v => { if (v && v.success !== false) _RC[k] = { v: v, t: Date.now() }; else c.busy = false; }).catch(() => { c.busy = false; }); }
+      return c.v;
+    }
+    const v = await callCrudBackendRaw_(payload);
+    if (v && v.success !== false) _RC[k] = { v: v, t: Date.now() };
+    return v;
+  }
+  if (payload && payload.action && !RC_KEEP_.test(payload.action)) { for (const k in _RC) delete _RC[k]; }
+  return callCrudBackendRaw_(payload);
+}
+async function callCrudBackendRaw_(payload) {
   payload = Object.assign({}, payload);
   const tk0 = sessionStorage.getItem("smps_token");
   if (tk0 && !payload.token) payload.token = tk0;
@@ -2931,6 +2953,15 @@ async function getFormulaColumnsCached_(sheetName, forceFresh) {
 // pehle "sab jagah slow" mehsoos hota tha, kyonki har tab ka apna
 // alag pehla-round-trip hota tha). Yeh silently background mein
 // chalta hai — kisi cheez ko block nahi karta.
+/* ⚡ Naye popups (Mera Khata, Profile, Pending Members, RSVP, Pratibha) ka data login ke baad peeche se pehle hi le aao */
+async function prefetchBackendReads_() {
+  try {
+    const can = n => { const a = ((ROLE_ACCESS || {})[currentUser && currentUser.role] || {})[n]; return !!(a && a.canAction && a.canAction.includes("EDIT")); };
+    const calls = [{ action: "myAccount" }, { action: "myProfile" }];
+    if (can("Members")) calls.push({ action: "pendingMembers" }, { action: "rsvpList" });
+    for (const c of calls) { try { await callCrudBackend_(c); } catch (e) {} }
+  } catch (e) {}
+}
 async function preloadFormulaColumnsForAllTabs_() {
   const sheetNames = Object.keys(CRUD_ALLOWED_TABS);
   try {
@@ -2997,6 +3028,17 @@ async function fetchSheet(sheetName, forceFresh){
     console.error('fetchSheet error', e);
     return [];
   }
+}
+
+/* ⚡ Popup ke liye: cache mein jo bhi hai (purana ho tab bhi) TURANT de do, aur purana ho to peeche se naya le aao */
+const _fastBusy = {};
+function fetchSheetFast_(name) {
+  const c = CACHE[name];
+  if (c) {
+    if (Date.now() - c.time > CACHE_TIME && !_fastBusy[name]) { _fastBusy[name] = 1; fetchSheet(name, true).catch(() => {}).then(() => { delete _fastBusy[name]; }); }
+    return Promise.resolve(c.data);
+  }
+  return fetchSheet(name);
 }
 
 // 🔍 Global search listener (ALL tabs)
@@ -3683,7 +3725,7 @@ async function openApp(){
 }
   // dashboard dikhne ke BAAD, background mein: saare tabs ka data (ek call) aur Add/Edit ke formula-columns pehle se bhar lo
   Promise.resolve(_dp).catch(() => {}).then(() => new Promise(r => setTimeout(r, 300)))
-    .then(() => prefetchTabsData_()).then(() => preloadFormulaColumnsForAllTabs_()).catch(e => console.warn(e));
+    .then(() => prefetchTabsData_()).then(() => preloadFormulaColumnsForAllTabs_()).then(() => prefetchBackendReads_()).catch(e => console.warn(e));
 
   // 🆕 Ab koi bhi tab default mein auto-open nahi hoti — jab tak user khud
   // kisi tab par click na kare, content area khaali/band rehta hai (sirf
@@ -9091,7 +9133,7 @@ if ('serviceWorker' in navigator) {
   };
   /* ===== v1.311: adhuri jaankari wale sadasyon ko WhatsApp sandesh ===== */
   window.openIncomplete_ = async function () {
-    let mem; const _fr = CACHE["Members"] && (Date.now() - CACHE["Members"].time < CACHE_TIME), _ph = _fr ? null : window.loadingModal_(); try { mem = (await fetchSheet("Members")) || []; } catch (e) { if (_ph) _ph.close(); alert("Members लोड नहीं हो पाए।"); return; }
+    let mem; const _fr = CACHE["Members"] && (Date.now() - CACHE["Members"].time < CACHE_TIME), _ph = _fr ? null : window.loadingModal_(); try { mem = (await fetchSheetFast_("Members")) || []; } catch (e) { if (_ph) _ph.close(); alert("Members लोड नहीं हो पाए।"); return; }
     if (!mem.length) { alert("Members में डेटा नहीं है।"); return; }
     const kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i);
     const FIELDS = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
@@ -9231,7 +9273,7 @@ if ('serviceWorker' in navigator) {
   window.openDataClean_ = async function () {
     const m = openModal_("🧹 डेटा सफ़ाई — Members"); m.body.innerHTML = '<p class="muted">⏳ जाँच हो रही है...</p>';
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", () => { m.close(); if (changed) { try { delete CACHE["Members"]; if (currentTab === "Members") loadTab("Members", true); } catch (e) {} } }));
-    let changed = false, mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    let changed = false, mem; try { mem = (await fetchSheetFast_("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
     if (!mem.length) { m.body.innerHTML = "<p>Members में डेटा नहीं है।</p>"; return; }
     const kI = keyOf(mem, /^(member ?id|id)$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kS = keyOf(mem, /^status$/i), kO = keyOf(mem, /occupation|व्यवसाय/i);
     if (!kI || !kN) { m.body.innerHTML = "<p>❌ MemberID / Name column नहीं मिले।</p>"; return; }
@@ -9498,7 +9540,7 @@ if ('serviceWorker' in navigator) {
     if (opts.amount) $("#cmA").value = opts.amount; if (opts.sub) $("#cmS").value = opts.sub; if (opts.note) $("#cmX").value = opts.note;
     render();
     try {   // सदस्य सूची (नाम चुनने के लिए) — बाद में भर जाती है
-      const mem = (await fetchSheet("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i) || keyOf(mem, /^(name|नाम)$/i), dl = $("#cmMem");
+      const mem = (await fetchSheetFast_("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i) || keyOf(mem, /^(name|नाम)$/i), dl = $("#cmMem");
       if (kD && dl) dl.innerHTML = mem.filter(r => !(kS && /pending|inactive|reject/i.test(String(r[kS] || ""))) && String(r[kD] || "").trim()).map(r => '<option value="' + esc(stripPlace_(r[kD])) + '"></option>').join("");
     } catch (e) {}
   };
@@ -10025,7 +10067,7 @@ if ('serviceWorker' in navigator) {
   /* ---- 🩸 रक्तदान सूची ---- */
   window.openBloodList_ = async function () {
     const m = openModal_("🩸 रक्तदान सूची"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
-    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    let mem; try { mem = (await fetchSheetFast_("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
     const kB = keyOf(mem, /blood|रक्त/i);
     if (!kB) {
       m.body.innerHTML = '<p>Members sheet में अभी <b>Blood Group</b> का column नहीं है।</p><p style="font-size:13px;color:#475569">column जुड़ने के बाद सदस्य अपनी जानकारी में (👤 मेरी जानकारी) या Add / Edit में रक्त समूह भर सकते हैं।</p>';
@@ -10189,7 +10231,7 @@ if ('serviceWorker' in navigator) {
     let memCache = null;
     const loadMem = async () => {
       if (memCache) return memCache;
-      const mem = (await fetchSheet("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i), kI = keyOf(mem, /^(member ?id|id)$/i);
+      const mem = (await fetchSheetFast_("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i), kI = keyOf(mem, /^(member ?id|id)$/i);
       memCache = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""); return { label: lab, name: stripPlace_(lab), id: String(kI ? r[kI] || "" : "").trim(), mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10), city: String(kC ? r[kC] || "" : "").trim() }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && (x.id || x.mob));
       return memCache;
     };
@@ -10275,7 +10317,7 @@ if ('serviceWorker' in navigator) {
   };
   window.openBadges_ = async function (event) {
     const m = openModal_("🏷️ नाम-बैज PDF"); m.body.innerHTML = '<p class="muted">⏳ लोड हो रहा है...</p>'; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
-    let mem; try { mem = (await fetchSheet("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
+    let mem; try { mem = (await fetchSheetFast_("Members")) || []; } catch (e) { m.body.innerHTML = "<p>❌ Members लोड नहीं हो पाए।</p>"; return; }
     const kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i), kV = keyOf(mem, /origin|village|मूल|गाँव|गांव/i), kI = keyOf(mem, /^(member ?id|id)$/i);
     const part = s => { const mm = String(s || "").match(/\(([^)]*)\)\s*$/); return mm ? mm[1].split("-").map(x => x.trim()).filter(Boolean) : []; };
     const recs = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""), pl = part(lab), cEn = String(kC ? r[kC] || "" : "").trim(), vil = String(kV ? r[kV] || "" : "").trim(); let cH = "", oH = "";
