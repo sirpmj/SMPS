@@ -102,7 +102,7 @@ button:disabled { opacity: .6; cursor: default; }
       <label for="gCity">गाँव / शहर</label>
       <input id="gCity" type="text" maxlength="40" autocapitalize="words" enterkeyhint="next" placeholder="सदस्य चुनने पर अपने आप भर जाएगा">
       <label for="gMob">मोबाइल नंबर (वैकल्पिक)</label>
-      <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
+      <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="10 अंकों का मोबाइल">
       <label>कुल कितने लोग आए हैं? (आप समेत)</label>
       <div class="step"><button type="button" id="pMinus" aria-label="कम करें">−</button><output id="pVal">1</output><button type="button" id="pPlus" aria-label="बढ़ाएँ">+</button></div>
       <div class="msg bad" id="gMsg" hidden></div>
@@ -203,7 +203,7 @@ button:disabled { opacity: .6; cursor: default; }
   function gMsg(t) { setMsg($("gMsg"), t); }
   function openGuest(mob, note) {
     $("gEv").textContent = EVENT; gMsg(""); persons = 1; $("pVal").textContent = "1";
-    $("gMob").value = mob && mob.length === 10 ? mob : "";
+    $("gMob").value = "";   /* मोबाइल अपने आप नहीं भरेगा — अतिथि खुद लिखेगा */
     var nEl = $("gNote"); nEl.textContent = note || ""; nEl.hidden = !note;
     show("vGuest"); loadHL(); try { window.scrollTo(0, 0); } catch (e) {}
     setTimeout(function () { try { $("gName").focus({ preventScroll: true }); } catch (e) {} }, 80);
