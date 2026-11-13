@@ -10186,6 +10186,41 @@ if ('serviceWorker' in navigator) {
   /* ===== 🎪 सम्मेलन: QR उपस्थिति · उपस्थिति सूची · नाम-बैज · RSVP ===== */
   const getEv_ = () => { try { return localStorage.getItem("smps_event") || ""; } catch (e) { return ""; } };
   const setEv_ = v => { try { localStorage.setItem("smps_event", v); } catch (e) {} };
+  /* 🏁 कार्यक्रम का समापन: कुल गिनती + आए हुए को धन्यवाद / न आए को "कमी रही" संदेश (मुफ़्त wa.me — एक-एक tap से) */
+  window.openWrapUp_ = async function (event) {
+    const m = openModal_("🏁 समापन — " + event); m.body.innerHTML = "<p class='muted'>⏳ गिनती हो रही है...</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    let r; try { r = await callCrudBackend_({ action: "attList", event: event }); if (!r || !r.success) throw new Error((r && r.msg) || "लोड नहीं हुआ"); } catch (e) { m.body.innerHTML = '<p style="color:#b91c1c">❌ ' + esc(e.message || e) + "</p>"; return; }
+    const P = r.present || [], A = r.absent || [], G = r.guests || [];
+    const kids = P.reduce((s, x) => s + (x.guests || 0), 0), gp = G.reduce((s, x) => s + (x.persons || 1), 0), total = P.length + kids + gp;
+    const DEF = { thanks: "🙏 जय श्रीयादे माता की {{Name}} जी!\n\n*{{Event}}* में पधारने के लिए आपका हार्दिक धन्यवाद। आपकी उपस्थिति हमारे लिए सम्मान की बात है।\n\n*श्री मेवाड़ प्रजापत समाज, वापी*", miss: "🙏 जय श्रीयादे माता की {{Name}} जी!\n\n*{{Event}}* में आपकी कमी रही। आशा है अगली बार आप ज़रूर पधारेंगे।\n\n*श्री मेवाड़ प्रजापत समाज, वापी*" };
+    const KEY = { thanks: "smps_wrap_thanks", miss: "smps_wrap_miss" }; let mode = "thanks"; const done = new Set();
+    const getT = k => { try { return localStorage.getItem(KEY[k]) || DEF[k]; } catch (e) { return DEF[k]; } };
+    const card = (n, t, c) => '<div style="flex:1;min-width:92px;background:' + c + ';border-radius:10px;padding:9px 6px;text-align:center"><div style="font-size:21px;font-weight:700">' + n + '</div><div style="font-size:11.5px;color:#475569">' + t + "</div></div>";
+    const S = "width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px";
+    m.body.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + card(total, "कुल लोग", "#ecfdf5") + card(P.length, "सदस्य आए", "#eff6ff") + card(kids, "उनके साथ", "#f5f3ff") + card(gp, "अतिथि / परिवार", "#f0f9ff") + card(A.length, "सदस्य नहीं आए", "#fff7ed") + "</div>" +
+      '<div style="display:flex;gap:6px;margin-bottom:8px"><button id="wuT" type="button" style="flex:1;border:0;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;width:auto"></button><button id="wuM" type="button" style="flex:1;border:0;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;width:auto"></button></div>' +
+      '<label style="display:block;font-size:12px;color:#475569;margin:4px 0 3px">संदेश — {{Name}} (पहला नाम) और {{Event}} अपने-आप लगेंगे; आप बदलेंगे तो अगली बार भी यही रहेगा</label><textarea id="wuTxt" rows="7" style="' + S + '"></textarea><div id="wuInfo" style="font-size:13px;color:#475569;margin:8px 0 4px"></div><div id="wuList"></div>';
+    const $ = id => m.body.querySelector("#" + id), fn = n => String(n || "").trim().split(/\s+/)[0];
+    const msgFor = x => $("wuTxt").value.replace(/\{\{\s*Name\s*\}\}/gi, fn(x.name)).replace(/\{\{\s*Event\s*\}\}/gi, event);
+    const recips = () => (mode === "thanks" ? P : A).map(x => ({ name: x.name, city: x.city || "", mob: String(x.mobile || "").replace(/\D/g, "").slice(-10) }));
+    const draw = () => {
+      $("wuT").textContent = "🙏 आए हुए को धन्यवाद (" + P.length + ")"; $("wuM").textContent = "💌 न आए को संदेश (" + A.length + ")";
+      $("wuT").style.cssText += ";background:" + (mode === "thanks" ? "#15803d;color:#fff" : "#e2e8f0;color:#0f172a"); $("wuM").style.cssText += ";background:" + (mode === "miss" ? "#b45309;color:#fff" : "#e2e8f0;color:#0f172a");
+      const L = recips(), ok = L.filter(x => x.mob.length === 10), no = L.length - ok.length, box = $("wuList"); box.innerHTML = "";
+      $("wuInfo").textContent = "भेजने लायक: " + ok.length + " · भेजे गए: " + [...done].filter(k => k.indexOf(mode + ":") === 0).length + (no ? " · मोबाइल नहीं होने से छूटे: " + no : "");
+      ok.forEach(x => { const key = mode + ":" + x.mob, d = document.createElement("div"); d.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;padding:7px 0;font-size:13.5px";
+        d.innerHTML = '<span style="min-width:0"><b>' + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.city) + '</span></span>'; const b = modalBtn_(done.has(key) ? "✔ भेजा" : "WhatsApp", done.has(key) ? "#64748b" : "#25a244", () => send(x)); b.style.flex = "none"; d.appendChild(b); box.appendChild(d); });
+    };
+    const send = x => { window.open(buildWaUrl_(x.mob, msgFor(x)), "_blank"); done.add(mode + ":" + x.mob); try { window.logSend_("Sammelan", (mode === "thanks" ? "धन्यवाद" : "कमी रही") + " · " + event, x.name, x.mob, msgFor(x)); } catch (e) {} draw(); };
+    const setMode = k => { mode = k; $("wuTxt").value = getT(k); draw(); };
+    $("wuT").onclick = () => setMode("thanks"); $("wuM").onclick = () => setMode("miss");
+    $("wuTxt").oninput = () => { try { localStorage.setItem(KEY[mode], $("wuTxt").value); } catch (e) {} };
+    m.foot.insertBefore(modalBtn_("▶ अगला भेजें", "#1a9c4b", () => { const nx = recips().filter(x => x.mob.length === 10).find(x => !done.has(mode + ":" + x.mob)); if (!nx) { alert("सबको भेज दिया गया है।"); return; } send(nx); }), m.foot.firstChild);
+    m.foot.insertBefore(modalBtn_("📋 कुल गिनती कॉपी करें", "#0369a1", async () => {
+      const t = "🏁 *" + event + "* — समापन\nकुल लोग: *" + total + "*\n• सदस्य: " + P.length + "\n• सदस्यों के साथ आए: " + kids + "\n• अतिथि / परिवार: " + gp + "\nसदस्य जो नहीं आए: " + A.length;
+      try { await navigator.clipboard.writeText(t); alert("कॉपी हो गया — अब ग्रुप में paste करें।"); } catch (e) { prompt("इसे कॉपी करें:", t); } }), m.foot.firstChild);
+    setMode("thanks");
+  };
   window.openSammelan_ = function () {
     const m = openModal_("🎪 सम्मेलन — उपस्थिति, बैज, RSVP"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     m.body.innerHTML = '<label style="display:block;font-size:12.5px;color:#475569;margin-bottom:2px">कार्यक्रम का नाम (हर काम इसी नाम से जुड़ेगा)</label><input id="svEv" list="svEvL" type="text" placeholder="जैसे: स्नेह सम्मेलन 2027" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><datalist id="svEvL"></datalist><div id="svB" style="display:grid;gap:8px;margin-top:12px"></div>';
@@ -10199,6 +10234,7 @@ if ('serviceWorker' in navigator) {
     btn("✅  उपस्थिति सूची (आए / नहीं आए)", "#0369a1", () => { const v = ev(true); if (v) (window.__retSam = Date.now(), window.openAttReport_(v)); });
     btn("🏷️  नाम-बैज PDF (QR के साथ)", "#9a3412", () => (window.__retSam = Date.now(), window.openBadges_(ev(false) || "")));
     btn("📊  RSVP सारांश (कितने लोग आएँगे)", "#7c3aed", () => (window.__retSam = Date.now(), window.openRsvp_(ev(false) || "")));
+    btn("🏁  समापन: कुल गिनती + धन्यवाद / कमी वाला संदेश", "#be185d", () => { const v = ev(true); if (v) { window.__retSam = Date.now(); window.openWrapUp_(v); } });
     callCrudBackend_({ action: "rsvpList" }).then(r => { if (r && r.success) m.body.querySelector("#svEvL").innerHTML = (r.events || []).map(e => '<option value="' + esc(e) + '"></option>').join(""); }).catch(() => {});
   };
   function loadJsQR_() {
