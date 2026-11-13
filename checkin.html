@@ -35,6 +35,9 @@ button.guest { background: #0369a1; }
 .stick button { margin-top: 8px; }
 .stick button:first-child { margin-top: 0; }
 @media (max-width: 400px) { body { padding-left: 10px; padding-right: 10px; } .card { padding: 14px 12px; } .stick { margin: 14px -12px -14px; padding-left: 12px; padding-right: 12px; } h1 { font-size: 20px; } input[type=tel] { font-size: 20px; } input[type=text] { font-size: 17px; } .who .nm { font-size: 21px; } }
+.sugs { margin: -2px 0 8px; }
+.sugs button.sg { display: block; width: 100%; text-align: left; background: #fff; color: var(--ink); border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+.sugs button.sg span { display: block; font-size: 13px; font-weight: 400; color: var(--mut); }
 .or { margin: 16px 0 2px; text-align: center; color: var(--mut); font-size: 14px; }
 button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 12px; color: #fff; background: var(--brand); }
 button.sec { background: #e2e8f0; color: var(--ink); }
@@ -87,24 +90,24 @@ button:disabled { opacity: .6; cursor: default; }
     </section>
 
     <section id="vGuest" hidden>
-      <div class="homebar"><button type="button" id="gHome">🏠 चेक-इन होम</button></div>
       <h1>अतिथि / परिवार का सदस्य के रूप में उपस्थिति</h1>
       <p class="ev" id="gEv"></p>
       <div class="note" id="gNote" hidden></div>
       <label for="gName">आपका नाम *</label>
       <input id="gName" type="text" maxlength="60" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="पूरा नाम">
-      <label for="gCity">शहर / गाँव</label>
-      <input id="gCity" type="text" maxlength="40" autocapitalize="words" enterkeyhint="next" placeholder="कहाँ से आए हैं">
+      <label for="gHost">किस परिवार का सदस्य / किस परिवार के मेहमान हैं? (वैकल्पिक)</label>
+      <input id="gHost" type="text" maxlength="60" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="सदस्य का नाम लिखें, सूची से चुनें">
+      <div class="sugs" id="gSug"></div>
+      <label for="gCity">गाँव / शहर</label>
+      <input id="gCity" type="text" maxlength="40" autocapitalize="words" enterkeyhint="next" placeholder="सदस्य चुनने पर अपने आप भर जाएगा">
       <label for="gMob">मोबाइल नंबर (वैकल्पिक)</label>
       <input id="gMob" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10 अंकों का मोबाइल">
-      <label for="gHost">किस परिवार का सदस्य / किस परिवार के मेहमान हैं? (वैकल्पिक)</label>
-      <input id="gHost" type="text" maxlength="60" autocapitalize="words" enterkeyhint="done" placeholder="सदस्य का नाम">
       <label>कुल कितने लोग आए हैं? (आप समेत)</label>
       <div class="step"><button type="button" id="pMinus" aria-label="कम करें">−</button><output id="pVal">1</output><button type="button" id="pPlus" aria-label="बढ़ाएँ">+</button></div>
       <div class="msg bad" id="gMsg" hidden></div>
       <div class="stick">
         <button type="button" id="gGo">✔ मेरी उपस्थिति दर्ज करें</button>
-        <button type="button" id="gBack" class="sec">← चेक-इन होम पर वापस जाएँ</button>
+        <button type="button" id="gBack" class="sec">🏠 चेक-इन होम पर जाएँ</button>
       </div>
     </section>
 
@@ -206,7 +209,7 @@ button:disabled { opacity: .6; cursor: default; }
   }
   function goHome() { setMsg($("mMsg"), ""); show("vMob"); try { window.scrollTo(0, 0); } catch (e) {} }
   $("mGuest").onclick = function () { openGuest($("mobile").value.replace(/\D/g, "").slice(-10), ""); };
-  $("gBack").onclick = goHome; $("gHome").onclick = goHome;
+  $("gBack").onclick = goHome;
   $("pMinus").onclick = function () { persons = Math.max(1, persons - 1); $("pVal").textContent = persons; };
   $("pPlus").onclick = function () { persons = Math.min(30, persons + 1); $("pVal").textContent = persons; };
   $("gGo").onclick = function () {
@@ -219,13 +222,30 @@ button:disabled { opacity: .6; cursor: default; }
       if (!r || !r.success) { if (r && r.closed) { fail("अभी उपस्थिति बंद है", r.msg, r.event); return; } gMsg((r && r.msg) || "दर्ज नहीं हुआ — फिर कोशिश करें"); return; }
       var g = r.guest || {}, dup = r.status === "dup";
       $("lApp").hidden = true;
-      $("oNm").textContent = g.name || name; $("oSub").textContent = ["अतिथि", g.city || $("gCity").value.trim()].filter(Boolean).join(" · ");
+      $("oNm").textContent = g.name || name; $("oSub").textContent = ["अतिथि / परिवार", g.city || $("gCity").value.trim()].filter(Boolean).join(" · ");
       $("oEv").textContent = EVENT; $("oH").textContent = dup ? "आपकी उपस्थिति पहले से दर्ज है" : "स्वागत है! उपस्थिति दर्ज हो गई";
       var t = new Date().toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
       $("oNote").textContent = dup ? "दोबारा दर्ज करने की ज़रूरत नहीं।" : "समय: " + t + " · कुल " + (g.persons || persons) + " लोग";
       show("vOk");
     }).catch(function () { $("gGo").disabled = false; $("gGo").textContent = "✔ मेरी उपस्थिति दर्ज करें"; gMsg("इंटरनेट की दिक्कत — फिर कोशिश करें"); });
   };
+  /* सदस्य का नाम लिखते ही सुझाव; चुनने पर गाँव/शहर अपने आप भरें */
+  var hostT = 0, cityAuto = true;
+  $("gCity").addEventListener("input", function () { cityAuto = !$("gCity").value.trim(); });
+  $("gHost").addEventListener("input", function () {
+    clearTimeout(hostT); var q = $("gHost").value.trim(), box = $("gSug"); box.innerHTML = ""; if (q.length < 2) return;
+    hostT = setTimeout(function () {
+      call({ step: "hosts", q: q }).then(function (r) {
+        if ($("gHost").value.trim() !== q) return; box.innerHTML = "";
+        ((r && r.list) || []).forEach(function (x) {
+          var b = document.createElement("button"); b.type = "button"; b.className = "sg"; b.appendChild(document.createTextNode(x.name));
+          var sp = document.createElement("span"); sp.textContent = [x.gaon, x.city].filter(Boolean).join(", "); b.appendChild(sp);
+          b.onclick = function () { $("gHost").value = x.name; box.innerHTML = ""; var place = [x.gaon, x.city].filter(Boolean).join(", "); if (place && (cityAuto || !$("gCity").value.trim())) { $("gCity").value = place; cityAuto = true; } };
+          box.appendChild(b);
+        });
+      }).catch(function () {});
+    }, 300);
+  });
   init();
 })();
 </script>
