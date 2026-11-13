@@ -94,7 +94,8 @@ button:disabled { opacity: .6; cursor: default; }
       <p class="ev" id="gEv"></p>
       <div class="note" id="gNote" hidden></div>
       <label for="gName">आपका नाम *</label>
-      <input id="gName" type="text" maxlength="60" autocomplete="name" autocapitalize="words" enterkeyhint="next" placeholder="पूरा नाम">
+      <input id="gName" type="text" maxlength="60" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="पूरा नाम (लिखते ही सदस्य सूची से सुझाव आएँगे)">
+      <div class="sugs" id="gSugN"></div>
       <label for="gHost">किस परिवार का सदस्य / किस परिवार के मेहमान हैं? (वैकल्पिक)</label>
       <input id="gHost" type="text" maxlength="60" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="सदस्य का नाम लिखें, सूची से चुनें">
       <div class="sugs" id="gSug"></div>
@@ -229,23 +230,28 @@ button:disabled { opacity: .6; cursor: default; }
       show("vOk");
     }).catch(function () { $("gGo").disabled = false; $("gGo").textContent = "✔ मेरी उपस्थिति दर्ज करें"; gMsg("इंटरनेट की दिक्कत — फिर कोशिश करें"); });
   };
-  /* सदस्य का नाम लिखते ही सुझाव; चुनने पर गाँव/शहर अपने आप भरें */
-  var hostT = 0, cityAuto = true;
+  /* नाम / परिवार का सदस्य लिखते ही सदस्य सूची (Members शीट) से सुझाव — हिंदी या English दोनों में; चुनने पर गाँव/शहर अपने आप भरें */
+  var cityAuto = true;
   $("gCity").addEventListener("input", function () { cityAuto = !$("gCity").value.trim(); });
-  $("gHost").addEventListener("input", function () {
-    clearTimeout(hostT); var q = $("gHost").value.trim(), box = $("gSug"); box.innerHTML = ""; if (q.length < 2) return;
-    hostT = setTimeout(function () {
-      call({ step: "hosts", q: q }).then(function (r) {
-        if ($("gHost").value.trim() !== q) return; box.innerHTML = "";
-        ((r && r.list) || []).forEach(function (x) {
-          var b = document.createElement("button"); b.type = "button"; b.className = "sg"; b.appendChild(document.createTextNode(x.name));
-          var sp = document.createElement("span"); sp.textContent = [x.gaon, x.city].filter(Boolean).join(", "); b.appendChild(sp);
-          b.onclick = function () { $("gHost").value = x.name; box.innerHTML = ""; var place = [x.gaon, x.city].filter(Boolean).join(", "); if (place && (cityAuto || !$("gCity").value.trim())) { $("gCity").value = place; cityAuto = true; } };
-          box.appendChild(b);
-        });
-      }).catch(function () {});
-    }, 300);
-  });
+  function fillPlace(x) { var place = [x.gaon, x.city].filter(Boolean).join(", "); if (place && (cityAuto || !$("gCity").value.trim())) { $("gCity").value = place; cityAuto = true; } }
+  function suggest(inpId, boxId, pick) {
+    var t = 0;
+    $(inpId).addEventListener("input", function () {
+      clearTimeout(t); var q = $(inpId).value.trim(), box = $(boxId); box.innerHTML = ""; if (q.length < 2) return;
+      t = setTimeout(function () {
+        call({ step: "hosts", q: q }).then(function (r) {
+          if ($(inpId).value.trim() !== q) return; box.innerHTML = "";
+          ((r && r.list) || []).forEach(function (x) {
+            var b = document.createElement("button"); b.type = "button"; b.className = "sg"; b.appendChild(document.createTextNode(x.name));
+            var sp = document.createElement("span"); sp.textContent = [x.gaon, x.city].filter(Boolean).join(", "); b.appendChild(sp);
+            b.onclick = function () { box.innerHTML = ""; pick(x); }; box.appendChild(b);
+          });
+        }).catch(function () {});
+      }, 250);
+    });
+  }
+  suggest("gName", "gSugN", function (x) { $("gName").value = x.name; fillPlace(x); });
+  suggest("gHost", "gSug", function (x) { $("gHost").value = x.name; fillPlace(x); });
   init();
 })();
 </script>

@@ -10180,14 +10180,14 @@ if ('serviceWorker' in navigator) {
     const w = document.createElement("div"); w.style.cssText = "border:1px solid #bae6fd;background:#f0f9ff;border-radius:10px;padding:10px;margin:8px 0";
     const S = "width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:6px;font-size:16px;background:#fff";
     w.innerHTML = '<div style="font-weight:700;margin-bottom:6px">🙏 अतिथि / परिवार का सदस्य (सदस्य सूची में नहीं)</div>' +
-      '<input class="gN" type="text" maxlength="60" placeholder="नाम *" style="' + S + '">' +
+      '<input class="gN" type="text" maxlength="60" autocomplete="off" placeholder="नाम * (लिखते ही सदस्य सूची से सुझाव)" style="' + S + '"><div class="gSN"></div>' +
       '<input class="gH" type="text" maxlength="60" autocomplete="off" placeholder="किस परिवार का सदस्य / किसके मेहमान (सदस्य का नाम)" style="' + S + '"><div class="gS"></div>' +
       '<input class="gC" type="text" maxlength="40" placeholder="गाँव / शहर (सदस्य चुनने पर अपने आप)" style="' + S + '">' +
       '<input class="gM" type="tel" inputmode="numeric" maxlength="10" placeholder="मोबाइल (वैकल्पिक)" style="' + S + '">' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="flex:1;font-size:13.5px">कुल कितने लोग (आप समेत)</span><button type="button" class="gMi" style="width:auto;border:0;border-radius:8px;padding:6px 14px;font-size:18px;background:#e2e8f0;color:#0f172a;cursor:pointer">−</button><b class="gP" style="min-width:24px;text-align:center;font-size:18px">1</b><button type="button" class="gPl" style="width:auto;border:0;border-radius:8px;padding:6px 14px;font-size:18px;background:#e2e8f0;color:#0f172a;cursor:pointer">+</button></div>' +
       '<div class="gMsg" style="display:none;padding:8px;border-radius:8px;font-size:13.5px;margin-bottom:6px"></div>' +
       '<button type="button" class="gGo" style="width:100%;border:0;border-radius:8px;padding:10px;font-weight:700;color:#fff;background:#0369a1;cursor:pointer">✔ दर्ज करें</button>';
-    const q = c => w.querySelector(c); let n = 1, memL = null, cityAuto = true, hT = 0;
+    const q = c => w.querySelector(c); let n = 1, memL = null, cityAuto = true;
     const msg = (t, ok) => { const e = q(".gMsg"); e.textContent = t || ""; e.style.display = t ? "block" : "none"; e.style.background = ok ? "#dcfce7" : "#fee2e2"; e.style.color = ok ? "#166534" : "#991b1b"; };
     const loadL = async () => {
       if (memL) return memL;
@@ -10201,17 +10201,19 @@ if ('serviceWorker' in navigator) {
       return memL;
     };
     q(".gC").addEventListener("input", () => { cityAuto = !q(".gC").value.trim(); });
-    q(".gH").addEventListener("input", () => {
-      clearTimeout(hT); const box = q(".gS"), qv = q(".gH").value.trim(); box.innerHTML = ""; if (qv.length < 2) return;
-      hT = setTimeout(async () => {
-        let list; try { list = await loadL(); } catch (e) { return; } if (q(".gH").value.trim() !== qv) return;
+    const attach = (inpC, boxC, pick) => { let t = 0; q(inpC).addEventListener("input", () => {
+      clearTimeout(t); const box = q(boxC), qv = q(inpC).value.trim(); box.innerHTML = ""; if (qv.length < 2) return;
+      t = setTimeout(async () => {
+        let list; try { list = await loadL(); } catch (e) { return; } if (q(inpC).value.trim() !== qv) return;
         box.innerHTML = ""; list.filter(x => typeof smatch_ === "function" ? smatch_(x.label, qv.toLowerCase()) : x.label.toLowerCase().includes(qv.toLowerCase())).slice(0, 6).forEach(x => {
           const bt = document.createElement("button"); bt.type = "button"; bt.style.cssText = "display:block;width:100%;text-align:left;border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:8px;padding:8px 10px;margin:0 0 5px;font-size:14px;cursor:pointer";
           bt.innerHTML = "<b>" + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.place) + "</span>";
-          bt.onclick = () => { q(".gH").value = x.name; box.innerHTML = ""; if (x.place && (cityAuto || !q(".gC").value.trim())) { q(".gC").value = x.place; cityAuto = true; } }; box.appendChild(bt);
+          bt.onclick = () => { box.innerHTML = ""; pick(x); }; box.appendChild(bt);
         });
-      }, 250);
-    });
+      }, 200); }); };
+    const fillPl = x => { if (x.place && (cityAuto || !q(".gC").value.trim())) { q(".gC").value = x.place; cityAuto = true; } };
+    attach(".gH", ".gS", x => { q(".gH").value = x.name; fillPl(x); });
+    attach(".gN", ".gSN", x => { q(".gN").value = x.name; fillPl(x); });
     q(".gMi").onclick = () => { n = Math.max(1, n - 1); q(".gP").textContent = n; };
     q(".gPl").onclick = () => { n = Math.min(30, n + 1); q(".gP").textContent = n; };
     q(".gGo").onclick = async () => {
@@ -10224,7 +10226,7 @@ if ('serviceWorker' in navigator) {
         if (!r || !r.success) throw new Error((r && r.msg) || "दर्ज नहीं हुआ");
         const g = r.guest || {}, dup = r.status === "dup";
         msg((dup ? "ℹ️ पहले से दर्ज है: " : "✔ दर्ज हो गया: ") + (g.name || name) + " (" + (g.persons || n) + " लोग)", !dup);
-        if (!dup) { q(".gN").value = ""; q(".gC").value = ""; q(".gM").value = ""; q(".gH").value = ""; q(".gS").innerHTML = ""; cityAuto = true; n = 1; q(".gP").textContent = "1"; }
+        if (!dup) { q(".gN").value = ""; q(".gC").value = ""; q(".gM").value = ""; q(".gH").value = ""; q(".gS").innerHTML = ""; q(".gSN").innerHTML = ""; cityAuto = true; n = 1; q(".gP").textContent = "1"; }
         if (onSaved) onSaved(g, r.status);
       } catch (e) { msg("❌ " + (e.message || e)); }
       b.disabled = false; b.textContent = "✔ दर्ज करें";
