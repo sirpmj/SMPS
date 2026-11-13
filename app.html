@@ -10200,9 +10200,10 @@ if ('serviceWorker' in navigator) {
       }).filter(x => x.name && !/^[\s\-]+$/.test(x.name));
       return memL;
     };
+    loadL().catch(() => {});
     q(".gC").addEventListener("input", () => { cityAuto = !q(".gC").value.trim(); });
     const attach = (inpC, boxC, pick) => { let t = 0; q(inpC).addEventListener("input", () => {
-      clearTimeout(t); const box = q(boxC), qv = q(inpC).value.trim(); box.innerHTML = ""; if (qv.length < 2) return;
+      clearTimeout(t); const box = q(boxC), qv = q(inpC).value.trim(); box.innerHTML = ""; if (!qv) return;
       t = setTimeout(async () => {
         let list; try { list = await loadL(); } catch (e) { return; } if (q(inpC).value.trim() !== qv) return;
         box.innerHTML = ""; list.filter(x => typeof smatch_ === "function" ? smatch_(x.label, qv.toLowerCase()) : x.label.toLowerCase().includes(qv.toLowerCase())).slice(0, 6).forEach(x => {
@@ -10210,7 +10211,7 @@ if ('serviceWorker' in navigator) {
           bt.innerHTML = "<b>" + esc(x.name) + '</b> <span style="color:#64748b">' + esc(x.place) + "</span>";
           bt.onclick = () => { box.innerHTML = ""; pick(x); }; box.appendChild(bt);
         });
-      }, 200); }); };
+      }, 0); }); };
     const fillPl = x => { if (x.place && (cityAuto || !q(".gC").value.trim())) { q(".gC").value = x.place; cityAuto = true; } };
     attach(".gH", ".gS", x => { q(".gH").value = x.name; fillPl(x); });
     attach(".gN", ".gSN", x => { q(".gN").value = x.name; fillPl(x); });

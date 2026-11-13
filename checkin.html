@@ -205,7 +205,7 @@ button:disabled { opacity: .6; cursor: default; }
     $("gEv").textContent = EVENT; gMsg(""); persons = 1; $("pVal").textContent = "1";
     $("gMob").value = mob && mob.length === 10 ? mob : "";
     var nEl = $("gNote"); nEl.textContent = note || ""; nEl.hidden = !note;
-    show("vGuest"); try { window.scrollTo(0, 0); } catch (e) {}
+    show("vGuest"); loadHL(); try { window.scrollTo(0, 0); } catch (e) {}
     setTimeout(function () { try { $("gName").focus({ preventScroll: true }); } catch (e) {} }, 80);
   }
   function goHome() { setMsg($("mMsg"), ""); show("vMob"); try { window.scrollTo(0, 0); } catch (e) {} }
@@ -234,22 +234,49 @@ button:disabled { opacity: .6; cursor: default; }
   var cityAuto = true;
   $("gCity").addEventListener("input", function () { cityAuto = !$("gCity").value.trim(); });
   function fillPlace(x) { var place = [x.gaon, x.city].filter(Boolean).join(", "); if (place && (cityAuto || !$("gCity").value.trim())) { $("gCity").value = place; cityAuto = true; } }
+  /* ⚡ सदस्यों की हल्की सूची पहले से मँगा लेते हैं; खोज फ़ोन पर ही होती है, इसलिए हर अक्षर पर तुरंत सुझाव */
+  var DV_ = {"अ":"a","आ":"a","इ":"i","ई":"i","उ":"u","ऊ":"u","ऋ":"ri","ए":"e","ऐ":"ai","ओ":"o","औ":"au","ऑ":"o","ऍ":"e",
+   "ा":"a","ि":"i","ी":"i","ु":"u","ू":"u","ृ":"ri","े":"e","ै":"ai","ो":"o","ौ":"au","ॉ":"o","ॅ":"e",
+   "ं":"n","ँ":"n","ः":"h","्":"","़":"",
+   "क":"k","ख":"kh","ग":"g","घ":"gh","ङ":"n","च":"ch","छ":"ch","ज":"j","झ":"jh","ञ":"n","ट":"t","ठ":"th","ड":"d","ढ":"dh","ण":"n","त":"t","थ":"th","द":"d","ध":"dh","न":"n","प":"p","फ":"ph","ब":"b","भ":"bh","म":"m","य":"y","र":"r","ल":"l","ळ":"l","व":"v","श":"sh","ष":"sh","स":"s","ह":"h",
+   "\u095c":"d","\u095d":"dh","\u095e":"ph","\u095f":"y","\u0958":"k","\u0959":"kh","\u095a":"g","\u095b":"j",
+   "०":"0","१":"1","२":"2","३":"3","४":"4","५":"5","६":"6","७":"7","८":"8","९":"9"};
+  function skel(s) { var t = String(s == null ? "" : s).normalize("NFC").replace(/\u091c\u094d\u091e/g, "gy").toLowerCase(), o = ""; for (var i = 0; i < t.length; i++) { var ch = t.charAt(i); o += (DV_[ch] !== undefined ? DV_[ch] : ch); } return o.replace(/ee/g, "i").replace(/oo/g, "u").replace(/w/g, "v").replace(/z/g, "j").replace(/f/g, "ph").replace(/q/g, "k").replace(/x/g, "ksh").replace(/c(?!h)/g, "k").replace(/(.)\1+/g, "$1").replace(/a/g, "").replace(/n(?=[pb])/g, "m"); }
+  var HL = null, HLp = null;
+  function loadHL() {
+    if (HL || HLp) return HLp;
+    HLp = call({ step: "hostlist" }).then(function (r) { if (r && r.success && r.list) HL = r.list.map(function (x) { return { name: x[0], gaon: x[1], city: x[2], lo: String(x[0]).toLowerCase(), k: skel(x[0]) }; }); return HL; }).catch(function () { HLp = null; return null; });
+    return HLp;
+  }
+  function localMatch(q) {
+    var lo = q.toLowerCase(), k = /[0-9\u0966-\u096f]/.test(q) ? "" : skel(q), out = [];
+    for (var i = 0; i < HL.length; i++) { var x = HL[i], rank = -1;
+      if (x.lo.indexOf(lo) === 0 || (k && x.k.indexOf(k) === 0)) rank = 0; else if (lo.length >= 2 && (x.lo.indexOf(lo) > -1 || (k.length >= 2 && x.k.indexOf(k) > -1))) rank = 1;
+      if (rank >= 0) out.push({ x: x, r: rank }); }
+    out.sort(function (a, b) { return a.r - b.r; }); return out.slice(0, 6).map(function (o) { return o.x; });
+  }
+  function showList(box, list, pick) {
+    box.innerHTML = "";
+    list.forEach(function (x) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "sg"; b.appendChild(document.createTextNode(x.name));
+      var sp = document.createElement("span"); sp.textContent = [x.gaon, x.city].filter(Boolean).join(", "); b.appendChild(sp);
+      b.onclick = function () { box.innerHTML = ""; pick(x); }; box.appendChild(b);
+    });
+  }
   function suggest(inpId, boxId, pick) {
     var t = 0;
     $(inpId).addEventListener("input", function () {
-      clearTimeout(t); var q = $(inpId).value.trim(), box = $(boxId); box.innerHTML = ""; if (q.length < 2) return;
-      t = setTimeout(function () {
-        call({ step: "hosts", q: q }).then(function (r) {
-          if ($(inpId).value.trim() !== q) return; box.innerHTML = "";
-          ((r && r.list) || []).forEach(function (x) {
-            var b = document.createElement("button"); b.type = "button"; b.className = "sg"; b.appendChild(document.createTextNode(x.name));
-            var sp = document.createElement("span"); sp.textContent = [x.gaon, x.city].filter(Boolean).join(", "); b.appendChild(sp);
-            b.onclick = function () { box.innerHTML = ""; pick(x); }; box.appendChild(b);
-          });
-        }).catch(function () {});
-      }, 250);
+      clearTimeout(t); var q = $(inpId).value.trim(), box = $(boxId); if (!q) { box.innerHTML = ""; return; }
+      if (HL) { showList(box, localMatch(q), pick); return; }             /* सूची तैयार है: तुरंत */
+      var p = loadHL();
+      if (p) p.then(function (L) { if (L && $(inpId).value.trim() === q) showList(box, localMatch(q), pick); else if (!L) fallback(); });
+      function fallback() {                                                /* सूची न आ पाई तो पुराना तरीका */
+        if (q.length < 2) return;
+        t = setTimeout(function () { call({ step: "hosts", q: q }).then(function (r) { if ($(inpId).value.trim() !== q) return; showList(box, ((r && r.list) || []), pick); }).catch(function () {}); }, 250);
+      }
     });
   }
+  $("mobile").addEventListener("focus", loadHL);
   suggest("gName", "gSugN", function (x) { $("gName").value = x.name; fillPlace(x); });
   suggest("gHost", "gSug", function (x) { $("gHost").value = x.name; fillPlace(x); });
   init();
