@@ -6677,6 +6677,7 @@ function openModal_(title) {
   /* neeche ke buttons: 3 tak ho to ek line; usse zyada ho to barabar chaude 2 line mein */
   const FOOT0 = foot.style.cssText;
   const layFoot = () => {
+    if (foot.classList.contains("foot2")) return;      // message-center ka apna 2-line layout
     const bs = [...foot.children].filter(b => b.style.display !== "none"), n = bs.length;
     if (n <= 3 || bs.some(b => b.tagName !== "BUTTON")) { foot.style.cssText = FOOT0; return; }
     foot.style.cssText = "padding:12px 14px;border-top:1px solid #eee;display:grid;gap:8px;grid-template-columns:repeat(" + Math.ceil(n / 2) + ",minmax(0,1fr));align-items:stretch;";
@@ -11006,9 +11007,9 @@ if ('serviceWorker' in navigator) {
     m.foot.appendChild(modalBtn_("📜 भेजने का record", "#475569", () => { m.close(); window.openSendLog_(tab, () => window.openMsgCenter_()); }));
     m.foot.appendChild(modalBtn_("▶ Queue शुरू करें", "#1a9c4b", () => { if (Q && Q.pos < Q.ids.length) { qGo(); } else { qStart(); } m.body.scrollTop = 0; }));
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
-    { // v1.331: buttons 2 line mein — upar 4 chhote (cheezein chunna / template / record), neeche kaam wale bade
+    { // v1.331: buttons 2 line mein (v1.332: ⭐ डिफ़ॉल्ट भी जुड़ा)
       const kids = Array.from(m.foot.children), by = t => kids.find(b => String(b.textContent).indexOf(t) >= 0);
-      const order = [by("सभी"), by("Template में"), by("Templates"), by("भेजने का"), by("संदेश कॉपी"), by("Queue"), by("बंद")].filter(Boolean), sp = money ? [3, 3, 3, 3, 8, 4] : [3, 3, 3, 3, 4, 5, 3];
+      const order = [defB, by("सभी"), by("Template में"), by("Templates"), by("भेजने का"), by("संदेश कॉपी"), by("Queue"), by("बंद")].filter(Boolean), sp = money ? [3, 3, 3, 3, 3, 6, 3] : [3, 3, 3, 3, 3, 3, 3, 3];   // ऊपर 4: ⭐ डिफ़ॉल्ट · सभी · सेव · Templates ; नीचे: record · (कॉपी) · Queue · बंद
       order.forEach((b, i) => { m.foot.appendChild(b); b.style.gridColumn = "span " + sp[i]; }); m.foot.classList.add("foot2");
     }
   };
