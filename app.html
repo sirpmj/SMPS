@@ -2472,7 +2472,17 @@ const RC_TTL_ = { myAccount: 900000, myProfile: 900000, talentList: 900000, pend
 const RC_KEEP_ = /^(login|attList|checkinSet|getMessageLog|getFormulaColumns|getFormulaColumnsBulk|readSheets|visit|photoThumb)$/;
 const _RC = {};
 function _rcKey(p) { const o = Object.assign({}, p); delete o.token; return JSON.stringify(o); }
+/* 🎪 सम्मेलन खुलते ही उसके अंदर के popup (उपस्थिति सूची / स्कैनर / स्टैंडी) का डेटा पहले से मँगा लेते हैं; popup खुलते ही वही जवाब मिल जाता है (30 सेकंड, एक बार) */
+const _PF = {};
+window.prefetchSammelan_ = function (event) {
+  if (!event) return;
+  [{ action: "attList", event: event }, { action: "checkinSet", event: event }].forEach(p => { _PF[_rcKey(p)] = { t: Date.now(), pr: callCrudBackendRaw_(p).catch(() => null) }; });
+};
 async function callCrudBackend_(payload) {
+  if (payload && (payload.action === "attList" || payload.action === "checkinSet") && payload.open === undefined && !payload.regen) {
+    const pk = _rcKey(payload), e = _PF[pk];
+    if (e && Date.now() - e.t < 30000) { delete _PF[pk]; const v = await e.pr; if (v && v.success !== false) return v; }
+  }
   const ttl = RC_TTL_[payload && payload.action];
   if (ttl) {
     const k = _rcKey(payload), c = _RC[k], age = c ? Date.now() - c.t : 1e12;
@@ -6664,6 +6674,15 @@ function openModal_(title) {
   body.style.cssText = "padding:14px 18px;overflow:auto;flex:1;";
   const foot = document.createElement("div");
   foot.style.cssText = "padding:12px 18px;border-top:1px solid #eee;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;";
+  /* neeche ke buttons: 3 tak ho to ek line; usse zyada ho to barabar chaude 2 line mein */
+  const FOOT0 = foot.style.cssText;
+  const layFoot = () => {
+    const bs = [...foot.children].filter(b => b.style.display !== "none"), n = bs.length;
+    if (n <= 3 || bs.some(b => b.tagName !== "BUTTON")) { foot.style.cssText = FOOT0; return; }
+    foot.style.cssText = "padding:12px 14px;border-top:1px solid #eee;display:grid;gap:8px;grid-template-columns:repeat(" + Math.ceil(n / 2) + ",minmax(0,1fr));align-items:stretch;";
+    bs.forEach(b => { b.style.cssText += ";width:100%;box-sizing:border-box;padding:8px 6px;font-size:13px;line-height:1.25;white-space:normal;text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;"; });
+  };
+  new MutationObserver(layFoot).observe(foot, { childList: true });
   box.appendChild(head); box.appendChild(body); box.appendChild(foot);
   ov.appendChild(box);
   ov.addEventListener("click", e => { if (e.target === ov) close(); });
@@ -10170,6 +10189,8 @@ if ('serviceWorker' in navigator) {
     const m = openModal_("🎪 सम्मेलन — उपस्थिति, बैज, RSVP"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     m.body.innerHTML = '<label style="display:block;font-size:12.5px;color:#475569;margin-bottom:2px">कार्यक्रम का नाम (हर काम इसी नाम से जुड़ेगा)</label><input id="svEv" list="svEvL" type="text" placeholder="जैसे: स्नेह सम्मेलन 2027" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px"><datalist id="svEvL"></datalist><div id="svB" style="display:grid;gap:8px;margin-top:12px"></div>';
     const inp = m.body.querySelector("#svEv"); inp.value = getEv_();
+    try { const pv = inp.value.trim(); if (pv) window.prefetchSammelan_(pv); if (!window.jsQR && !window.__jq) { window.__jq = 1; loadJsQR_(); } } catch (e) {}
+    inp.addEventListener("change", () => { const v2 = inp.value.trim(); if (v2) { setEv_(v2); window.prefetchSammelan_(v2); } });
     const ev = need => { const v = inp.value.trim(); if (need && !v) { alert("पहले कार्यक्रम का नाम लिखें"); inp.focus(); return null; } if (v) setEv_(v); return v; };
     const btn = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:100%;text-align:left;border:0;border-radius:10px;padding:12px 14px;font-size:14.5px;font-weight:700;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; m.body.querySelector("#svB").appendChild(b); };
     btn("📷  QR स्कैन से उपस्थिति लगाएँ", "#15803d", () => { const v = ev(true); if (v) (window.__retSam = Date.now(), window.openScanner_(v)); });
