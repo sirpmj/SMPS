@@ -2823,6 +2823,10 @@ function buildBankBlock_(row) {
 }
 
 function getMessageFromTemplate(type, row, overrideText, opts) {
+  if (typeof overrideText !== "string" && (type === "Boli" || type === "Donation") && typeof window.defaultTpl_ === "function") {   // ⭐ डिफ़ॉल्ट संदेश चुना हो तो वही जाए
+    const dt = window.defaultTpl_(type);
+    if (dt && dt.text) { overrideText = String(dt.text).replace(/\{\{\s*Name\s*\}\}/gi, "{{Member}}"); opts = Object.assign({ plain: !!dt.plain }, opts || {}); }
+  }
   const hasOv = typeof overrideText === "string";                 // 🆕 message-center se diya hua text (placeholder yahin bharte hain)
   const forceBuiltin = !hasOv && USE_BUILTIN_REMINDER_TEMPLATES && (type === "Boli" || type === "Donation");
   // "सहयोग राशि" wali row: message mein Member ki jagah Notes ka naam
@@ -6639,6 +6643,7 @@ function escHtml_(t) {
 
 // Ek halka sa popup (bulk reminders, khaata, upasthiti ke liye)
 function openModal_(title) {
+  const ret = window.__retSam && (Date.now() - window.__retSam < 4000); window.__retSam = 0;   // 🎪 सम्मेलन के अंदर से खुला है तो बंद करने पर वापस वहीं
   const old = document.getElementById("appModal");
   if (old) old.remove();
   const ov = document.createElement("div");
@@ -6653,7 +6658,7 @@ function openModal_(title) {
   const x = document.createElement("button");
   x.type = "button"; x.textContent = "✕";
   x.style.cssText = "background:#fff;border:1px solid #ccc;border-radius:6px;padding:2px 10px;cursor:pointer;width:auto;";
-  const close = () => ov.remove();
+  const close = () => { const was = ov.isConnected; ov.remove(); if (ret && was && typeof window.openSammelan_ === "function") window.openSammelan_(); };
   x.onclick = close; head.appendChild(x);
   const body = document.createElement("div");
   body.style.cssText = "padding:14px 18px;overflow:auto;flex:1;";
@@ -8798,6 +8803,10 @@ if ('serviceWorker' in navigator) {
   window.saveTemplateRemote_ = saveTemplateRemote_;
   const lblKey_ = x => String(x || "").replace(/^[^\p{L}\p{N}]+/u, "").trim();   // emoji hata kar naam milao
   const sameLbl_ = (p, n) => lblKey_(p.label) === lblKey_(n);
+  /* ⭐ हर टैब का डिफ़ॉल्ट संदेश (इसी फ़ोन/ब्राउज़र में याद रहता है) */
+  const getDefLbl_ = tab => { try { return localStorage.getItem("smps_tpl_def_" + tab) || ""; } catch (e) { return ""; } };
+  const setDefLbl_ = (tab, k) => { try { if (k) localStorage.setItem("smps_tpl_def_" + tab, k); else localStorage.removeItem("smps_tpl_def_" + tab); } catch (e) {} };
+  window.defaultTpl_ = tab => { const k = getDefLbl_(tab); if (!k) return null; return sheetPresets_(tab).find(p => lblKey_(p.label) === k) || null; };
   /* ===== v1.304: Templates ka naam badalna / hatana ===== */
   window.openTplManager_ = function (tab, onBack) {
     const m = openModal_("⚙️ " + tab + " के Templates");
@@ -10163,11 +10172,11 @@ if ('serviceWorker' in navigator) {
     const inp = m.body.querySelector("#svEv"); inp.value = getEv_();
     const ev = need => { const v = inp.value.trim(); if (need && !v) { alert("पहले कार्यक्रम का नाम लिखें"); inp.focus(); return null; } if (v) setEv_(v); return v; };
     const btn = (t, bg, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; b.style.cssText = "width:100%;text-align:left;border:0;border-radius:10px;padding:12px 14px;font-size:14.5px;font-weight:700;cursor:pointer;color:#fff;background:" + bg; b.onclick = fn; m.body.querySelector("#svB").appendChild(b); };
-    btn("📷  QR स्कैन से उपस्थिति लगाएँ", "#15803d", () => { const v = ev(true); if (v) window.openScanner_(v); });
-    btn("🪧  खुद-उपस्थिति स्टैंडी (सदस्य खुद QR स्कैन करें)", "#0f766e", () => { const v = ev(true); if (v) window.openStandee_(v); });
-    btn("✅  उपस्थिति सूची (आए / नहीं आए)", "#0369a1", () => { const v = ev(true); if (v) window.openAttReport_(v); });
-    btn("🏷️  नाम-बैज PDF (QR के साथ)", "#9a3412", () => window.openBadges_(ev(false) || ""));
-    btn("📊  RSVP सारांश (कितने लोग आएँगे)", "#7c3aed", () => window.openRsvp_(ev(false) || ""));
+    btn("📷  QR स्कैन से उपस्थिति लगाएँ", "#15803d", () => { const v = ev(true); if (v) (window.__retSam = Date.now(), window.openScanner_(v)); });
+    btn("🪧  खुद-उपस्थिति स्टैंडी (सदस्य खुद QR स्कैन करें)", "#0f766e", () => { const v = ev(true); if (v) (window.__retSam = Date.now(), window.openStandee_(v)); });
+    btn("✅  उपस्थिति सूची (आए / नहीं आए)", "#0369a1", () => { const v = ev(true); if (v) (window.__retSam = Date.now(), window.openAttReport_(v)); });
+    btn("🏷️  नाम-बैज PDF (QR के साथ)", "#9a3412", () => (window.__retSam = Date.now(), window.openBadges_(ev(false) || "")));
+    btn("📊  RSVP सारांश (कितने लोग आएँगे)", "#7c3aed", () => (window.__retSam = Date.now(), window.openRsvp_(ev(false) || "")));
     callCrudBackend_({ action: "rsvpList" }).then(r => { if (r && r.success) m.body.querySelector("#svEvL").innerHTML = (r.events || []).map(e => '<option value="' + esc(e) + '"></option>').join(""); }).catch(() => {});
   };
   function loadJsQR_() {
@@ -10915,9 +10924,16 @@ if ('serviceWorker' in navigator) {
       if (opts[cur] && opts[cur].disabled) { let k = opts.findIndex((o, i) => !o.disabled && (tpls[i] || {}).grp === g); if (k < 0) k = opts.findIndex(o => !o.disabled); if (k >= 0) { $("mcTpl").selectedIndex = k; fillTpl(); } }
     };
     const rebuild = () => { list = recipients(); drawList(); };
+    let defB = null;
+    const paintDef = () => {
+      const dk = getDefLbl_(tab); [...$("mcTpl").options].forEach((o, i) => { const t = tpls[i] || {}; o.textContent = (dk && lblKey_(t.label) === dk ? "⭐ " : "") + t.label; });
+      if (defB) { const cur = curTpl() || {}, isDef = dk && lblKey_(cur.label || "") === dk; defB.textContent = isDef ? "☆ डिफ़ॉल्ट हटाएँ" : "⭐ इसे डिफ़ॉल्ट बनाएँ"; }
+    };
     const rebuildTpl = () => {
       tpls = presets(tab);
       $("mcTpl").innerHTML = tpls.map(t => `<option>${esc(t.label)}</option>`).join("");
+      { const dk = getDefLbl_(tab), di = dk ? tpls.findIndex(t => lblKey_(t.label) === dk) : -1; if (di >= 0) $("mcTpl").selectedIndex = di; }   // ⭐ डिफ़ॉल्ट पहले से चुना हुआ
+      paintDef();
       fillTpl();
       const g = curTpl().grp; if (g && [...$("mcGrp").options].some(o => o.value === g)) $("mcGrp").value = g;
       applyTplState();
@@ -10926,7 +10942,7 @@ if ('serviceWorker' in navigator) {
     if (rowTab) $("mcRow").onchange = () => { rebuildTpl(); rebuild(); paintSent(); };
     $("mcGrp").onchange = () => { applyTplState(); rebuild(); };
     $("mcTxt").oninput = updWarn;
-    $("mcTpl").onchange = () => {            // preset ke saath sahi samooh khud chun lo (jaise dhanyavaad → उपस्थित)
+    $("mcTpl").onchange = () => { paintDef();            // preset ke saath sahi samooh khud chun lo (jaise dhanyavaad → उपस्थित)
       fillTpl();
       const g = curTpl().grp;
       if (g && $("mcGrp").value !== g && [...$("mcGrp").options].some(o => o.value === g)) { $("mcGrp").value = g; applyTplState(); rebuild(); }
@@ -10942,6 +10958,12 @@ if ('serviceWorker' in navigator) {
       $("mcList").querySelectorAll(".ck").forEach(c => { c.checked = !all; });
       refreshInfo();
     }));
+    defB = modalBtn_("⭐ इसे डिफ़ॉल्ट बनाएँ", "#b45309", () => {
+      const cur = curTpl() || {}, k = lblKey_(cur.label || "");
+      if (!k || /खुद लिखें/.test(cur.label || "")) { alert("सूची में से कोई तैयार संदेश चुनें — “खुद लिखें” डिफ़ॉल्ट नहीं बन सकता।"); return; }
+      setDefLbl_(tab, getDefLbl_(tab) === k ? "" : k); paintDef();
+    });
+    m.foot.appendChild(defB); paintDef();
     const svB = modalBtn_("💾 Template में सेव करें", "#7c3aed", async () => {
       const txt = $("mcTxt").value.trim(); if (!txt) { alert("पहले संदेश लिखें।"); return; }
       const cur = curTpl() || {}; const sug = /खुद लिखें/.test(cur.label || "") ? "" : (cur.label || "");
