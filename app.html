@@ -2110,18 +2110,25 @@ html.logged-out .wrap { padding-bottom: 0 !important; }
 
 <!-- ===== PDFMAKE (Hindi Supported) ===== -->
 <!-- Hindi Font -->
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"></noscript>
+  <link rel="preconnect" href="https://script.google.com"><link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+
 
 <!-- HTML to PDF -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+/* ⚡ Excel / PDF library (~1 MB) हर बार लोड नहीं होती — export दबाने पर ही आती है */
+window.loadLib_ = (function () {
+  const U = { xlsx: ["https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js", () => window.XLSX], html2pdf: ["https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js", () => window.html2pdf] }, P = {};
+  return function (k) { const d = U[k]; if (d[1]()) return Promise.resolve(); return P[k] || (P[k] = new Promise((ok, no) => { const el = document.createElement("script"); el.src = d[0]; el.onload = ok; el.onerror = () => { delete P[k]; no(new Error("lib " + k)); }; document.head.appendChild(el); })); };
+})();
+</script>
 
 
 </head>
 
 <!-- Excel -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 
 
 <div id="splashScreen">
@@ -7960,7 +7967,7 @@ document.addEventListener("click", (e) => {
   if (wrapper && !wrapper.contains(e.target)) closeExcelMenu_();
 });
 
-function exportExcel() {
+async function exportExcel() {
   const { headers, rows } = getVisibleTableData();
 
   if (!rows.length) {
@@ -7969,6 +7976,7 @@ function exportExcel() {
   }
 
   const data = [headers, ...rows];
+  try { await loadLib_("xlsx"); } catch (e) { alert("Excel library लोड नहीं हो पाई — इंटरनेट देखकर फिर कोशिश करें"); return; }
   const ws = XLSX.utils.aoa_to_sheet(data);
   const wb = XLSX.utils.book_new();
 
@@ -8011,6 +8019,7 @@ async function exportAllTabsExcel() {
 
   try {
     const range = getActiveDateFilterRange_(); // 🆕 abhi jo filter select hai, wahi sabpar lagega
+    await loadLib_("xlsx");
     const wb = XLSX.utils.book_new();
     let anySheetAdded = false;
 
@@ -8153,7 +8162,7 @@ function exportPDF() {
 
   document.body.appendChild(wrapper);
 
-  html2pdf().from(wrapper).set({
+  loadLib_("html2pdf").then(() => html2pdf().from(wrapper).set({
     margin: 8,
     filename: "report.pdf",
     html2canvas: { scale: 2 },
@@ -8176,7 +8185,7 @@ function exportPDF() {
 
   }).save().then(() => {
     wrapper.remove();
-  });
+  })).catch(() => { wrapper.remove(); alert("PDF library लोड नहीं हो पाई — इंटरनेट देखकर फिर कोशिश करें"); });
 
 }
 
@@ -8202,6 +8211,7 @@ function resetIdleTimer() {
 
 // 🚪 Auto logout function
 function autoLogout() {
+  try { if (document.querySelector("#appModal video")) { resetIdleTimer(); return; } } catch (e) {}   // 🎥 स्कैनर का कैमरा चालू हो तो (कार्यक्रम में) logout नहीं
   try { if (localStorage.getItem("smps_remember")) { resetIdleTimer(); return; } } catch (e) {}   // 🆕 v1.257: "याद रखें" wale device par idle logout nahi
   alert("लंबे समय से कोई activity नहीं हुई। सुरक्षा कारणों से logout किया गया है।");
   sessionStorage.removeItem("currentUser");
@@ -8394,6 +8404,16 @@ if (yearFilter && !yearFilter._bound) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js')
     .then(() => console.log("Service Worker Registered"));
+  navigator.serviceWorker.addEventListener('message', e => {   // ⚡ ऐप अब cache से तुरंत खुलती है; नया version आए तो यह दिखे
+    if (!(e.data && e.data.type === 'SW_UPDATED') || document.getElementById('swUpd')) return;
+    const d = document.createElement('div'); d.id = 'swUpd';
+    d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:99999;background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);display:flex;gap:10px;align-items:center;font-size:14px;max-width:92vw';
+    d.innerHTML = '<span>🔄 नया version तैयार है</span><button style="border:0;border-radius:8px;padding:6px 12px;background:#22c55e;color:#fff;font-weight:700;cursor:pointer" onclick="location.reload()">अपडेट</button><button style="border:0;background:transparent;color:#94a3b8;font-size:16px;cursor:pointer" onclick="this.parentNode.remove()">✕</button>';
+    document.body.appendChild(d);
+    try { navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_UPDATE' }); } catch (e) {}
+  });
+  const askUpd = () => { try { if (!document.getElementById('swUpd') && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'ASK_UPDATE' }); } catch (e) {} };
+  setTimeout(askUpd, 2500); setTimeout(askUpd, 9000);
 }
 </script>
 <script>
@@ -9456,7 +9476,7 @@ if ('serviceWorker' in navigator) {
           L.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + e(r[0]) + '</td><td class="r">₹' + inr(r[1]) + '</td><td class="r">' + pct(r[1], total) + "</td></tr>").join("") +
           '<tr class="tot"><td></td><td>कुल योग / Total</td><td class="r">₹' + inr(total) + '</td><td class="r">100%</td></tr></tbody></table>';
       };
-      const html = '<!doctype html><html><head><meta charset="utf-8"><title>वार्षिक रिपोर्ट / Annual Report ' + lbl(y) + '</title><link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet"><style>@page{size:A4;margin:12mm}body{font-family:"Noto Sans Devanagari","Mukta","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{text-align:center;margin:4px 0 0;font-size:21px}.en{text-align:center;color:#555;font-size:13px}h2{text-align:center;margin:8px 0 2px;font-size:17px;color:#7c2d12}h3{margin:18px 0 4px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:2px;font-size:15px}img{display:block;margin:0 auto;height:60px}table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border:1px solid #888;padding:5px 8px;text-align:left}th{background:#fef3c7}.r{text-align:right;white-space:nowrap}.tot td{background:#ffedd5;font-weight:700;border-top:2px solid #444}.pos{color:#166534}.neg{color:#b91c1c}.note{margin-top:16px;padding:8px 10px;border:1px dashed #999;background:#fafafa;font-size:12px;line-height:1.7}tr{page-break-inside:avoid}</style></head><body><img src="' + logo + '" alt="">' +
+      const html = '<!doctype html><html><head><meta charset="utf-8"><title>वार्षिक रिपोर्ट / Annual Report ' + lbl(y) + '</title><style>@page{size:A4;margin:12mm}body{font-family:"Noto Sans Devanagari","Mukta","Segoe UI",Arial,sans-serif;color:#111;font-size:13px}h1{text-align:center;margin:4px 0 0;font-size:21px}.en{text-align:center;color:#555;font-size:13px}h2{text-align:center;margin:8px 0 2px;font-size:17px;color:#7c2d12}h3{margin:18px 0 4px;color:#7c2d12;border-bottom:2px solid #fbbf24;padding-bottom:2px;font-size:15px}img{display:block;margin:0 auto;height:60px}table{border-collapse:collapse;width:100%;margin-top:4px}th,td{border:1px solid #888;padding:5px 8px;text-align:left}th{background:#fef3c7}.r{text-align:right;white-space:nowrap}.tot td{background:#ffedd5;font-weight:700;border-top:2px solid #444}.pos{color:#166534}.neg{color:#b91c1c}.note{margin-top:16px;padding:8px 10px;border:1px dashed #999;background:#fafafa;font-size:12px;line-height:1.7}tr{page-break-inside:avoid}</style></head><body><img src="' + logo + '" alt="">' +
         "<h1>" + e(SAMAJ_NAME_) + '</h1><div class="en">Shri Mewad Prajapat Samaj, Vapi</div>' +
         "<h2>वार्षिक रिपोर्ट / Annual Report</h2>" +
         '<div class="en">वित्त वर्ष / Financial Year <b>' + lbl(y) + "</b> (अप्रैल–मार्च / April–March)</div>" +
@@ -9781,7 +9801,7 @@ if ('serviceWorker' in navigator) {
     let flt = ""; try { flt = getActiveFilterLabel_(); } catch (x) {}
     const ttl = e(currentTab || "") + (flt ? " — " + e(flt) : "");
     const html = '<!doctype html><html lang="hi"><head><meta charset="utf-8"><title>' + ttl + '</title>' +
-      '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+      '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
       '<style>@page{size:A4 landscape;margin:10mm 8mm 12mm;@bottom-right{content:"Page " counter(page);font-size:9px;color:#555}}body{font-family:"Noto Sans Devanagari","Mukta","Nirmala UI","Mangal","Segoe UI",Arial,sans-serif;font-size:10.5px;color:#111;margin:0}h2{text-align:center;margin:0;font-size:18px}.m{display:flex;justify-content:space-between;margin:4px 0 8px;font-size:11px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:3px 5px;vertical-align:top;word-break:break-word;text-align:left;letter-spacing:normal}th{background:#f2f2f2}thead{display:table-header-group}tr{page-break-inside:avoid}img{max-width:80px;max-height:64px}</style></head><body>' +
       '<h2>श्री मेवाड़ प्रजापत समाज-वापी</h2><div class="m"><div>Date: ' + e(new Date().toLocaleDateString("en-GB")) + '</div><div><b>' + ttl + '</b></div></div>' + clone.outerHTML + '</body></html>';
     w.document.open(); w.document.write(html); w.document.close();
