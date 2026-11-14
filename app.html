@@ -11175,8 +11175,9 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 
 <style id="uxPackCss">
 /* ===== UX pack: mobile bottom-sheet, card view, desktop sidebar / columns / density, print ===== */
-#uxBar { display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center; }
-#uxBar button { width:auto; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#0f172a; font-size:12.5px; cursor:pointer; }
+#uxBar { display:inline-flex; gap:4px; flex-wrap:nowrap; align-items:center; margin-left:auto; flex:none; }
+#uxBar button { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#0f172a; font-size:16px; line-height:1; cursor:pointer; }
+@media (min-width:601px) { #searchWrapper .search-input { flex:0 1 340px !important; width:auto !important; max-width:340px; min-width:160px; } #searchWrapper { flex-wrap:nowrap !important; } }
 #uxBar button.on { background:#0b63d6; color:#fff; border-color:#0b63d6; }
 #uxBar .d-only { display:inline-block; }
 #uxToast { position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:2000000; max-width:min(92vw,560px); background:#0f172a; color:#fff; padding:10px 16px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35); font-size:14px; line-height:1.4; white-space:pre-wrap; display:none; }
@@ -11261,9 +11262,9 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
     const w = $("searchWrapper"); if (!w || $("uxBar")) return !!$("uxBar");
     const bar = document.createElement("span"); bar.id = "uxBar";
     const mk = (id, txt, cls, fn, title) => { const b = document.createElement("button"); b.type = "button"; b.id = id; b.className = cls; b.textContent = txt; b.title = title || ""; b.onclick = fn; bar.appendChild(b); };
-    mk("uxColsBtn", "⚙️ कॉलम", "d-only", e => colsMenu(e.currentTarget), "कौन से कॉलम दिखें");
-    mk("uxDenseBtn", "↕ घना", "d-only", () => { L("smps_ux_dense", L("smps_ux_dense") === "1" ? "0" : "1"); apply(); }, "छोटी पंक्तियाँ");
-    mk("uxSideBtn", "▦ साइडबार", "d-only", () => { L("smps_ux_side", L("smps_ux_side") === "0" ? "1" : "0"); apply(); }, "टैब बाईं तरफ");
+    mk("uxColsBtn", "⚙️", "d-only", e => colsMenu(e.currentTarget), "⚙️ कॉलम — कौन से कॉलम दिखें");
+    mk("uxDenseBtn", "↕", "d-only", () => { L("smps_ux_dense", L("smps_ux_dense") === "1" ? "0" : "1"); apply(); }, "↕ घना — छोटी पंक्तियाँ");
+    mk("uxSideBtn", "▦", "d-only", () => { L("smps_ux_side", L("smps_ux_side") === "0" ? "1" : "0"); apply(); }, "▦ साइडबार — टैब बाईं तरफ");
     w.appendChild(bar); apply(); return true;
   };
   const boot = () => { build(); watch(); apply(); };
