@@ -11177,7 +11177,15 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 /* ===== UX pack: mobile bottom-sheet, card view, desktop sidebar / columns / density, print ===== */
 #uxBar { display:inline-flex; gap:4px; flex-wrap:nowrap; align-items:center; margin-left:auto; flex:none; }
 #uxBar button { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#0f172a; font-size:16px; line-height:1; cursor:pointer; }
-@media (min-width:601px) { #searchWrapper .search-input { flex:0 1 340px !important; width:auto !important; max-width:340px; min-width:160px; } #searchWrapper { flex-wrap:nowrap !important; } }
+@media (min-width:601px) {
+  #searchWrapper .search-input { flex:0 1 300px !important; width:auto !important; max-width:300px; min-width:150px; }
+  #searchWrapper { flex-wrap:wrap !important; row-gap:6px !important; }
+  /* 🏷️ desktop पर भी icon के साथ नाम (मोबाइल जैसा) */
+  #searchWrapper > button[data-l], #searchWrapper > #dirBtn, #searchWrapper > #addNewBtn { width:auto !important; padding:4px 10px !important; white-space:nowrap; }
+  #searchWrapper > button[data-l]::after { content:attr(data-l); margin-left:5px; font-size:13px; font-weight:600; }
+  #searchWrapper > #dirBtn::after { content:"डायरेक्टरी"; margin-left:5px; font-size:13px; font-weight:600; }
+  #searchWrapper > #addNewBtn::after { content:"नया"; margin-left:5px; font-size:13px; font-weight:600; }
+}
 #uxBar button.on { background:#0b63d6; color:#fff; border-color:#0b63d6; }
 #uxBar .d-only { display:inline-block; }
 #uxToast { position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:2000000; max-width:min(92vw,560px); background:#0f172a; color:#fff; padding:10px 16px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35); font-size:14px; line-height:1.4; white-space:pre-wrap; display:none; }
