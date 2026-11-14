@@ -196,6 +196,7 @@
    - Boli / Donation: search row mobile par sahi (search bar ab dikhta hai, filter + buttons neeche wrap hote hain)
   v1.225  (previous base version)
 -->
+<script>window.__nativeAlert = window.alert.bind(window);</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta property="og:site_name" content="श्री मेवाड़ प्रजापत समाज – वापी">
 <meta property="og:type" content="website">
@@ -2469,7 +2470,7 @@ const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDmstaOr5WR8oIEF65
 function forceRelogin_(msg) {
   try { localStorage.removeItem("smps_remember"); } catch (e) {}
   sessionStorage.removeItem("currentUser"); sessionStorage.removeItem("smps_token");
-  if (msg) alert(msg);
+  if (msg) window.__nativeAlert(msg);
   location.reload();
 }
 /* ⚡ Popup turant khulne ke liye: jo backend calls sirf "padhti" hain unka jawab yaad rakhte hain.
@@ -3426,7 +3427,7 @@ if (savedUser) {
     if (rec0 && !loginAllowed_(rec0)) {           // Members sheet mein se Login hata diya gaya — session / "याद रखें" dono band
       sessionStorage.removeItem("currentUser");
       try { localStorage.removeItem("smps_remember"); } catch (e) {}
-      alert(LOGIN_DENIED_MSG_);
+      window.__nativeAlert(LOGIN_DENIED_MSG_);
       location.reload();
       return;
     }
@@ -8213,7 +8214,7 @@ function resetIdleTimer() {
 function autoLogout() {
   try { if (document.querySelector("#appModal video")) { resetIdleTimer(); return; } } catch (e) {}   // 🎥 स्कैनर का कैमरा चालू हो तो (कार्यक्रम में) logout नहीं
   try { if (localStorage.getItem("smps_remember")) { resetIdleTimer(); return; } } catch (e) {}   // 🆕 v1.257: "याद रखें" wale device par idle logout nahi
-  alert("लंबे समय से कोई activity नहीं हुई। सुरक्षा कारणों से logout किया गया है।");
+  window.__nativeAlert("लंबे समय से कोई activity नहीं हुई। सुरक्षा कारणों से logout किया गया है।");
   sessionStorage.removeItem("currentUser");
   try { location.replace("index.html"); } catch (e) { location.reload(); }   // v1.300: website par
 }
@@ -9185,9 +9186,16 @@ if ('serviceWorker' in navigator) {
     let mem; const _fr = CACHE["Members"] && (Date.now() - CACHE["Members"].time < CACHE_TIME), _ph = _fr ? null : window.loadingModal_(); try { mem = (await fetchSheetFast_("Members")) || []; } catch (e) { if (_ph) _ph.close(); alert("Members लोड नहीं हो पाए।"); return; }
     if (!mem.length) { alert("Members में डेटा नहीं है।"); return; }
     const kS = keyOf(mem, /^status$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i);
-    const FIELDS = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
-      ["address", "पता", /address|पता/i, 0], ["occ", "व्यवसाय / फर्म", /occupation|business|firm|profession|व्यवसाय/i, 1], ["birth", "जन्मदिन", /birth|dob|जन्म/i, 0], ["ann", "विवाह वर्षगांठ", /anniversary|वर्षगांठ|marriage|विवाह|शादी/i, 0]]
-      .map(f => ({ id: f[0], label: f[1], key: keyOf(mem, f[2]), on: !!f[3] })).filter(f => f.key);
+    const FIXED = [["gotra", "गोत्र", /gotra|गोत्र/i, 1], ["origin", "गाँव / मूल स्थान", /origin|village|native|मूल|गाँव|गांव/i, 1], ["city", "वर्तमान शहर", /city|शहर/i, 1], ["district", "जिला", /district|जिला/i, 1],
+      ["address", "पता", /address|पता/i, 0], ["occ", "व्यवसाय / फर्म", /occupation|business|firm|profession|व्यवसाय/i, 1], ["birth", "जन्मदिन", /birth|dob|जन्म/i, 0], ["ann", "विवाह वर्षगांठ", /anniversary|वर्षगांठ|marriage|विवाह|शादी/i, 0],
+      ["blood", "ब्लड ग्रुप", /blood|रक्त|ब्लड/i, 0]];
+    const FIELDS = FIXED.map(f => ({ id: f[0], label: f[1], key: keyOf(mem, f[2]), on: !!f[3] })).filter(f => f.key);
+    /* 🆕 Members sheet में बाद में जो भी नया column जुड़े, वह यहाँ अपने-आप चुनने की सूची में आ जाता है (शुरू में बिना चुना हुआ) */
+    { const used = new Set(FIELDS.map(f => f.key).concat([kS, kM, kD, kN].filter(Boolean)));
+      const SKIP = /^(_|member ?id\b|id\b|sr\.?\s?no|s\.?\s?no|timestamp|time ?stamp|created|updated|pin\b|password|token|photo|image|img|url\b|link\b|approved|remarks?\b|note|status\b|member\b|name\b|नाम|mobile|मोबाइल|phone|unnamed)/i, seen = [];
+      mem.slice(0, 300).forEach(r => Object.keys(r).forEach(k => { if (seen.indexOf(k) < 0) seen.push(k); }));
+      seen.forEach((k, i) => { const t = String(k || "").trim(); if (!t || used.has(k) || SKIP.test(t)) return; FIELDS.push({ id: "x" + i, label: t, key: k, on: false }); }); }
+    { let sv = {}; try { sv = JSON.parse(localStorage.getItem("smps_ic_fields") || "{}"); } catch (e) {} FIELDS.forEach(f => { if (sv[f.label] !== undefined) f.on = !!sv[f.label]; }); }
     if (!FIELDS.length) { alert("Members sheet में जाँचने लायक columns नहीं मिले।"); return; }
     const nm = r => String(r[kD] || r[kN] || "").replace(/\s*\([^)]*\)\s*$/, "").trim() || "सदस्य";
     const empty = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v));
@@ -9195,7 +9203,8 @@ if ('serviceWorker' in navigator) {
     const m = openModal_("📝 अधूरी जानकारी — WhatsApp संदेश"), sent = {};
     m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
     m.body.innerHTML = '<div style="font-size:12.5px;color:#475569;margin-bottom:6px">जिन फ़ील्ड्स की जाँच करनी है उन्हें चुनें:</div>' +
-      '<div id="icF" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px">' + FIELDS.map(f => '<label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" data-f="' + f.id + '"' + (f.on ? " checked" : "") + ' style="width:auto;margin:0"> ' + esc(f.label) + '</label>').join("") + '</div>' +
+      '<div id="icF" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:6px">' + FIELDS.map(f => '<label style="font-size:13px;display:inline-flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" data-f="' + f.id + '"' + (f.on ? " checked" : "") + ' style="width:auto;margin:0"> ' + esc(f.label) + '</label>').join("") + '</div>' +
+      '<div style="margin-bottom:8px;display:flex;gap:8px"><button id="icAll" type="button" style="width:auto;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:4px 10px;font-size:12.5px;cursor:pointer">✔ सभी चुनें</button><button id="icNone" type="button" style="width:auto;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:4px 10px;font-size:12.5px;cursor:pointer">✖ कोई नहीं</button></div>' +
       '<div style="font-size:12.5px;color:#475569;margin:6px 0 2px">संदेश (<code>{{Name}}</code> = नाम, <code>{{Missing}}</code> = अधूरी जानकारी की सूची) — बदल सकते हैं:</div>' +
       '<textarea id="icMsg" rows="7" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px"></textarea>' +
       '<div id="icCnt" style="margin:10px 0 4px;font-weight:700"></div><div id="icList"></div>';
@@ -9230,7 +9239,10 @@ if ('serviceWorker' in navigator) {
       if (noMob.length) host.insertAdjacentHTML("beforeend", '<div style="margin-top:10px;font-size:12.5px;color:#b45309">⚠️ ' + noMob.length + ' सदस्यों का मोबाइल नहीं है, इसलिए संदेश नहीं जा सकता: ' + esc(noMob.slice(0, 10).map(x => x.name).join(", ")) + (noMob.length > 10 ? " …" : "") + '</div>');
       if (sel.length && !rows.length && !noMob.length) host.innerHTML = '<div style="padding:16px;text-align:center;color:#15803d;font-weight:700">🎉 चुने हुए फ़ील्ड्स में कोई जानकारी अधूरी नहीं है।</div>';
     };
-    m.body.querySelectorAll("#icF input").forEach(c => c.onchange = draw);
+    const persist = () => { try { const o = {}; FIELDS.forEach(f => { o[f.label] = $('[data-f="' + f.id + '"]').checked; }); localStorage.setItem("smps_ic_fields", JSON.stringify(o)); } catch (e) {} };
+    m.body.querySelectorAll("#icF input").forEach(c => c.onchange = () => { persist(); draw(); });
+    $("#icAll").onclick = () => { m.body.querySelectorAll("#icF input").forEach(c => { c.checked = true; }); persist(); draw(); };
+    $("#icNone").onclick = () => { m.body.querySelectorAll("#icF input").forEach(c => { c.checked = false; }); persist(); draw(); };
     draw();
   };
   /* ===== v1.313: मेरी जानकारी + मेरा कार्ड, डेटा सफ़ाई, वार्षिक रिपोर्ट ===== */
@@ -11158,6 +11170,106 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   addEventListener("popstate", function(){ if (ignore > 0) { ignore--; return; } var el = stack.pop(); if (el) closeEl(el); });
   function start(){ new MutationObserver(function(){ if (!raf) raf = requestAnimationFrame(sync); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "hidden"] }); }
   if (document.body) start(); else addEventListener("DOMContentLoaded", start);
+})();
+</script>
+
+<style id="uxPackCss">
+/* ===== UX pack: mobile bottom-sheet, card view, desktop sidebar / columns / density, print ===== */
+#uxBar { display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center; }
+#uxBar button { width:auto; padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#0f172a; font-size:12.5px; cursor:pointer; }
+#uxBar button.on { background:#0b63d6; color:#fff; border-color:#0b63d6; }
+#uxBar .d-only { display:inline-block; }
+#uxToast { position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:2000000; max-width:min(92vw,560px); background:#0f172a; color:#fff; padding:10px 16px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.35); font-size:14px; line-height:1.4; white-space:pre-wrap; display:none; }
+#uxOffline { position:fixed; top:0; left:0; right:0; z-index:2000001; background:#b91c1c; color:#fff; text-align:center; padding:6px 10px; font-size:13px; display:none; }
+#uxCols { position:absolute; z-index:90; background:#fff; color:#0f172a; border:1px solid #cbd5e1; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:8px 10px; max-height:60vh; overflow:auto; min-width:200px; }
+#uxCols label { display:flex; gap:6px; align-items:center; padding:3px 0; font-size:13px; cursor:pointer; } #uxCols input { width:auto; margin:0; }
+[data-theme="dark"] #uxBar button, [data-theme="dark"] #uxCols { background:#1e293b; color:#e2e8f0; border-color:#334155; }
+#contentArea.uxDense td, #contentArea.uxDense th { padding:4px 8px !important; font-size:12px !important; }
+@keyframes uxSheet { from { transform:translateY(46px); opacity:.35; } to { transform:none; opacity:1; } }
+@media (max-width:600px) { #uxBar { display:none !important; } }
+@media (max-width:640px) {
+  #appModal { align-items:flex-end !important; }
+  #appModal > div { width:100% !important; max-width:100% !important; max-height:92vh !important; border-radius:18px 18px 0 0 !important; animation:uxSheet .22s ease-out; padding-bottom:env(safe-area-inset-bottom); }
+  #appModal > div::before { content:""; flex:none; align-self:center; width:44px; height:4px; border-radius:4px; background:#cbd5e1; margin:8px 0 0; }
+}
+@media (min-width:1200px) {
+  body.uxSide .wrap:has(> #appView[style*="block"]) { display:grid; grid-template-columns:200px minmax(0,1fr); column-gap:14px; align-items:start; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > * { grid-column:1 / -1; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs { grid-column:1; grid-row:span 3; position:sticky; top:8px; display:flex !important; flex-direction:column; flex-wrap:nowrap; gap:6px; overflow:visible; justify-content:flex-start; padding:0; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs .tab { width:100%; justify-content:flex-start; text-align:left; white-space:normal; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #searchWrapper, body.uxSide .wrap:has(> #appView[style*="block"]) > #contentArea, body.uxSide .wrap:has(> #appView[style*="block"]) > #pagination { grid-column:2; min-width:0; }
+}
+@media print {
+  .hdr-tools, .toolbar-btns, .toolbar-user, #tabs, #searchWrapper, #pagination, #uxBar, #uxToast, #uxOffline, #dateFilterBar, #mainDashboard, footer, #swUpd { display:none !important; }
+  #contentArea { overflow:visible !important; } #contentArea table { font-size:11px; } body { background:#fff !important; }
+}
+</style>
+<script id="uxPackJs">
+(function () {
+  const $ = id => document.getElementById(id), L = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} };
+  /* --- alert -> chhota toast (page badalne wale alert __nativeAlert se hi chalte hain) --- */
+  let tt = 0;
+  window.uxToast_ = function (msg, ms) { let t = $("uxToast"); if (!t) { t = document.createElement("div"); t.id = "uxToast"; t.onclick = () => { t.style.display = "none"; }; document.body.appendChild(t); } t.textContent = String(msg == null ? "" : msg); t.style.display = "block"; clearTimeout(tt); tt = setTimeout(() => { t.style.display = "none"; }, ms || Math.min(9000, 2200 + String(msg).length * 45)); };
+  window.alert = function (m) { window.uxToast_(m); };
+  /* --- internet band hone par laal patti --- */
+  const off = () => { let b = $("uxOffline"); if (!b) { b = document.createElement("div"); b.id = "uxOffline"; b.textContent = "⚠️ इंटरनेट बंद है — कुछ काम नहीं करेंगे"; document.body.appendChild(b); } b.style.display = navigator.onLine ? "none" : "block"; };
+  window.addEventListener("offline", off); window.addEventListener("online", () => { off(); window.uxToast_("✔ इंटरनेट वापस आ गया"); }); off();
+  /* --- popup ko neeche kheench kar band karna (mobile) --- */
+  let sy = null;
+  document.addEventListener("touchstart", e => { const h = e.target.closest && e.target.closest("#appModal > div > div:first-child"); sy = h && innerWidth <= 640 ? e.touches[0].clientY : null; }, { passive: true });
+  document.addEventListener("touchend", e => { if (sy === null) return; const dy = e.changedTouches[0].clientY - sy; sy = null; if (dy > 80) { const b = document.querySelector("#appModal > div > div:first-child button"); if (b) b.click(); } }, { passive: true });
+  /* --- keyboard shortcuts (desktop): / khoj · N naya · Esc popup band --- */
+  document.addEventListener("keydown", e => {
+    const t = e.target, typing = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
+    if (e.key === "Escape") { const b = document.querySelector("#appModal > div > div:first-child button"); if (b) { b.click(); return; } const c = ["popupCloseBtn", "cancelEditBtn"].map($).find(x => x && x.offsetParent); if (c) c.click(); return; }
+    if (typing || e.ctrlKey || e.metaKey || e.altKey || document.getElementById("appModal")) return;
+    if (e.key === "/") { const si = $("searchInput"); if (si && si.offsetParent) { e.preventDefault(); si.focus(); si.select(); } }
+    else if (e.key === "n" || e.key === "N") { const a = $("addNewBtn"); if (a && a.offsetParent) { e.preventDefault(); a.click(); } }
+  });
+  /* --- tools bar: card view (mobile) | columns, density, sidebar (desktop) --- */
+  const cont = () => $("contentArea"), tabName = () => { try { return typeof currentTab === "string" ? currentTab : "x"; } catch (e) { return "x"; } };
+  const colsKey = () => "smps_cols_" + tabName();
+  const hiddenCols = () => { try { return JSON.parse(L(colsKey()) || "[]"); } catch (e) { return []; } };
+  const labelCells = () => {
+    const c = cont(); if (!c) return; const hid = innerWidth > 600 ? hiddenCols() : [];
+    c.querySelectorAll("table").forEach(tb => {
+      const ths = [...tb.querySelectorAll("thead th")], hs = ths.map(h => h.textContent.replace(/[▲▼↑↓]/g, "").trim());
+      ths.forEach((th, i) => { th.style.display = (hs[i] && hid.indexOf(hs[i]) >= 0) ? "none" : ""; });
+      tb.querySelectorAll("tbody tr").forEach(tr => { [...tr.children].forEach((td, i) => { td.style.display = (hs[i] && hid.indexOf(hs[i]) >= 0) ? "none" : ""; }); });
+    });
+  };
+  let mo = null, raf = 0;
+  const watch = () => { const c = cont(); if (!c || mo) return; mo = new MutationObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(labelCells); }); mo.observe(c, { childList: true, subtree: true }); labelCells(); };
+  const apply = () => {
+    const c = cont(); if (c) { c.classList.toggle("uxDense", L("smps_ux_dense") === "1"); }
+    document.body.classList.toggle("uxSide", L("smps_ux_side") !== "0");
+    const b = $("uxBar"); if (b) { [["uxDenseBtn", L("smps_ux_dense") === "1"], ["uxSideBtn", document.body.classList.contains("uxSide")]].forEach(x => { const e = $(x[0]); if (e) e.classList.toggle("on", !!x[1]); }); }
+  };
+  const colsMenu = btn => {
+    let m = $("uxCols"); if (m) { m.remove(); return; }
+    const tb = cont() && cont().querySelector("table"); if (!tb) return;
+    const hs = [...new Set([...tb.querySelectorAll("thead th")].map(h => h.textContent.replace(/[▲▼↑↓]/g, "").trim()).filter(Boolean))], hid = hiddenCols();
+    m = document.createElement("div"); m.id = "uxCols";
+    m.innerHTML = '<div style="font-weight:700;margin-bottom:4px">कौन से कॉलम दिखाएँ</div>' + hs.map((h, i) => '<label><input type="checkbox" data-i="' + i + '"' + (hid.indexOf(h) < 0 ? " checked" : "") + "> <span></span></label>").join("") + '<div style="margin-top:6px"><button type="button" id="uxColsAll" style="width:auto">सब दिखाएँ</button></div>';
+    m.querySelectorAll("label span").forEach((sp, i) => { sp.textContent = hs[i]; });
+    m.querySelectorAll("input").forEach(ch => ch.onchange = () => { const off = hs.filter((h, i) => !m.querySelector('input[data-i="' + i + '"]').checked); L(colsKey(), JSON.stringify(off)); labelCells(); });
+    m.querySelector("#uxColsAll").onclick = () => { L(colsKey(), "[]"); m.remove(); labelCells(); };
+    const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left + scrollX, innerWidth - 230)) + "px"; m.style.top = (r.bottom + scrollY + 6) + "px"; document.body.appendChild(m);
+    setTimeout(() => document.addEventListener("click", function h(ev) { if (!m.contains(ev.target) && ev.target !== btn) { m.remove(); document.removeEventListener("click", h); } }), 0);
+  };
+  const build = () => {
+    const w = $("searchWrapper"); if (!w || $("uxBar")) return !!$("uxBar");
+    const bar = document.createElement("span"); bar.id = "uxBar";
+    const mk = (id, txt, cls, fn, title) => { const b = document.createElement("button"); b.type = "button"; b.id = id; b.className = cls; b.textContent = txt; b.title = title || ""; b.onclick = fn; bar.appendChild(b); };
+    mk("uxColsBtn", "⚙️ कॉलम", "d-only", e => colsMenu(e.currentTarget), "कौन से कॉलम दिखें");
+    mk("uxDenseBtn", "↕ घना", "d-only", () => { L("smps_ux_dense", L("smps_ux_dense") === "1" ? "0" : "1"); apply(); }, "छोटी पंक्तियाँ");
+    mk("uxSideBtn", "▦ साइडबार", "d-only", () => { L("smps_ux_side", L("smps_ux_side") === "0" ? "1" : "0"); apply(); }, "टैब बाईं तरफ");
+    w.appendChild(bar); apply(); return true;
+  };
+  const boot = () => { build(); watch(); apply(); };
+  new MutationObserver(() => { if ($("searchWrapper") && !$("uxBar")) boot(); }).observe(document.body, { childList: true, subtree: true });
+  boot(); setTimeout(boot, 1200);
+  window.__nativeAlert = window.__nativeAlert || null;
 })();
 </script>
 </body>
