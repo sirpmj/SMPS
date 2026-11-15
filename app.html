@@ -3752,8 +3752,10 @@ async function openApp(){
   // 🆕 Ab koi bhi tab default mein auto-open nahi hoti — jab tak user khud
   // kisi tab par click na kare, content area khaali/band rehta hai (sirf
   // dashboard cards aur tab bar dikhte hain)
-  el("contentArea").innerHTML =
-    "<div class='muted' style='text-align:center;padding:30px'>ऊपर से कोई भी टैब चुनें 👆</div>";
+  {
+    const _esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div><div class='muted' style='font-size:15px'>ऊपर से कोई भी टैब चुनें 👆</div></div>";
+  }
   currentTab = "";
 }
 
@@ -3968,12 +3970,7 @@ async function renderMainDashboard(forceFresh){
       };
       const cb = sumC(boli), cd = sumC(donation);
       window.__commitSummary_ = { cb, cd };
-      el("mainDashboard").innerHTML += `
-      <div class="dash-card dash-orange" style="cursor:pointer" title="विवरण देखने के लिए क्लिक करें" onclick="openCommitSummary_()">
-        <h4>📅 आज के वादे ▾</h4>
-        <p>${cb.todayN + cd.todayN} / ${cb.overdue + cd.overdue}</p>
-        <small>आज / निकले</small>
-      </div>`;
+      // (📅 आज के वादे वाला कार्ड हटा दिया गया है)
     }
 
     // -------- Total Expense --------
@@ -7896,7 +7893,7 @@ function renderPagination(total){
   const list = [...set].filter(p => p >= 1 && p <= total).sort((a, b) => a - b);
   let html = `<button class="page-btn pg-nav" ${cp <= 1 ? "disabled" : ""} onclick="gotoPage(${cp - 1})" aria-label="पिछला पेज">‹</button>`, prev = 0;
   list.forEach(p => { if (p - prev > 1) html += `<span class="pg-gap">…</span>`; html += `<button class="page-btn ${p === cp ? "active" : ""}" onclick="gotoPage(${p})">${p}</button>`; prev = p; });
-  html += `<button class="page-btn pg-nav" ${cp >= total ? "disabled" : ""} onclick="gotoPage(${cp + 1})" aria-label="अगला पेज">›</button><span class="pg-info">पृष्ठ ${cp} / ${total}</span>`;
+  html += `<button class="page-btn pg-nav" ${cp >= total ? "disabled" : ""} onclick="gotoPage(${cp + 1})" aria-label="अगला पेज">›</button>`;
   box.innerHTML = html;
 }
 function gotoPage(p){ if (p < 1) return; currentPage=p; renderTable(); try { const c = document.getElementById("contentArea"); if (c) c.scrollTop = 0; } catch (e) {} }
@@ -11194,7 +11191,15 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   #searchWrapper > #addNewBtn::after { content:"नया"; margin-left:5px; font-size:12.5px; font-weight:600; }
   #uxBar { height:36px !important; align-items:center; } #uxBar button { width:36px; height:36px; }
 }
-/* पेज नंबर: बीच में, ‹ 1 … 4 5 6 … 12 › और नीचे "पृष्ठ X / N" */
+@media (min-width:601px) {
+  /* 📱 app जैसा: पेज नंबर हमेशा स्क्रीन के सबसे नीचे (कम data वाले टैब में बीच में नहीं तैरता) */
+  #pagination:not(:empty) { position:fixed; left:0; right:0; bottom:0; z-index:900; margin:0; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.94); border-top:1px solid rgba(100,116,139,.3); box-shadow:0 -4px 14px rgba(0,0,0,.08); }
+  body:has(#pagination:not(:empty)) { padding-bottom:62px; }
+  [data-theme="dark"] #pagination:not(:empty) { background:rgba(15,23,42,.95); }
+  /* 📅 आज के वादे: कार्ड अपनी सामग्री जितना (auto-fit), बाक़ी कार्ड बची जगह भरें */
+  #mainDashboard .dash-commit, #mainDashboard .dash-orange[onclick*="openCommitSummary_"] { flex:0 0 auto !important; min-width:130px; padding:10px 18px !important; white-space:nowrap; }
+}
+/* पेज नंबर: बीच में, ‹ 1 … 4 5 6 … 12 › */
 .pagination { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; margin:12px 0 4px; }
 .pagination .page-btn { min-width:38px; height:38px; padding:0 10px; border-radius:10px; font-size:14px; }
 .pagination .page-btn[disabled] { opacity:.4; cursor:default; }
