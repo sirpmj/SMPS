@@ -11193,12 +11193,6 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   #searchWrapper > #dirBtn::after { content:"डायरेक्टरी"; margin-left:5px; font-size:12.5px; font-weight:600; }
   #searchWrapper > #addNewBtn::after { content:"नया"; margin-left:5px; font-size:12.5px; font-weight:600; }
   #uxBar { height:36px !important; align-items:center; } #uxBar button { width:36px; height:36px; }
-  /* टेबल: चौड़ाई पूरी, header चिपका हुआ, पंक्तियाँ धारीदार; पेज नंबर नीचे हमेशा दिखें */
-  #contentArea { max-height:calc(100vh - 330px); min-height:240px; overflow:auto; border:1px solid rgba(100,116,139,.35); border-radius:12px; }
-  #contentArea table { width:100%; border-collapse:separate; border-spacing:0; }
-  #contentArea thead th { position:sticky; top:0; z-index:3; white-space:nowrap; }
-  #contentArea tbody tr:nth-child(even) td { background:rgba(100,116,139,.07); }
-  #contentArea tbody tr:hover td { background:rgba(11,99,214,.09); }
 }
 /* पेज नंबर: बीच में, ‹ 1 … 4 5 6 … 12 › और नीचे "पृष्ठ X / N" */
 .pagination { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px; margin:12px 0 4px; }
@@ -11299,6 +11293,28 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   const boot = () => { build(); watch(); apply(); };
   new MutationObserver(() => { if ($("searchWrapper") && !$("uxBar")) boot(); }).observe(document.body, { childList: true, subtree: true });
   boot(); setTimeout(boot, 1200);
+  /* --- 📏 Auto rows: desktop par screen ki ऊँचाई के हिसाब से उतनी पंक्तियाँ जितनी जगह हो (नीचे जगह खाली न रहे) --- */
+  let auto = false, rt = 0;
+  const fitRows = () => {
+    if (!auto || innerWidth <= 600) return;
+    try {
+      const c = cont(); if (!c) return; const top = c.getBoundingClientRect().top + scrollY, row = c.querySelector("tbody tr"), rh = row ? Math.max(30, row.getBoundingClientRect().height) : 39;
+      const avail = innerHeight - top - 150, n = Math.max(10, Math.min(100, Math.floor(avail / rh / 5) * 5));
+      if (n !== rowsPerPage) { rowsPerPage = n; }
+    } catch (e) {}
+  };
+  const ps = $("pageSize");
+  if (ps && !ps.querySelector('option[value="auto"]')) {
+    const o = document.createElement("option"); o.value = "auto"; o.textContent = "Auto"; ps.insertBefore(o, ps.firstChild);
+    const st = L("smps_ps"); if (innerWidth > 600 && st === "auto") { ps.value = "auto"; auto = true; }
+    else if (st && ["10", "20", "50", "all"].indexOf(st) >= 0) { ps.value = st; rowsPerPage = st === "all" ? 999999 : parseInt(st, 10); }
+  }
+  document.addEventListener("change", e => {
+    if (!e.target || e.target.id !== "pageSize") return; L("smps_ps", e.target.value);
+    if (e.target.value === "auto") { e.stopImmediatePropagation(); window.__rppBase = null; auto = true; currentPage = 1; fitRows(); try { renderTable(); } catch (x) {} } else auto = false;
+  }, true);
+  if (typeof window.renderTable === "function" && !window.renderTable.__ux) { const _rt = window.renderTable; window.renderTable = function () { fitRows(); return _rt.apply(this, arguments); }; window.renderTable.__ux = 1; }
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (auto) { const old = rowsPerPage; fitRows(); if (rowsPerPage !== old) { try { renderTable(); } catch (x) {} } } }, 350); });
   window.__nativeAlert = window.__nativeAlert || null;
 })();
 </script>
