@@ -3754,7 +3754,8 @@ async function openApp(){
   // dashboard cards aur tab bar dikhte hain)
   {
     const _esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div><div class='muted' style='font-size:15px'>ऊपर से कोई भी टैब चुनें 👆</div></div>";
+    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div><div class='muted' style='font-size:15px'>ऊपर से कोई भी टैब चुनें 👆</div></div><div id='homePanel'></div>";
+    try { renderHomePanel_(); } catch (e) { console.error("home panel:", e); }
   }
   currentTab = "";
 }
@@ -4292,6 +4293,51 @@ function layoutLogin3_() {
   window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(run, 120); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run); else run();
 })();
+/* 🏠 login ke baad ka होम panel: जन्मदिन/वर्षगांठ · अगली मीटिंग · घोषणाएँ · शोक/शुभ सूचना (सब sheets से अपने-आप) */
+async function renderHomePanel_() {
+  const box = document.getElementById("homePanel"); if (!box) return;
+  const hx = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const clip = (t, n) => { t = String(t || "").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+  const WD = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"], d2 = d => String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
+  const when = o => o === 0 ? "आज" : o === 1 ? "कल" : o + " दिन बाद", cards = [], base = new Date(); base.setHours(0, 0, 0, 0);
+  /* 🎂 जन्मदिन + 💍 वर्षगांठ (अगले 7 दिन) */
+  try {
+    const items = [];
+    Object.values(MEMBERS || {}).forEach(m => {
+      const nm = String(m.Member || m.Name || "").replace(/\s*\(.*$/, "").trim(); if (!nm) return;
+      [[m.Birthday, "🎂"], [m.Anniversary || m["Marriage Anniversary"] || m["Wedding Anniversary"], "💍"]].forEach(([v, ic]) => { const o = bdOffset_(v); if (o >= 0 && o < 999) items.push({ o, ic, nm }); });
+    });
+    items.sort((a, b) => a.o - b.o || a.nm.localeCompare(b.nm, "hi"));
+    const soon = items.filter(x => x.o <= 7), show = soon.length ? soon.slice(0, 8) : items.slice(0, 1);
+    if (show.length) {
+      const row = x => { const d = new Date(base); d.setDate(d.getDate() + x.o); return '<div class="hp-row"><span>' + x.ic + '</span><b>' + hx(x.nm) + '</b><span class="hp-pill' + (x.o === 0 ? " hot" : "") + '">' + when(x.o) + " · " + d2(d) + "</span></div>"; };
+      cards.push('<div class="hp-card"><h3>🎂 जन्मदिन · 💍 वर्षगांठ' + (soon.length ? " (अगले 7 दिन)" : " — अगला") + "</h3>" + show.map(row).join("") + (soon.length > 8 ? '<div class="hp-more">+ ' + (soon.length - 8) + " और</div>" : "") + (typeof window.openWishes_ === "function" ? '<button type="button" class="hp-btn" id="hpWish">🎉 बधाई संदेश भेजें</button>' : "") + "</div>");
+    }
+  } catch (e) {}
+  /* 📅 अगली मीटिंग */
+  try {
+    const rows = (await fetchSheetFast_("Meetings")) || [];
+    const up = rows.filter(r => !("ShowOnHome" in r) || String(r.ShowOnHome).trim().toUpperCase() === "TRUE").map(r => ({ r, d: parseRowDate_(r["Date"]) })).filter(x => x.d && x.d >= base).sort((a, b) => a.d - b.d)[0];
+    if (up) {
+      const o = Math.round((up.d - base) / 86400000), r = up.r, line = [r.Time, r.Place].map(x => String(x || "").trim()).filter(Boolean).join(" · ");
+      cards.push('<div class="hp-card"><h3>📅 अगली मीटिंग</h3><div style="font-size:15px"><b>' + hx(String(r.Subject || r.Title || "मीटिंग")) + '</b></div><div style="margin:4px 0">' + WD[up.d.getDay()] + ", " + d2(up.d) + "/" + up.d.getFullYear() + ' <span class="hp-pill' + (o <= 1 ? " hot" : "") + '">' + when(o) + "</span></div>" + (line ? '<div class="muted" style="font-size:13.5px">' + hx(line) + "</div>" : "") + "</div>");
+    } else cards.push('<div class="hp-card"><h3>📅 अगली मीटिंग</h3><div class="muted">अभी कोई अगली मीटिंग तय नहीं है।</div></div>');
+  } catch (e) {}
+  /* 📢 घोषणाएँ */
+  try {
+    const rows = ((await fetchSheetFast_("Announcements")) || []).filter(r => String(r.ShowOnHome).toUpperCase() === "TRUE" && String(r.Title || r.Message || "").trim()).slice(-3).reverse();
+    if (rows.length) cards.push('<div class="hp-card"><h3>📢 घोषणाएँ</h3>' + rows.map(r => '<div class="hp-row" style="display:block"><b>' + hx(r.Title || "") + "</b>" + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>").join("") + "</div>");
+  } catch (e) {}
+  /* 🕊️ शोक / शुभ सूचना */
+  try {
+    const rows = ((await fetchSheetFast_("Notices")) || []).filter(r => { const sh = String(r.ShowOnHome != null ? r.ShowOnHome : (r.Show != null ? r.Show : "TRUE")).trim().toUpperCase(); if (sh === "FALSE" || sh === "NO") return false; const d = parseRowDate_(r.Date); if (d && (base - d) / 86400000 > 30) return false; return String(r.Title || r.Message || "").trim(); }).slice(-3).reverse();
+    if (rows.length) cards.push('<div class="hp-card"><h3>🕊️ शोक / शुभ सूचना</h3>' + rows.map(r => { const ty = String(r.Type || "").trim(), shok = /शोक|श्रद्धांजलि|निधन|death|condol/i.test(ty); return '<div class="hp-row" style="display:block"><span>' + (shok ? "🕊️" : "🎉") + "</span> <b>" + hx(ty || (shok ? "शोक समाचार" : "शुभ सूचना")) + "</b>" + (r.Title ? " — " + hx(r.Title) : "") + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>"; }).join("") + "</div>");
+  } catch (e) {}
+  if (!document.getElementById("homePanel")) return;
+  box.innerHTML = cards.length ? '<div class="hp-grid">' + cards.join("") + "</div>" : "";
+  const wb = document.getElementById("hpWish"); if (wb) wb.onclick = () => { try { window.openWishes_(); } catch (e) {} };
+}
+
 async function renderLoginExtras_() {
   try {
     const rows = (await fetchSheet("Meetings")) || [];
@@ -11241,6 +11287,16 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   .hdr-tools, .toolbar-btns, .toolbar-user, #tabs, #searchWrapper, #pagination, #uxBar, #uxToast, #uxOffline, #dateFilterBar, #mainDashboard, footer, #swUpd { display:none !important; }
   #contentArea { overflow:visible !important; } #contentArea table { font-size:11px; } body { background:#fff !important; }
 }
+.hp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:8px; text-align:left; }
+.hp-card { background:rgba(255,255,255,.7); border:1px solid rgba(100,116,139,.25); border-radius:14px; padding:12px 14px; }
+[data-theme="dark"] .hp-card { background:rgba(30,41,59,.7); }
+.hp-card h3 { margin:0 0 8px; font-size:15px; }
+.hp-row { display:flex; gap:8px; align-items:baseline; padding:5px 0; border-bottom:1px dashed rgba(100,116,139,.25); font-size:14px; }
+.hp-row:last-child { border-bottom:0; }
+.hp-pill { margin-left:auto; font-size:12px; padding:1px 9px; border-radius:10px; background:#e0f2fe; color:#075985; white-space:nowrap; }
+.hp-pill.hot { background:#fee2e2; color:#991b1b; }
+.hp-more { font-size:12.5px; color:#64748b; margin-top:4px; }
+.hp-btn { margin-top:8px; border:0; background:#0b63d6; color:#fff; border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; width:auto; }
 </style>
 <script id="uxPackJs">
 (function () {
