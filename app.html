@@ -2478,7 +2478,7 @@ function forceRelogin_(msg) {
    Koi bhi badlav (add/edit/approve/save...) hote hi yeh yaadasht saaf ho jati hai. */
 const RC_TTL_ = { myAccount: 900000, myProfile: 900000, talentList: 900000, pendingMembers: 90000, rsvpList: 90000 };
 const RC_KEEP_ = /^(login|attList|checkinSet|getMessageLog|getFormulaColumns|getFormulaColumnsBulk|readSheets|visit|photoThumb)$/;
-const _RC = {};
+const _RC = {}, _INF = {};
 function _rcKey(p) { const o = Object.assign({}, p); delete o.token; return JSON.stringify(o); }
 /* 🎪 सम्मेलन खुलते ही उसके अंदर के popup (उपस्थिति सूची / स्कैनर / स्टैंडी) का डेटा पहले से मँगा लेते हैं; popup खुलते ही वही जवाब मिल जाता है (30 सेकंड, एक बार) */
 const _PF = {};
@@ -2498,7 +2498,8 @@ async function callCrudBackend_(payload) {
       if (age > 20000 && !c.busy) { c.busy = true; callCrudBackendRaw_(payload).then(v => { if (v && v.success !== false) _RC[k] = { v: v, t: Date.now() }; else c.busy = false; }).catch(() => { c.busy = false; }); }
       return c.v;
     }
-    const v = await callCrudBackendRaw_(payload);
+    const pr = _INF[k] || (_INF[k] = callCrudBackendRaw_(payload).finally(() => { delete _INF[k]; }));
+    const v = await pr;
     if (v && v.success !== false) _RC[k] = { v: v, t: Date.now() };
     return v;
   }
@@ -2981,7 +2982,7 @@ async function prefetchBackendReads_() {
     const can = n => { const a = ((ROLE_ACCESS || {})[currentUser && currentUser.role] || {})[n]; return !!(a && a.canAction && a.canAction.includes("EDIT")); };
     const calls = [{ action: "myAccount" }, { action: "myProfile" }];
     if (can("Members")) calls.push({ action: "pendingMembers" }, { action: "rsvpList" });
-    for (const c of calls) { try { await callCrudBackend_(c); } catch (e) {} }
+    await Promise.all(calls.map(c => callCrudBackend_(c).catch(() => null)));
   } catch (e) {}
 }
 async function preloadFormulaColumnsForAllTabs_() {
@@ -3755,7 +3756,7 @@ async function openApp(){
   {
     const _esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div><div class='muted' style='font-size:15px'>ऊपर से कोई भी टैब चुनें 👆</div></div><div id='homePanel'></div>";
-    try { renderHomePanel_(); } catch (e) { console.error("home panel:", e); }
+    try { prefetchBackendReads_(); renderHomePanel_(); } catch (e) { console.error("home panel:", e); }
   }
   currentTab = "";
 }
@@ -4293,14 +4294,66 @@ function layoutLogin3_() {
   window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(run, 120); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run); else run();
 })();
-/* 🏠 login ke baad ka होम panel: जन्मदिन/वर्षगांठ · अगली मीटिंग · घोषणाएँ · शोक/शुभ सूचना (सब sheets से अपने-आप) */
+/* 🏠 login ke baad ka होम panel — हर कार्ड पहले से दिखने वाला डिब्बा है और अपने-आप, अलग-अलग भरता है (एक-दूसरे का इंतज़ार नहीं) */
 async function renderHomePanel_() {
   const box = document.getElementById("homePanel"); if (!box) return;
   const hx = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const clip = (t, n) => { t = String(t || "").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
   const WD = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"], d2 = d => String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0");
-  const when = o => o === 0 ? "आज" : o === 1 ? "कल" : o + " दिन बाद", cards = [], base = new Date(); base.setHours(0, 0, 0, 0);
-  /* 🎂 जन्मदिन + 💍 वर्षगांठ (अगले 7 दिन) */
+  const when = o => o === 0 ? "आज" : o === 1 ? "कल" : o + " दिन बाद", base = new Date(); base.setHours(0, 0, 0, 0);
+  const kOf = (rows, re) => Object.keys((rows && rows[0]) || {}).find(k => re.test(k)) || "";
+  const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
+  const acc = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {}, can = (n, act) => { const a = acc[n]; return !!(a && (act ? (a.canAction && a.canAction.includes(act)) : a.canView)); };
+  const openTab = name => { const t = [...document.querySelectorAll("#tabs button, #tabs .tab")].find(b => String(b.textContent).toLowerCase().indexOf(name.toLowerCase()) >= 0); if (t) t.click(); };
+  const grid = document.createElement("div"); grid.className = "hp-grid"; box.innerHTML = ""; box.appendChild(grid);
+  const slot = title => { const c = document.createElement("div"); c.className = "hp-card"; c.innerHTML = "<h3>" + title + '</h3><div class="hp-skel">⏳ लोड हो रहा है…</div>'; grid.appendChild(c); return { set: h => { c.innerHTML = h; return c; }, drop: () => c.remove() }; };
+  const run = (fn, s) => Promise.resolve().then(fn).catch(e => { try { s.drop(); } catch (x) {} });
+  const adminOn = can("Boli") || can("Donation") || can("Members", "EDIT");
+  const sAcct = slot("💳 मेरा सार"), sProf = slot("✅ मेरी जानकारी"), sAdm = adminOn ? slot("📋 आज का काम") : null,
+    sBd = slot("🎂 जन्मदिन · 💍 वर्षगांठ"), sMeet = slot("📅 अगली मीटिंग"), sAnn = slot("📢 घोषणाएँ"), sNot = slot("🕊️ शोक / शुभ सूचना");
+  /* 💳 मेरा सार (बोली + दान की बाक़ी रक़म, UPI) */
+  run(async () => {
+    const r = await callCrudBackend_({ action: "myAccount" });
+    if (!r || !r.success || !((r.boli || []).length + (r.donation || []).length)) return sAcct.drop();
+    const get = (row, re) => { const k = Object.keys(row).find(x => re.test(x)); return k ? row[k] : ""; };
+    const calc = row => { const p = num(get(row, /^pledged/i)), a = num(get(row, /^paid/i)); const pr = get(row, /^pending/i); let b = String(pr).trim() !== "" ? num(pr) : p - a; return { p, a, b: b < 0 ? 0 : b }; };
+    const sum = rows => rows.reduce((t, x) => { const c = calc(x); return { p: t.p + c.p, a: t.a + c.a, b: t.b + c.b }; }, { p: 0, a: 0, b: 0 });
+    const B = sum(r.boli || []), D = sum(r.donation || []), pend = B.b + D.b;
+    const c = sAcct.set("<h3>💳 मेरा सार</h3>" + (pend > 0 ? '<div style="font-size:22px;font-weight:700;color:#b91c1c;margin-bottom:4px">बाकी ' + inr(pend) + "</div>" : '<div style="font-size:17px;font-weight:700;color:#15803d;margin-bottom:4px">✅ आपका सब जमा है — धन्यवाद 🙏</div>') +
+      '<div class="hp-row"><span>🔔</span><span>बोली (जमा / कुल)</span><span class="hp-pill">' + inr(B.a) + " / " + inr(B.p) + '</span></div><div class="hp-row"><span>🤝</span><span>दान / सहयोग</span><span class="hp-pill">' + inr(D.a) + " / " + inr(D.p) + '</span></div><div class="hp-btns">' + (pend > 0 && typeof openUpiQr_ === "function" ? '<button type="button" class="hp-btn" data-a="upi">📷 UPI से भरें</button>' : "") + '<button type="button" class="hp-btn alt" data-a="acct">💳 पूरा हिसाब</button></div>');
+    c.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { if (b.dataset.a === "upi") openUpiQr_(); else { const x = document.getElementById("myAcctBtn"); if (x) x.click(); } });
+  }, sAcct);
+  /* ✅ मेरी जानकारी कितनी पूरी */
+  run(async () => {
+    let r = window.__profCache && Date.now() - window.__profCache.t < 120000 ? window.__profCache.r : null;
+    if (!r) { r = await callCrudBackend_({ action: "myProfile" }); if (r && r.success) window.__profCache = { t: Date.now(), r }; }
+    const L = { gotra: "गोत्र", origin: "गाँव / मूल स्थान", city: "वर्तमान शहर", district: "जिला", address: "पता", occupation: "व्यवसाय / फर्म", birthday: "जन्मदिन", anniversary: "विवाह वर्षगांठ", blood: "रक्त समूह" };
+    const keys = r && r.success ? (r.has || []).filter(k => L[k]) : []; if (!keys.length) return sProf.drop();
+    const miss = keys.filter(k => !String((r.fields || {})[k] || "").trim()), pct = Math.round((keys.length - miss.length) / keys.length * 100);
+    const c = sProf.set("<h3>✅ मेरी जानकारी</h3>" + (miss.length ? '<div style="font-size:15px"><b>' + pct + '% पूरी</b></div><div class="hp-bar"><i style="width:' + pct + '%"></i></div><div class="muted" style="font-size:13.5px">भरना बाकी: ' + miss.slice(0, 5).map(k => hx(L[k])).join(", ") + (miss.length > 5 ? " …" : "") + '</div><div class="hp-btns"><button type="button" class="hp-btn" data-a="prof">✏️ अभी भरें</button></div>' : '<div style="font-size:16px;font-weight:700;color:#15803d">✅ आपकी जानकारी पूरी है</div><div class="muted" style="font-size:13.5px">धन्यवाद! समय-समय पर जाँच लेते रहें।</div>'));
+    const pb = c.querySelector("[data-a=prof]"); if (pb) pb.onclick = () => { if (window.openMyProfile_) window.openMyProfile_(); };
+  }, sProf);
+  /* 📋 आज का काम (admin / समिति) */
+  if (sAdm) run(async () => {
+    const parts = [];
+    if (can("Members", "EDIT")) { try { const r = await callCrudBackend_({ action: "pendingMembers" }); const n = r && r.success ? (r.rows || []).length : 0; if (n) parts.push('<div class="hp-row"><span>🆕</span><b>' + n + ' नए आवेदन</b><span class="hp-pill hot">मंज़ूरी बाकी</span></div><div class="hp-btns"><button type="button" class="hp-btn" data-a="pend">🆕 मंज़ूरी खोलें</button></div>'); } catch (e) {} }
+    if (can("Boli") || can("Donation")) {
+      try {
+        const owe = {}; let total = 0;
+        for (const [sh, pk, ak] of [["Boli", /^pledged/i, /^paid/i], ["Donation", /^pledged/i, /^paid/i]]) {
+          if (!can(sh)) continue; const rows = (await fetchSheetFast_(sh)) || []; if (!rows.length) continue;
+          const kN = kOf(rows, /^(member|name|नाम|member name)$/i) || kOf(rows, /member|name|नाम/i), kp = kOf(rows, pk), ka = kOf(rows, ak); if (!kN || !kp) continue;
+          rows.forEach(r => { const b = num(r[kp]) - (ka ? num(r[ka]) : 0); if (b > 0) { const nm = String(r[kN] || "").replace(/\s*\(.*$/, "").trim(); if (nm) { owe[nm] = (owe[nm] || 0) + b; total += b; } } });
+        }
+        const top = Object.entries(owe).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        if (top.length) parts.push('<div style="margin-top:6px;font-weight:700">💰 बाकी रक़म: ' + inr(total) + ' <span class="muted" style="font-weight:400;font-size:12.5px">(' + Object.keys(owe).length + " सदस्य)</span></div>" + top.map(x => '<div class="hp-row"><span>•</span><b>' + hx(x[0]) + '</b><span class="hp-pill hot">' + inr(x[1]) + "</span></div>").join("") + '<div class="hp-btns">' + (can("Boli") ? '<button type="button" class="hp-btn alt" data-a="boli">📨 बोली टैब खोलें</button>' : "") + "</div>");
+      } catch (e) {}
+    }
+    if (!parts.length) return sAdm.drop();
+    const c = sAdm.set("<h3>📋 आज का काम</h3>" + parts.join(""));
+    c.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { if (b.dataset.a === "pend") { const x = document.getElementById("pendMemBtn"); if (x) x.click(); } else if (b.dataset.a === "boli") openTab("Boli"); });
+  }, sAdm);
+  /* 🎂 जन्मदिन · 💍 वर्षगांठ — तुरंत (MEMBERS पहले से लोड है) */
   try {
     const items = [];
     Object.values(MEMBERS || {}).forEach(m => {
@@ -4309,33 +4362,32 @@ async function renderHomePanel_() {
     });
     items.sort((a, b) => a.o - b.o || a.nm.localeCompare(b.nm, "hi"));
     const soon = items.filter(x => x.o <= 7), show = soon.length ? soon.slice(0, 8) : items.slice(0, 1);
-    if (show.length) {
-      const row = x => { const d = new Date(base); d.setDate(d.getDate() + x.o); return '<div class="hp-row"><span>' + x.ic + '</span><b>' + hx(x.nm) + '</b><span class="hp-pill' + (x.o === 0 ? " hot" : "") + '">' + when(x.o) + " · " + d2(d) + "</span></div>"; };
-      cards.push('<div class="hp-card"><h3>🎂 जन्मदिन · 💍 वर्षगांठ' + (soon.length ? " (अगले 7 दिन)" : " — अगला") + "</h3>" + show.map(row).join("") + (soon.length > 8 ? '<div class="hp-more">+ ' + (soon.length - 8) + " और</div>" : "") + (typeof window.openWishes_ === "function" ? '<button type="button" class="hp-btn" id="hpWish">🎉 बधाई संदेश भेजें</button>' : "") + "</div>");
+    if (!show.length) sBd.drop(); else {
+      const row = x => { const d = new Date(base); d.setDate(d.getDate() + x.o); return '<div class="hp-row"><span>' + x.ic + "</span><b>" + hx(x.nm) + '</b><span class="hp-pill' + (x.o === 0 ? " hot" : "") + '">' + when(x.o) + " · " + d2(d) + "</span></div>"; };
+      const c = sBd.set("<h3>🎂 जन्मदिन · 💍 वर्षगांठ" + (soon.length ? " (अगले 7 दिन)" : " — अगला") + "</h3>" + show.map(row).join("") + (soon.length > 8 ? '<div class="hp-more">+ ' + (soon.length - 8) + " और</div>" : "") + (typeof window.openWishes_ === "function" ? '<div class="hp-btns"><button type="button" class="hp-btn" data-a="wish">🎉 बधाई संदेश भेजें</button></div>' : ""));
+      const wb = c.querySelector("[data-a=wish]"); if (wb) wb.onclick = () => { try { window.openWishes_(); } catch (e) {} };
     }
-  } catch (e) {}
+  } catch (e) { sBd.drop(); }
   /* 📅 अगली मीटिंग */
-  try {
+  run(async () => {
     const rows = (await fetchSheetFast_("Meetings")) || [];
     const up = rows.filter(r => !("ShowOnHome" in r) || String(r.ShowOnHome).trim().toUpperCase() === "TRUE").map(r => ({ r, d: parseRowDate_(r["Date"]) })).filter(x => x.d && x.d >= base).sort((a, b) => a.d - b.d)[0];
-    if (up) {
-      const o = Math.round((up.d - base) / 86400000), r = up.r, line = [r.Time, r.Place].map(x => String(x || "").trim()).filter(Boolean).join(" · ");
-      cards.push('<div class="hp-card"><h3>📅 अगली मीटिंग</h3><div style="font-size:15px"><b>' + hx(String(r.Subject || r.Title || "मीटिंग")) + '</b></div><div style="margin:4px 0">' + WD[up.d.getDay()] + ", " + d2(up.d) + "/" + up.d.getFullYear() + ' <span class="hp-pill' + (o <= 1 ? " hot" : "") + '">' + when(o) + "</span></div>" + (line ? '<div class="muted" style="font-size:13.5px">' + hx(line) + "</div>" : "") + "</div>");
-    } else cards.push('<div class="hp-card"><h3>📅 अगली मीटिंग</h3><div class="muted">अभी कोई अगली मीटिंग तय नहीं है।</div></div>');
-  } catch (e) {}
+    if (!up) return sMeet.set('<h3>📅 अगली मीटिंग</h3><div class="muted">अभी कोई अगली मीटिंग तय नहीं है।</div>');
+    const o = Math.round((up.d - base) / 86400000), r = up.r, line = [r.Time, r.Place].map(x => String(x || "").trim()).filter(Boolean).join(" · ");
+    sMeet.set('<h3>📅 अगली मीटिंग</h3><div style="font-size:15px"><b>' + hx(String(r.Subject || r.Title || "मीटिंग")) + '</b></div><div style="margin:4px 0">' + WD[up.d.getDay()] + ", " + d2(up.d) + "/" + up.d.getFullYear() + ' <span class="hp-pill' + (o <= 1 ? " hot" : "") + '">' + when(o) + "</span></div>" + (line ? '<div class="muted" style="font-size:13.5px">' + hx(line) + "</div>" : ""));
+  }, sMeet);
   /* 📢 घोषणाएँ */
-  try {
+  run(async () => {
     const rows = ((await fetchSheetFast_("Announcements")) || []).filter(r => String(r.ShowOnHome).toUpperCase() === "TRUE" && String(r.Title || r.Message || "").trim()).slice(-3).reverse();
-    if (rows.length) cards.push('<div class="hp-card"><h3>📢 घोषणाएँ</h3>' + rows.map(r => '<div class="hp-row" style="display:block"><b>' + hx(r.Title || "") + "</b>" + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>").join("") + "</div>");
-  } catch (e) {}
+    if (!rows.length) return sAnn.drop();
+    sAnn.set("<h3>📢 घोषणाएँ</h3>" + rows.map(r => '<div class="hp-row" style="display:block"><b>' + hx(r.Title || "") + "</b>" + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>").join(""));
+  }, sAnn);
   /* 🕊️ शोक / शुभ सूचना */
-  try {
+  run(async () => {
     const rows = ((await fetchSheetFast_("Notices")) || []).filter(r => { const sh = String(r.ShowOnHome != null ? r.ShowOnHome : (r.Show != null ? r.Show : "TRUE")).trim().toUpperCase(); if (sh === "FALSE" || sh === "NO") return false; const d = parseRowDate_(r.Date); if (d && (base - d) / 86400000 > 30) return false; return String(r.Title || r.Message || "").trim(); }).slice(-3).reverse();
-    if (rows.length) cards.push('<div class="hp-card"><h3>🕊️ शोक / शुभ सूचना</h3>' + rows.map(r => { const ty = String(r.Type || "").trim(), shok = /शोक|श्रद्धांजलि|निधन|death|condol/i.test(ty); return '<div class="hp-row" style="display:block"><span>' + (shok ? "🕊️" : "🎉") + "</span> <b>" + hx(ty || (shok ? "शोक समाचार" : "शुभ सूचना")) + "</b>" + (r.Title ? " — " + hx(r.Title) : "") + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>"; }).join("") + "</div>");
-  } catch (e) {}
-  if (!document.getElementById("homePanel")) return;
-  box.innerHTML = cards.length ? '<div class="hp-grid">' + cards.join("") + "</div>" : "";
-  const wb = document.getElementById("hpWish"); if (wb) wb.onclick = () => { try { window.openWishes_(); } catch (e) {} };
+    if (!rows.length) return sNot.drop();
+    sNot.set("<h3>🕊️ शोक / शुभ सूचना</h3>" + rows.map(r => { const ty = String(r.Type || "").trim(), shok = /शोक|श्रद्धांजलि|निधन|death|condol/i.test(ty); return '<div class="hp-row" style="display:block"><span>' + (shok ? "🕊️" : "🎉") + "</span> <b>" + hx(ty || (shok ? "शोक समाचार" : "शुभ सूचना")) + "</b>" + (r.Title ? " — " + hx(r.Title) : "") + (r.Message ? '<div class="muted" style="font-size:13.5px">' + hx(clip(r.Message, 160)) + "</div>" : "") + "</div>"; }).join(""));
+  }, sNot);
 }
 
 async function renderLoginExtras_() {
@@ -11296,7 +11348,12 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 .hp-pill { margin-left:auto; font-size:12px; padding:1px 9px; border-radius:10px; background:#e0f2fe; color:#075985; white-space:nowrap; }
 .hp-pill.hot { background:#fee2e2; color:#991b1b; }
 .hp-more { font-size:12.5px; color:#64748b; margin-top:4px; }
-.hp-btn { margin-top:8px; border:0; background:#0b63d6; color:#fff; border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; width:auto; }
+.hp-btn { border:0; background:#0b63d6; color:#fff; border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; width:auto; }
+.hp-btn.alt { background:#475569; }
+.hp-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.hp-skel { color:#64748b; font-size:13.5px; padding:6px 0; }
+.hp-bar { height:8px; background:rgba(100,116,139,.25); border-radius:6px; overflow:hidden; margin:6px 0; }
+.hp-bar > i { display:block; height:100%; background:#16a34a; }
 </style>
 <script id="uxPackJs">
 (function () {
