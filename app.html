@@ -3755,7 +3755,7 @@ async function openApp(){
   // dashboard cards aur tab bar dikhte hain)
   {
     const _esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div><div class='muted' style='font-size:15px'>ऊपर से कोई भी टैब चुनें 👆</div></div><div id='homePanel'></div>";
+    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div></div><div id='homePanel'></div>";
     try { prefetchBackendReads_(); renderHomePanel_(); } catch (e) { console.error("home panel:", e); }
   }
   currentTab = "";
@@ -4351,7 +4351,7 @@ async function renderHomePanel_() {
     }
     if (!parts.length) return sAdm.drop();
     const c = sAdm.set("<h3>📋 आज का काम</h3>" + parts.join(""));
-    c.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { if (b.dataset.a === "pend") { const x = document.getElementById("pendMemBtn"); if (x) x.click(); } else if (b.dataset.a === "boli") openTab("Boli"); });
+    c.querySelectorAll("[data-a]").forEach(b => b.onclick = () => { if (b.dataset.a === "pend") { if (typeof window.openMemberApprovals_ === "function") window.openMemberApprovals_(); else { const x = document.getElementById("pendMemBtn"); if (x) x.click(); } } else if (b.dataset.a === "boli") openTab("Boli"); });
   }, sAdm);
   /* 🎂 जन्मदिन · 💍 वर्षगांठ — तुरंत (MEMBERS पहले से लोड है) */
   try {
