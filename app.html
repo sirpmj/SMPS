@@ -2589,6 +2589,18 @@ function isStaffRole_(sheet) {
   const a = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {}, has = n => !!(a[n] && a[n].canAction && a[n].canAction.indexOf("EDIT") >= 0);
   return sheet ? has(sheet) : (has("Members") || has("Boli") || has("Donation"));
 }
+/* 👤 क्या यह पंक्ति इस लॉगिन सदस्य की है (नाम या मोबाइल से; नाम में श्री/जी/(जगह) का फ़र्क़ चलेगा) */
+function ownRow_(r) {
+  const u = currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
+    key = x => String(x || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/\b(shri|shree|sh|ji|smt|mr|mrs)\b\.?/g, "").replace(/श्री|श्रीमती|जी/g, "").replace(/[^a-z0-9\u0900-\u097F]+/g, "");
+  const me = norm(u.name), mk = key(u.name), mob = String(u.mobile || "").replace(/\D/g, "").slice(-10);
+  for (const k in r) {
+    const kk = String(k).trim();
+    if (/^(member|member name|name|नाम)$/i.test(kk)) { const v = r[k]; if (me && (norm(v) === me || (mk.length >= 4 && key(v) === mk))) return true; }
+    if (mob && /mobile|मोबाइल|phone/i.test(kk) && String(r[k] || "").replace(/\D/g, "").slice(-10) === mob) return true;
+  }
+  return false;
+}
 function onlyDigits(s){
   return String(s||"").replace(/\D/g,"");
 }
@@ -3834,6 +3846,7 @@ function canShowCard(cardKey){
 let _dashRun = 0;
 async function renderMainDashboard(forceFresh){
   const _myRun = ++_dashRun;                       // sirf sabse naya render hi cards jodega
+  if (!isStaffRole_()) { try { const fm0 = document.getElementById("filterMode"); if (fm0 && !fm0.dataset.userTouched && fm0.value !== "all") { fm0.value = "all"; updateFilterModeUI_(); } } catch (e) {} }   // 👤 सदस्य: शुरू में "सभी वर्ष" (चालू साल में डेटा न हो तो खाली न दिखे)
 
   el("mainDashboard").style.display="flex";
   el("mainDashboard").innerHTML="";
@@ -3843,7 +3856,7 @@ async function renderMainDashboard(forceFresh){
     // 🆕 Ab Year, FY, aur Custom Date teeno mode support karta hai (pehle sirf Year tha)
     const activeRange = getActiveDateFilterRange_();
 
-    const [members, boli, donation, fundLedger, expenses] = await Promise.all([
+    const [members, boli0, donation0, fundLedger, expenses] = await Promise.all([
       fetchSheet("Members", forceFresh),
       fetchSheet("Boli", forceFresh),
       fetchSheet("Donation", forceFresh),
@@ -3851,6 +3864,7 @@ async function renderMainDashboard(forceFresh){
       fetchSheet("Expenses", forceFresh)
     ]);
     if (_myRun !== _dashRun) return;               // koi naya render shuru ho chuka hai — yeh purana band
+    const boli = isStaffRole_("Boli") ? boli0 : (boli0 || []).filter(ownRow_), donation = isStaffRole_("Donation") ? donation0 : (donation0 || []).filter(ownRow_);   // 👤 सदस्य को अपने ही आँकड़े
 
     // ===== Date/Year/FY Filter =====
     let boliData = boli;
@@ -4159,9 +4173,13 @@ async function loadTab(sheetName, forceFresh) {
     tableData = _fetched;
     if (["Boli", "Donation", "Receipts"].indexOf(sheetName) >= 0 && !isStaffRole_(sheetName)) {   // 👤 सामान्य सदस्य: सिर्फ़ अपनी पंक्तियाँ (सर्वर के "मेरा हिसाब" से)
       try {
-        const mine = await callCrudBackend_({ action: "myAccount" });
-        if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
-        tableData = (mine && mine.success) ? ((sheetName === "Boli" ? mine.boli : sheetName === "Donation" ? mine.donation : mine.receipts) || []) : [];
+        let own = (_fetched || []).filter(ownRow_);
+        if (!own.length) {   // नाम/मोबाइल से न मिले तो सर्वर वाले "मेरा हिसाब" की पंक्तियाँ (कम columns, पर कुछ तो दिखे)
+          const mine = await callCrudBackend_({ action: "myAccount" });
+          if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
+          own = (mine && mine.success) ? ((sheetName === "Boli" ? mine.boli : sheetName === "Donation" ? mine.donation : mine.receipts) || []) : [];
+        }
+        tableData = own;
       } catch (e) { tableData = []; }
     }
 
@@ -4327,7 +4345,9 @@ async function renderHomePanel_() {
     sBd = slot("🎂 जन्मदिन · 💍 वर्षगांठ"), sMeet = slot("📅 अगली मीटिंग"), sAnn = slot("📢 घोषणाएँ"), sNot = slot("🕊️ शोक / शुभ सूचना");
   /* 💳 मेरा सार (बोली + दान की बाक़ी रक़म, UPI) */
   run(async () => {
-    const r = await callCrudBackend_({ action: "myAccount" });
+    const [bS, dS] = await Promise.all([fetchSheetFast_("Boli").catch(() => []), fetchSheetFast_("Donation").catch(() => [])]);
+    let r = { success: true, boli: (bS || []).filter(ownRow_), donation: (dS || []).filter(ownRow_) };
+    if (!(r.boli.length + r.donation.length)) { const sv = await callCrudBackend_({ action: "myAccount" }); if (sv && sv.success) r = sv; }
     if (!r || !r.success || !((r.boli || []).length + (r.donation || []).length)) return sAcct.drop();
     const get = (row, re) => { const k = Object.keys(row).find(x => re.test(x)); return k ? row[k] : ""; };
     const calc = row => { const p = num(get(row, /^pledged/i)), a = num(get(row, /^paid/i)); const pr = get(row, /^pending/i); let b = String(pr).trim() !== "" ? num(pr) : p - a; return { p, a, b: b < 0 ? 0 : b }; };
@@ -6063,7 +6083,7 @@ if(searchVal){
         row["Member"] ||
         row["Name"] ||
         "";
-      return member.trim() === currentUser.name.trim();
+      return member.trim() === currentUser.name.trim() || ownRow_(row);   // v: नाम में श्री/जी/(जगह) का फ़र्क़ या मोबाइल मिलने पर भी अपनी पंक्ति
     });
   }
   /* ======================
@@ -6879,7 +6899,7 @@ function setCommitFilter_(v) {
 function updateCommitToolbar_(sheetName) {
   const on = (sheetName === "Boli" || sheetName === "Donation");
   if (!on) commitFilterInit_ = "";
-  else if (commitFilterInit_ !== sheetName) { commitFilter = "pending"; commitFilterInit_ = sheetName; } // v1.307: default = बाकी+वादा (पूरा जमा wale "✅ पूरा जमा" ya "सभी रिकॉर्ड" chunne par dikhte hain)
+  else if (commitFilterInit_ !== sheetName) { commitFilter = isStaffRole_(sheetName) ? "pending" : ""; commitFilterInit_ = sheetName; }   // 👤 सदस्य को शुरू से "सभी रिकॉर्ड" (पूरा जमा वाली पंक्तियाँ भी दिखें) // v1.307: default = बाकी+वादा (पूरा जमा wale "✅ पूरा जमा" ya "सभी रिकॉर्ड" chunne par dikhte hain)
   const sel = document.getElementById("commitFilter");
   const bulk = document.getElementById("bulkRemBtn");
   if (sel) { sel.style.display = on ? "inline-block" : "none"; sel.value = on ? commitFilter : ""; }
