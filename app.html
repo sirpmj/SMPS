@@ -2582,6 +2582,13 @@ let homeInfo = {}, USERS = {}, TEMPLATES = {}, SETTINGS = {}, MEMBERS = {}, ROLE
 /* ---------------------------
    Utility helpers
    --------------------------- */
+/* 👤 कौन "admin / समिति" है: Admin, या जिसे उस टैब में EDIT का अधिकार है. बाकी (सामान्य सदस्य) सिर्फ़ अपना डेटा / अपनी रिपोर्ट देखें */
+function isAdminRole_() { return !!(currentUser && currentUser.role === "Admin"); }
+function isStaffRole_(sheet) {
+  if (isAdminRole_()) return true;
+  const a = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {}, has = n => !!(a[n] && a[n].canAction && a[n].canAction.indexOf("EDIT") >= 0);
+  return sheet ? has(sheet) : (has("Members") || has("Boli") || has("Donation"));
+}
 function onlyDigits(s){
   return String(s||"").replace(/\D/g,"");
 }
@@ -3864,7 +3871,7 @@ async function renderMainDashboard(forceFresh){
     }
 
     // -------- Total Members --------
-    if (canShowCard("TotalMembers")) {
+    if (canShowCard("TotalMembers") && isStaffRole_()) {
       el("mainDashboard").innerHTML += `
       <div class="dash-card dash-blue">
         <h4>Total Members</h4>
@@ -4150,6 +4157,13 @@ async function loadTab(sheetName, forceFresh) {
     // pehle Fund Ledger ka der se aaya data Members khol dene ke baad bhi uski jagah dikh jata tha
     if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
     tableData = _fetched;
+    if (["Boli", "Donation", "Receipts"].indexOf(sheetName) >= 0 && !isStaffRole_(sheetName)) {   // 👤 सामान्य सदस्य: सिर्फ़ अपनी पंक्तियाँ (सर्वर के "मेरा हिसाब" से)
+      try {
+        const mine = await callCrudBackend_({ action: "myAccount" });
+        if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
+        tableData = (mine && mine.success) ? ((sheetName === "Boli" ? mine.boli : sheetName === "Donation" ? mine.donation : mine.receipts) || []) : [];
+      } catch (e) { tableData = []; }
+    }
 
     // 🔹 Safety check
     if (!Array.isArray(tableData)) {
@@ -4308,7 +4322,7 @@ async function renderHomePanel_() {
   const grid = document.createElement("div"); grid.className = "hp-grid"; box.innerHTML = ""; box.appendChild(grid);
   const slot = title => { const c = document.createElement("div"); c.className = "hp-card"; c.innerHTML = "<h3>" + title + '</h3><div class="hp-skel">⏳ लोड हो रहा है…</div>'; grid.appendChild(c); return { set: h => { c.innerHTML = h; return c; }, drop: () => c.remove() }; };
   const run = (fn, s) => Promise.resolve().then(fn).catch(e => { try { s.drop(); } catch (x) {} });
-  const adminOn = can("Boli") || can("Donation") || can("Members", "EDIT");
+  const adminOn = isStaffRole_(), staffMoney = isAdminRole_() || can("Boli", "EDIT") || can("Donation", "EDIT"), staffMem = isAdminRole_() || can("Members", "EDIT");
   const sAcct = slot("💳 मेरा सार"), sProf = slot("✅ मेरी जानकारी"), sAdm = adminOn ? slot("📋 आज का काम") : null,
     sBd = slot("🎂 जन्मदिन · 💍 वर्षगांठ"), sMeet = slot("📅 अगली मीटिंग"), sAnn = slot("📢 घोषणाएँ"), sNot = slot("🕊️ शोक / शुभ सूचना");
   /* 💳 मेरा सार (बोली + दान की बाक़ी रक़म, UPI) */
@@ -4336,8 +4350,8 @@ async function renderHomePanel_() {
   /* 📋 आज का काम (admin / समिति) */
   if (sAdm) run(async () => {
     const parts = [];
-    if (can("Members", "EDIT")) { try { const r = await callCrudBackend_({ action: "pendingMembers" }); const n = r && r.success ? (r.rows || []).length : 0; if (n) parts.push('<div class="hp-row"><span>🆕</span><b>' + n + ' नए आवेदन</b><span class="hp-pill hot">मंज़ूरी बाकी</span></div><div class="hp-btns"><button type="button" class="hp-btn" data-a="pend">🆕 मंज़ूरी खोलें</button></div>'); } catch (e) {} }
-    if (can("Boli") || can("Donation")) {
+    if (staffMem) { try { const r = await callCrudBackend_({ action: "pendingMembers" }); const n = r && r.success ? (r.rows || []).length : 0; if (n) parts.push('<div class="hp-row"><span>🆕</span><b>' + n + ' नए आवेदन</b><span class="hp-pill hot">मंज़ूरी बाकी</span></div><div class="hp-btns"><button type="button" class="hp-btn" data-a="pend">🆕 मंज़ूरी खोलें</button></div>'); } catch (e) {} }
+    if (staffMoney) {
       try {
         const owe = {}; let total = 0;
         for (const [sh, pk, ak] of [["Boli", /^pledged/i, /^paid/i], ["Donation", /^pledged/i, /^paid/i]]) {
@@ -4804,7 +4818,7 @@ async function openMultiPhotoAdd_(sheetName) {
 }
 
 function updateAddNewButton(sheetName) {
-  { const _d = document.getElementById("dirBtn"); if (_d) _d.style.display = (sheetName === "Members" && ROLE_ACCESS?.[currentUser?.role]?.Members?.canView) ? "inline-block" : "none"; }
+  { const _d = document.getElementById("dirBtn"); if (_d) _d.style.display = (sheetName === "Members" && isAdminRole_() && ROLE_ACCESS?.[currentUser?.role]?.Members?.canView) ? "inline-block" : "none"; }
   const btn = document.getElementById("addNewBtn");
   if (!btn) return;
   const crudCfg = CRUD_ALLOWED_TABS[sheetName];
@@ -8736,6 +8750,7 @@ if ('serviceWorker' in navigator) {
     mk("incBtn", "📝", "अधूरी जानकारी वाले सदस्यों को संदेश", () => window.openIncomplete_(), "#0f766e").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("cleanBtn", "🧹", "डेटा सफ़ाई (duplicate / अधूरी rows / Hindi नाम)", () => window.openDataClean_(), "#475569").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
     mk("annRepBtn", "📑", "वार्षिक रिपोर्ट (पूरा समाज, PDF)", () => window.openAnnualReport_(), "#9a3412").style.display = ((sheetName === "Fund Ledger" || sheetName === "Receipts" || sheetName === "Expenses") && acc(sheetName) && acc(sheetName).canView) ? "inline-block" : "none";
+    if (!isAdminRole_()) ["attRepBtn", "duesRepBtn", "moneyRepBtn", "annRepBtn"].forEach(id => { const b0 = document.getElementById(id); if (b0) b0.style.display = "none"; });   // 📊 रिपोर्ट सिर्फ़ Admin को
     mk("cardBtn", "🎴", "बधाई / श्रद्धांजलि कार्ड बनाएँ", () => window.openCardMaker_(), "#be185d").style.display = (sheetName === "Members" && mB && mB.canView) ? "inline-block" : "none";
     mk("viewBtn", "⚙️", "टेबल व्यू — कार्ड / घनत्व / अक्षर / कॉलम", () => window.openTableView_(), "#475569").style.display = "inline-block";
     mk("talentBtn", "🏆", "प्रतिभा सम्मान — वेबसाइट पर दिखाने की अनुमति", () => window.openTalentAdmin_(), "#b45309").style.display = (sheetName === "Members" && mB && (currentUser.role === "Admin" || (mB.canAction || []).indexOf("EDIT") >= 0)) ? "inline-block" : "none";
