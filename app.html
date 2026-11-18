@@ -2590,7 +2590,7 @@ function isStaffRole_(sheet) {
   return sheet ? has(sheet) : (has("Members") || has("Boli") || has("Donation"));
 }
 /* 👤 क्या यह पंक्ति इस लॉगिन सदस्य की है (नाम या मोबाइल से; नाम में श्री/जी/(जगह) का फ़र्क़ चलेगा) */
-function ownRow_(r) {
+function ownRowBasic_(r) {
   const u = currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
     key = x => String(x || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/\b(shri|shree|sh|ji|smt|mr|mrs)\b\.?/g, "").replace(/श्री|श्रीमती|जी/g, "").replace(/[^a-z0-9\u0900-\u097F]+/g, "");
   const me = norm(u.name), mk = key(u.name), mob = String(u.mobile || "").replace(/\D/g, "").slice(-10);
@@ -2599,10 +2599,34 @@ function ownRow_(r) {
   try { if (typeof getRowMemberName_ === "function" && sameName(getRowMemberName_(r))) return true; } catch (e) {}
   try { if (typeof displayMemberFromRow_ === "function" && sameName(displayMemberFromRow_(r))) return true; } catch (e) {}
   for (const k in r) {
-    const kk = String(k).trim();
-    if (/^(member|member name|name|नाम|received from|paid by|payer|donor|party|दाता|भुगतानकर्ता)$/i.test(kk) && sameName(r[k])) return true;
-    if (mob && /mobile|मोबाइल|phone/i.test(kk) && String(r[k] || "").replace(/\D/g, "").slice(-10) === mob) return true;
+    const kk = String(k).trim(), v = r[k];
+    if (/^(member|member name|name|नाम|received from|paid by|payer|donor|party|दाता|भुगतानकर्ता)$/i.test(kk) && sameName(v)) return true;
+    if (mob && /mobile|मोबाइल|phone/i.test(kk) && String(v || "").replace(/\D/g, "").slice(-10) === mob) return true;
+    if (typeof v === "string" && v.length < 90 && mk.length >= 5 && key(v) === mk) return true;   // किसी भी column में पूरा नाम (जैसे "Received From", "Narration")
   }
+  return false;
+}
+/* 🔗 अपनी बोली / दान / रसीद की ID — इनसे जुड़ी पंक्तियाँ (Fund Ledger, Receipts आदि) भी "अपनी" मानी जाएँ */
+let _ownIds = { t: 0, u: "", set: null };
+function ownIds_() {
+  const u = currentUser && (currentUser.mobile || currentUser.name) || "";
+  if (_ownIds.set && _ownIds.u === u && Date.now() - _ownIds.t < 60000) return _ownIds.set;
+  const set = new Set();
+  try {
+    const rowsOf = n => (typeof CACHE !== "undefined" && CACHE[n] && CACHE[n].data) || [];
+    ["Boli", "Donation"].forEach(n => rowsOf(n).forEach(r => { if (ownRowBasic_(r) && r["ID"]) set.add(String(r["ID"]).trim()); }));
+    rowsOf("Receipts").forEach(r => {   // रसीद: नाम से, या अपनी बोली/दान की ID से जुड़ी
+      let mine = ownRowBasic_(r); if (!mine) for (const k in r) { const v = r[k]; if (typeof v === "string" && v.trim().length >= 5 && set.has(v.trim())) { mine = true; break; } }
+      if (mine && r["ID"]) set.add(String(r["ID"]).trim());
+    });
+  } catch (e) {}
+  _ownIds = { t: Date.now(), u, set };
+  return set;
+}
+function ownRow_(r) {
+  if (ownRowBasic_(r)) return true;
+  const ids = ownIds_(); if (!ids.size) return false;
+  for (const k in r) { const v = r[k]; if (typeof v === "string") { const t = v.trim(); if (t.length >= 5 && ids.has(t)) return true; } }
   return false;
 }
 function onlyDigits(s){
@@ -4175,10 +4199,10 @@ async function loadTab(sheetName, forceFresh) {
     // pehle Fund Ledger ka der se aaya data Members khol dene ke baad bhi uski jagah dikh jata tha
     if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
     tableData = _fetched;
-    if (["Boli", "Donation", "Receipts"].indexOf(sheetName) >= 0 && !isStaffRole_(sheetName)) {   // 👤 सामान्य सदस्य: सिर्फ़ अपनी पंक्तियाँ (सर्वर के "मेरा हिसाब" से)
+    if (["Boli", "Donation", "Receipts", "Fund Ledger"].indexOf(sheetName) >= 0 && !isStaffRole_(sheetName)) {   // 👤 सामान्य सदस्य: सिर्फ़ अपनी पंक्तियाँ (सर्वर के "मेरा हिसाब" से)
       try {
         let own = (_fetched || []).filter(ownRow_);
-        if (!own.length) {   // नाम/मोबाइल से न मिले तो सर्वर वाले "मेरा हिसाब" की पंक्तियाँ (कम columns, पर कुछ तो दिखे)
+        if (!own.length && sheetName !== "Fund Ledger") {   // नाम/मोबाइल से न मिले तो सर्वर वाले "मेरा हिसाब" की पंक्तियाँ (कम columns, पर कुछ तो दिखे)
           const mine = await callCrudBackend_({ action: "myAccount" });
           if (_seq !== window.__loadSeq || (currentTab && currentTab !== sheetName)) return;
           own = (mine && mine.success) ? ((sheetName === "Boli" ? mine.boli : sheetName === "Donation" ? mine.donation : mine.receipts) || []) : [];
@@ -6080,14 +6104,14 @@ if(searchVal){
   /* ======================
      🔐 OWN / ALL FILTER
      ====================== */
-  if (tabConfig?.tabScope?.toLowerCase() === "own" && currentTab !== "Fund Ledger" && tableData.some(r => Object.keys(r).some(k => /^(member|member name|name|नाम|mobile|मोबाइल|phone)/i.test(String(k).trim())) || (SETTINGS && SETTINGS.MemberColumn && r[SETTINGS.MemberColumn] !== undefined))) {   // समाज-स्तर की शीट (जैसे Fund Ledger) में "own" नहीं
+  if ((tabConfig?.tabScope?.toLowerCase() === "own" || (currentTab === "Fund Ledger" && !isStaffRole_("Fund Ledger"))) && currentTab !== "Members" && tableData.some(r => Object.keys(r).some(k => /^(member|member name|name|नाम|mobile|मोबाइल|phone)/i.test(String(k).trim())) || (SETTINGS && SETTINGS.MemberColumn && r[SETTINGS.MemberColumn] !== undefined))) {   // समाज-स्तर की शीट (जैसे Fund Ledger) में "own" नहीं
     filteredData = filteredData.filter(row => {
       const member =
         row[SETTINGS?.MemberColumn] ||
         row["Member"] ||
         row["Name"] ||
         "";
-      return member.trim() === currentUser.name.trim() || ownRow_(row);   // v: नाम में श्री/जी/(जगह) का फ़र्क़ या मोबाइल मिलने पर भी अपनी पंक्ति
+      return String(member).trim() === currentUser.name.trim() || ownRow_(row);   // v: नाम में श्री/जी/(जगह) का फ़र्क़ या मोबाइल मिलने पर भी अपनी पंक्ति
     });
   }
   /* ======================
@@ -6343,7 +6367,7 @@ function renderActionButtons(row, encId) {
   }
   if (["Members", "Boli", "Donation", "Receipts"].includes(currentTab)) {
     const _nm = getRowMemberName_(row);
-    if (_nm && !isAnonMember_(_nm)) {
+    if (_nm && !isAnonMember_(_nm) && (isStaffRole_() || ownRow_(row))) {   // 👤 सदस्य को सिर्फ़ अपना खाता
       // Receipts mein jagah kam hoti hai — wahan sirf icon, baaki tabs mein icon + "खाता"
       btns.push(abBtn_("ab-print", "khata", "📄 खाता", currentTab === "Receipts" ? "" : "खाता",
         `href="#" onclick="openMemberStatement_('${encodeURIComponent(_nm).replace(/'/g, "%27")}', event)"`));
@@ -7001,6 +7025,7 @@ async function openMemberStatement_(encName, e) {
   if (e && e.preventDefault) e.preventDefault();
   const name = decodeURIComponent(encName || "").trim();
   if (!name) return;
+  if (!isStaffRole_() && !ownRow_({ Member: name })) { alert("आप सिर्फ़ अपना खाता देख सकते हैं।"); return; }
   const m = openModal_("📄 खाता — " + name);
   m.body.innerHTML = "<p class='muted'>⏳ Loading Data...</p>";
   try {
@@ -11505,6 +11530,9 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   const fitSoon = () => { cancelAnimationFrame(fz); fz = requestAnimationFrame(fitFooter); };
   window.addEventListener("resize", fitSoon); window.addEventListener("load", fitSoon);
   new MutationObserver(fitSoon).observe(document.body, { childList: true, subtree: true }); setTimeout(fitSoon, 300); setTimeout(fitSoon, 1500);
+  /* --- 🔒 admin के औज़ार (अधूरी जानकारी, डेटा सफ़ाई, सम्मेलन, नई मंज़ूरी) सामान्य सदस्य को नहीं दिखें --- */
+  const hideAdminTools = () => { try { if (isStaffRole_("Members")) return; ["incBtn", "cleanBtn", "eventBtn", "pendMemBtn"].forEach(id => { const b = document.getElementById(id); if (b && b.style.display !== "none") b.style.display = "none"; }); } catch (e) {} };
+  { const sw = document.getElementById("searchWrapper"); if (sw) new MutationObserver(hideAdminTools).observe(sw, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] }); }
   window.__nativeAlert = window.__nativeAlert || null;
 })();
 </script>
