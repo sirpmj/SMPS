@@ -2594,9 +2594,13 @@ function ownRow_(r) {
   const u = currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
     key = x => String(x || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/\b(shri|shree|sh|ji|smt|mr|mrs)\b\.?/g, "").replace(/श्री|श्रीमती|जी/g, "").replace(/[^a-z0-9\u0900-\u097F]+/g, "");
   const me = norm(u.name), mk = key(u.name), mob = String(u.mobile || "").replace(/\D/g, "").slice(-10);
+  const sameName = v => { const t = norm(v); return !!t && !!me && (t === me || (mk.length >= 4 && key(v) === mk)); };
+  try { if (SETTINGS && SETTINGS.MemberColumn && sameName(r[SETTINGS.MemberColumn])) return true; } catch (e) {}
+  try { if (typeof getRowMemberName_ === "function" && sameName(getRowMemberName_(r))) return true; } catch (e) {}
+  try { if (typeof displayMemberFromRow_ === "function" && sameName(displayMemberFromRow_(r))) return true; } catch (e) {}
   for (const k in r) {
     const kk = String(k).trim();
-    if (/^(member|member name|name|नाम)$/i.test(kk)) { const v = r[k]; if (me && (norm(v) === me || (mk.length >= 4 && key(v) === mk))) return true; }
+    if (/^(member|member name|name|नाम|received from|paid by|payer|donor|party|दाता|भुगतानकर्ता)$/i.test(kk) && sameName(r[k])) return true;
     if (mob && /mobile|मोबाइल|phone/i.test(kk) && String(r[k] || "").replace(/\D/g, "").slice(-10) === mob) return true;
   }
   return false;
@@ -6076,7 +6080,7 @@ if(searchVal){
   /* ======================
      🔐 OWN / ALL FILTER
      ====================== */
-  if (tabConfig?.tabScope?.toLowerCase() === "own") {
+  if (tabConfig?.tabScope?.toLowerCase() === "own" && currentTab !== "Fund Ledger" && tableData.some(r => Object.keys(r).some(k => /^(member|member name|name|नाम|mobile|मोबाइल|phone)/i.test(String(k).trim())) || (SETTINGS && SETTINGS.MemberColumn && r[SETTINGS.MemberColumn] !== undefined))) {   // समाज-स्तर की शीट (जैसे Fund Ledger) में "own" नहीं
     filteredData = filteredData.filter(row => {
       const member =
         row[SETTINGS?.MemberColumn] ||
@@ -10175,8 +10179,20 @@ if ('serviceWorker' in navigator) {
     const kPaid = K(/^paid/i), kPl = K(/^pledged/i), kAmt = K(/^(received|amount|credit|जमा|राशि)/i);
     const amt = kPaid && num(rec[kPaid]) > 0 ? num(rec[kPaid]) : (kAmt ? num(rec[kAmt]) : (kPl ? num(rec[kPl]) : 0));
     const kFor = K(/^(for|purpose|seva|सेवा|item|event|category|head|उद्देश्य)/i), kDt = K(/^(date|तारीख|दिनांक)/i), kRc = K(/^(receipt|rcpt|रसीद|slip)/i);
-    const sub = [kFor ? String(rec[kFor] || "").trim() : "", kDt ? String(rec[kDt] || "").trim() : ""].filter(Boolean).join(" · ");
-    const note = kRc && String(rec[kRc] || "").trim() ? "रसीद क्र. " + String(rec[kRc]).trim() : "";
+    /* 🧾 कार्ड का लिखा हुआ — table की पंक्ति से अपने-आप: "बोली : पत्रिका · दिनांक : 16/11/2026" और "रसीद क्र. …" */
+    const kTy = K(/^(type|against|head|category|प्रकार)$/i), tyTxt = String(kTy ? rec[kTy] || "" : "") + " " + String(kFor ? rec[kFor] || "" : "");
+    const label = currentTab === "Boli" ? "बोली" : currentTab === "Donation" ? "दान / सहयोग" : (/boli|बोली/i.test(tyTxt) ? "बोली" : /donation|दान|सहयोग/i.test(tyTxt) ? "दान / सहयोग" : "रसीद");
+    const purpose = kFor ? String(rec[kFor] || "").trim() : "", dtRaw = kDt ? rec[kDt] : "", dtTxt = (() => { if (!dtRaw) return ""; try { const d = parseRowDate_(dtRaw); if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); } catch (x) {} return String(dtRaw).trim(); })();
+    const sub = (purpose ? label + " : " + purpose : label) + (dtTxt ? " · दिनांक : " + dtTxt : "");
+    let rcNo = kRc && String(rec[kRc] || "").trim() ? String(rec[kRc]).trim() : "";
+    if (!rcNo && currentTab === "Receipts") rcNo = String(rec["ID"] || "").trim();                       // रसीद नंबर = Receipt ID
+    if (!rcNo && (currentTab === "Boli" || currentTab === "Donation") && rec["ID"]) { try {
+      const all = (CACHE["Receipts"] && CACHE["Receipts"].data) || [];
+      let rr = all.filter(x => Object.values(x).some(v => String(v) === String(rec["ID"])));                  // ID से जुड़ी रसीद
+      if (!rr.length) rr = all.filter(x => { try { const a = displayMemberFromRow_(x) || getRowMemberName_(x), b = nm; const kk = z => String(z || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/श्री|श्रीमती|जी/g, "").replace(/[^a-z0-9\u0900-\u097F]+/g, ""); const kDx = Object.keys(x).find(k => /^(date|तारीख|दिनांक)/i.test(k.trim())); return kk(a) && kk(a) === kk(b) && kDx && String(x[kDx]).trim() === String(dtRaw).trim(); } catch (e2) { return false; } });   // वही सदस्य + वही तारीख
+      if (rr.length) rcNo = String(rr[rr.length - 1]["ID"] || "").trim();
+    } catch (x) {} }
+    const note = rcNo ? "रसीद क्र. " + rcNo : "";
     window.openCardMaker_({ type: "thanks", name: nm, amount: amt ? String(amt) : "", sub: sub, note: note });
   };
 
@@ -11336,7 +11352,8 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   /* 📊 डैशबोर्ड कार्ड: पूरी चौड़ाई (पहले margin:auto से सिमटकर बीच में छोटा हो जाता था) */
   #mainDashboard.dashboard { width:100% !important; max-width:none !important; box-sizing:border-box; margin:0 0 12px !important; padding:0 !important; gap:10px !important; }
   #mainDashboard .dash-card { padding:12px 10px !important; display:flex; flex-direction:column; justify-content:center; }
-  #mainDashboard .dash-card h4 { font-size:12px !important; margin:0 0 4px !important; }
+  #mainDashboard .dash-card h4 { font-size:clamp(9.5px, 0.74vw, 12px) !important; margin:0 0 4px !important; white-space:nowrap; letter-spacing:-.1px; }
+  #mainDashboard .dash-card { padding-left:6px !important; padding-right:6px !important; }
   #mainDashboard .dash-card p { font-size:17px !important; }
   #mainDashboard .dash-card-wide { flex:2.7 1 0 !important; }
   #mainDashboard .dash-card-wide p { font-size:15.5px !important; }
@@ -11357,7 +11374,7 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 [data-theme="dark"] #uxBar button, [data-theme="dark"] #uxCols { background:#1e293b; color:#e2e8f0; border-color:#334155; }
 #contentArea.uxDense td, #contentArea.uxDense th { padding:4px 8px !important; font-size:12px !important; }
 @keyframes uxSheet { from { transform:translateY(46px); opacity:.35; } to { transform:none; opacity:1; } }
-@media (max-width:600px) { #uxBar { display:none !important; } }
+@media (max-width:600px) { #uxBar { display:none !important; } #mainDashboard .dash-card h4 { white-space:nowrap; font-size:11px !important; } }
 @media (max-width:640px) {
   #appModal { align-items:flex-end !important; }
   #appModal > div { width:100% !important; max-width:100% !important; max-height:92vh !important; border-radius:18px 18px 0 0 !important; animation:uxSheet .22s ease-out; padding-bottom:env(safe-area-inset-bottom); }
@@ -11477,6 +11494,17 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   }, true);
   if (typeof window.renderTable === "function" && !window.renderTable.__ux) { const _rt = window.renderTable; window.renderTable = function () { fitRows(); return _rt.apply(this, arguments); }; window.renderTable.__ux = 1; }
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (auto) { const old = rowsPerPage; fitRows(); if (rowsPerPage !== old) { try { renderTable(); } catch (x) {} } } }, 350); });
+  /* --- 🦶 footer desktop पर हमेशा स्क्रीन के नीचे (सामग्री कम हो तब भी) --- */
+  let fz = 0;
+  const fitFooter = () => {
+    const w = document.querySelector(".wrap"), f = document.getElementById("footer"); if (!w || !f) return;
+    if (innerWidth <= 600) { w.style.minHeight = ""; return; }
+    w.style.minHeight = ""; const padB = parseFloat(getComputedStyle(document.body).paddingBottom) || 0, gap = innerHeight - (f.getBoundingClientRect().bottom + scrollY + padB);
+    if (gap > 0) w.style.minHeight = (w.offsetHeight + gap) + "px";
+  };
+  const fitSoon = () => { cancelAnimationFrame(fz); fz = requestAnimationFrame(fitFooter); };
+  window.addEventListener("resize", fitSoon); window.addEventListener("load", fitSoon);
+  new MutationObserver(fitSoon).observe(document.body, { childList: true, subtree: true }); setTimeout(fitSoon, 300); setTimeout(fitSoon, 1500);
   window.__nativeAlert = window.__nativeAlert || null;
 })();
 </script>
