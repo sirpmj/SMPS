@@ -1630,6 +1630,8 @@ table[data-tab="Meetings"] .mt-cell { max-width: 220px; }
 .mt-ph { display: inline-block; line-height: 0; }
 .mt-ph img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; border: 1px solid #d6dfec; background: #f1f5f9; display: block; }
 table[data-tab="Meetings"] td.mtph { min-width: 64px; max-width: 76px; text-align: center; }
+td.mtph { text-align:center; min-width:52px; }
+table:not([data-tab="Meetings"]) .mt-ph img { width:40px; height:40px; border-radius:50%; }
 /* ===== 🆕 v1.255 ===== */
 .mv-phl { margin-top: 6px; font-size: 13px; }
 .mv-phl a { color: #0b63d6; font-weight: 600; }
@@ -3246,13 +3248,12 @@ async function loadMembers(){
 // -------- Load footer content from Settings sheet --------
 async function loadFooter(){
   try{
-    const rows = await fetchSheet("Settings");
+    const rows = await fetchSheet("Settings", true);   // हमेशा ताज़ा (पुराना cache वाला footer नहीं)
     const footerEl = document.getElementById("footer");
     if(!footerEl) return;
 
     if(!rows || rows.length === 0){
-      footerEl.textContent = "Footer data not available.";
-      return;
+      return;   // डेटा न मिले तो कोई "not available" संदेश नहीं
     }
     // Convert rows to key:value map
     const settings = {};
@@ -3802,7 +3803,7 @@ async function openApp(){
   // dashboard cards aur tab bar dikhte hain)
   {
     const _esc = x => String(x == null ? "" : x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    el("contentArea").innerHTML = "<div style='text-align:center;padding:26px 12px'><div style='font-size:19px;font-weight:700;margin-bottom:6px'>🙏 नमस्कार " + _esc(currentUser && currentUser.name) + " जी, समाज पोर्टल में आपका स्वागत है</div></div><div id='homePanel'></div>";
+    el("contentArea").innerHTML = "<div class='hp-welcome'>🙏 नमस्कार समाज पोर्टल में आपका स्वागत है</div><div id='homePanel'></div>";
     try { prefetchBackendReads_(); renderHomePanel_(); } catch (e) { console.error("home panel:", e); }
   }
   currentTab = "";
@@ -4366,11 +4367,18 @@ async function renderHomePanel_() {
   const acc = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {}, can = (n, act) => { const a = acc[n]; return !!(a && (act ? (a.canAction && a.canAction.includes(act)) : a.canView)); };
   const openTab = name => { const t = [...document.querySelectorAll("#tabs button, #tabs .tab")].find(b => String(b.textContent).toLowerCase().indexOf(name.toLowerCase()) >= 0); if (t) t.click(); };
   const grid = document.createElement("div"); grid.className = "hp-grid"; box.innerHTML = ""; box.appendChild(grid);
-  const slot = title => { const c = document.createElement("div"); c.className = "hp-card"; c.innerHTML = "<h3>" + title + '</h3><div class="hp-skel">⏳ लोड हो रहा है…</div>'; grid.appendChild(c); return { set: h => { c.innerHTML = h; return c; }, drop: () => c.remove() }; };
+  const slot = title => { const c = document.createElement("div"); c.className = "hp-card"; c.innerHTML = "<h3>" + title + '</h3><div class="hp-skel">⏳ लोड हो रहा है…</div>'; grid.appendChild(c); return { set: h => { c.innerHTML = h; return c; }, drop: () => { c.remove(); layout(); } }; };
+  /* 🧩 कार्ड कतार में बराबर जमें: 4+ कार्ड हों तो ऊपर ज़्यादा / नीचे बाक़ी (5 → 3 + 2, 6 → 3 + 3, 7 → 4 + 3), हर कतार पूरी चौड़ाई */
+  const layout = () => {
+    const cs = [...grid.children]; const n = cs.length; if (!n) return;
+    const top = n <= 3 ? n : Math.ceil(n / 2), bot = n - top, g = 12;
+    cs.forEach((c, i) => { const per = i < top ? top : bot; c.style.flex = "1 1 calc(" + (100 / per) + "% - " + (g * (per - 1) / per) + "px)"; });
+  };
   const run = (fn, s) => Promise.resolve().then(fn).catch(e => { try { s.drop(); } catch (x) {} });
   const adminOn = isStaffRole_(), staffMoney = isAdminRole_() || can("Boli", "EDIT") || can("Donation", "EDIT"), staffMem = isAdminRole_() || can("Members", "EDIT");
   const sAcct = slot("💳 मेरा सार"), sProf = slot("✅ मेरी जानकारी"), sAdm = adminOn ? slot("📋 आज का काम") : null,
     sBd = slot("🎂 जन्मदिन · 💍 वर्षगांठ"), sMeet = slot("📅 अगली मीटिंग"), sAnn = slot("📢 घोषणाएँ"), sNot = slot("🕊️ शोक / शुभ सूचना");
+  layout();
   /* 💳 मेरा सार (बोली + दान की बाक़ी रक़म, UPI) */
   run(async () => {
     const [bS, dS] = await Promise.all([fetchSheetFast_("Boli").catch(() => []), fetchSheetFast_("Donation").catch(() => [])]);
@@ -6271,7 +6279,7 @@ const msg =
       // 🆕 v1.242: Meetings tab — Attendance (member list) + Minutes default 2 line, click se khule/band
       const _isAtt = currentTab === "Meetings" && /^attendance$/i.test(String(c).trim());
       const _isMin = currentTab === "Meetings" && /^(minutes|meeting[\s_]*notes?|summary|कार्यवाही|चर्चा)$/i.test(String(c).trim());
-      const _isPh = currentTab === "Meetings" && isMeetingPhotoCol_(c);
+      const _isPh = (currentTab === "Meetings" && isMeetingPhotoCol_(c)) || (currentTab !== "Meetings" && /^(photo|photos|image|images|picture|pic|फोटो|फ़ोटो|तस्वीर)$/i.test(String(c).trim()));
       const _enc = (_isAtt || _isMin || _isPh) ? encodeURIComponent(resolveRecordId_(row).recordId || "") : "";
       if (_isPh) {
         // 🆕 v1.254: Meetings table mein Photo — chhota thumbnail, click = badi photo
@@ -6283,7 +6291,9 @@ const msg =
           const _tAlt = (_id ? "https://drive.google.com/thumbnail?id=" + _id + "&sz=w200" : _p).replace(/"/g, "&quot;");
           html += `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="${_u}" target="_blank" rel="noopener" data-p="${_p.replace(/"/g, "&quot;")}" onclick="return openPhotoBox_(this.dataset.p, event)" title="फोटो खोलें"><img src="${_t}" data-alt="${_tAlt}" onerror="if(!this.dataset.f){this.dataset.f=1;this.src=this.dataset.alt}" loading="lazy" alt="📷"></a></td>`;
         } else if (/^data:image\//i.test(_p)) {
-          html += `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="#" onclick="openMeetingView_('${_enc}','min',event)" title="फोटो खोलें"><img src="${_p.replace(/"/g, "&quot;")}" alt="📷"></a></td>`;
+          html += currentTab === "Meetings"
+            ? `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="#" onclick="openMeetingView_('${_enc}','min',event)" title="फोटो खोलें"><img src="${_p.replace(/"/g, "&quot;")}" alt="📷"></a></td>`
+            : `<td class="${cellClass_(c)} mtph"><a class="mt-ph" href="#" data-p="${_p.replace(/"/g, "&quot;")}" onclick="return openPhotoBox_(this.dataset.p, event)" title="फोटो खोलें"><img src="${_p.replace(/"/g, "&quot;")}" alt="📷"></a></td>`;
         } else {
           html += `<td class="${cellClass_(c)} mtph"></td>`;
         }
@@ -11406,17 +11416,27 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   #appModal > div::before { content:""; flex:none; align-self:center; width:44px; height:4px; border-radius:4px; background:#cbd5e1; margin:8px 0 0; }
 }
 @media (min-width:1440px) {
-  body.uxSide .wrap:has(> #appView[style*="block"]) { display:grid; grid-template-columns:200px minmax(0,1fr); column-gap:14px; align-items:start; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) { display:grid; grid-template-columns:200px minmax(0,1fr); column-gap:14px; align-items:start; align-content:start; grid-auto-rows:max-content; }
   body.uxSide .wrap:has(> #appView[style*="block"]) > * { grid-column:1 / -1; }
-  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs { grid-column:1; grid-row:span 3; position:sticky; top:8px; display:flex !important; flex-direction:column; flex-wrap:nowrap; gap:6px; overflow:visible; justify-content:flex-start; padding:0; }
-  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs .tab { width:100%; justify-content:flex-start; text-align:left; white-space:normal; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs { grid-column:1; grid-row:span 1; height:0; min-height:0; overflow:visible; align-self:start; position:sticky; top:8px; display:flex !important; flex-direction:column; flex-wrap:nowrap; gap:6px; overflow:visible; justify-content:flex-start; padding:0; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs .tab { flex:0 0 auto; width:100%; justify-content:flex-start; text-align:left; white-space:normal; }
   body.uxSide .wrap:has(> #appView[style*="block"]) > #searchWrapper, body.uxSide .wrap:has(> #appView[style*="block"]) > #contentArea, body.uxSide .wrap:has(> #appView[style*="block"]) > #pagination { grid-column:2; min-width:0; }
 }
 @media print {
   .hdr-tools, .toolbar-btns, .toolbar-user, #tabs, #searchWrapper, #pagination, #uxBar, #uxToast, #uxOffline, #dateFilterBar, #mainDashboard, footer, #swUpd { display:none !important; }
   #contentArea { overflow:visible !important; } #contentArea table { font-size:11px; } body { background:#fff !important; }
 }
-.hp-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; margin-top:8px; text-align:left; }
+.hp-welcome { text-align:center; font-size:19px; font-weight:700; padding:6px 10px 2px; }
+#uxTopBar { position:fixed; top:0; left:0; right:0; z-index:950; display:flex; align-items:center; gap:10px; padding:6px 12px calc(6px); padding-top:calc(6px + env(safe-area-inset-top)); background:linear-gradient(90deg,#0b5fd3,#2a8cf0); color:#fff; box-shadow:0 4px 14px rgba(0,0,0,.25); transform:translateY(-110%); transition:transform .22s ease; }
+#uxTopBar.on { transform:none; }
+#uxTopBar img { width:32px; height:32px; border-radius:50%; background:#fff; object-fit:cover; flex:none; }
+#uxTopBar .ttl { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.2; }
+#uxTopBar .ttl b { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#uxTopBar .ttl span { font-size:12px; opacity:.9; }
+#uxTopBar button { flex:none; width:36px; height:36px; padding:0; border:0; border-radius:10px; background:rgba(255,255,255,.2); color:#fff; font-size:17px; cursor:pointer; }
+.hp-grid { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; text-align:left; }
+.hp-grid > .hp-card { flex:1 1 280px; min-width:0; box-sizing:border-box; }
+@media (max-width:600px) { .hp-welcome { font-size:16px; padding:2px 8px 0; } .hp-grid { gap:10px; margin-top:6px; } .hp-grid > .hp-card { flex:1 1 100% !important; } }
 .hp-card { background:rgba(255,255,255,.7); border:1px solid rgba(100,116,139,.25); border-radius:14px; padding:12px 14px; }
 [data-theme="dark"] .hp-card { background:rgba(30,41,59,.7); }
 .hp-card h3 { margin:0 0 8px; font-size:15px; }
@@ -11519,6 +11539,52 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   }, true);
   if (typeof window.renderTable === "function" && !window.renderTable.__ux) { const _rt = window.renderTable; window.renderTable = function () { fitRows(); return _rt.apply(this, arguments); }; window.renderTable.__ux = 1; }
   window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (auto) { const old = rowsPerPage; fitRows(); if (rowsPerPage !== old) { try { renderTable(); } catch (x) {} } } }, 350); });
+  /* --- 📌 नीचे स्क्रॉल करने पर छोटा header (नाम + टैब + ऊपर जाने / refresh के बटन) --- */
+  (() => {
+    let bar = null, shown = false;
+    const build = () => {
+      if (bar) return bar; const hd = document.querySelector("header"), img = hd && hd.querySelector("img"), h1 = hd && hd.querySelector("h1");
+      bar = document.createElement("div"); bar.id = "uxTopBar";
+      bar.innerHTML = (img ? '<img alt="" src="' + img.src + '">' : "") + '<div class="ttl"><b></b><span></span></div><button type="button" data-a="rf" title="Refresh">⟳</button><button type="button" data-a="up" title="ऊपर जाएँ">⬆</button>';
+      bar.querySelector("b").textContent = h1 ? h1.textContent.trim() : "";
+      bar.onclick = e => { const a = e.target.closest("button"); if (!a) return; if (a.dataset.a === "up") window.scrollTo({ top: 0, behavior: "smooth" }); else { const r = document.getElementById("refreshBtn"); if (r) r.click(); } };
+      document.body.appendChild(bar); return bar;
+    };
+    const upd = () => {
+      const av = document.getElementById("appView"), inApp = av && av.style.display !== "none" && av.offsetParent !== null, on = inApp && scrollY > 170;
+      if (on === shown) { if (on) { const t = build().querySelector(".ttl span"); const v = (typeof currentTab === "string" && currentTab) ? currentTab : ""; if (t.textContent !== v) t.textContent = v; } return; }
+      shown = on; const b = build(); b.classList.toggle("on", on); const t = b.querySelector(".ttl span"); t.textContent = (typeof currentTab === "string" && currentTab) ? currentTab : "";
+    };
+    window.addEventListener("scroll", upd, { passive: true }); window.addEventListener("resize", upd);
+  })();
+  /* --- 📋 टेबल का header (कॉलम के नाम) स्क्रॉल पर ऊपर चिपका रहे; क्लिक से sort भी चले --- */
+  (() => {
+    let box = null, inner = null, sig = "", raf = 0;
+    const COPY = ["backgroundColor", "color", "fontWeight", "fontSize", "fontFamily", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "textAlign", "borderBottom", "lineHeight", "whiteSpace", "verticalAlign"];
+    const hide = () => { if (box) box.style.display = "none"; };
+    const update = () => {
+      const c = document.getElementById("contentArea"), t = c && c.querySelector("table"), th = t && t.querySelector("thead");
+      if (!t || !th || !t.offsetParent) return hide();
+      const bar = document.getElementById("uxTopBar"), off = bar && bar.classList.contains("on") ? bar.offsetHeight : 0;
+      const hr = th.getBoundingClientRect(), tr = t.getBoundingClientRect();
+      if (!(hr.top < off && tr.bottom > off + hr.height + 8)) return hide();
+      if (!box) { box = document.createElement("div"); box.id = "uxStickyHead"; box.style.cssText = "position:fixed;z-index:940;overflow:hidden;display:none;box-shadow:0 3px 8px rgba(0,0,0,.18);"; document.body.appendChild(box); }
+      const ths = [...th.querySelectorAll("th")], w = ths.map(x => Math.round(x.getBoundingClientRect().width)), s2 = th.innerText + "|" + Math.round(tr.width) + "|" + w.join(",");
+      if (s2 !== sig || !inner) {
+        sig = s2; box.innerHTML = ""; inner = document.createElement("div"); const ct = document.createElement("table");
+        ct.style.cssText = "border-collapse:collapse;table-layout:fixed;width:" + Math.round(tr.width) + "px;margin:0;background:#e8efff;";
+        const cth = th.cloneNode(true); [...cth.querySelectorAll("th")].forEach((x, i) => { const cs = getComputedStyle(ths[i]); COPY.forEach(k => { x.style[k] = cs[k]; }); x.style.width = w[i] + "px"; x.style.boxSizing = "border-box"; x.style.cursor = "pointer"; x.style.borderRight = cs.borderRight; });
+        ct.appendChild(cth); inner.appendChild(ct); box.appendChild(inner);
+      }
+      const cont = t.closest("#tableContainer") || t.parentElement, cr = cont.getBoundingClientRect();
+      box.style.display = "block"; box.style.top = off + "px"; box.style.left = cr.left + "px"; box.style.width = cr.width + "px";
+      inner.style.transform = "translateX(" + (-(cont.scrollLeft || 0)) + "px)";
+    };
+    const soon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(update); };
+    window.addEventListener("scroll", soon, { passive: true }); window.addEventListener("resize", soon);
+    document.addEventListener("scroll", e => { if (e.target && e.target.id === "tableContainer") soon(); }, true);
+    const ca = document.getElementById("contentArea"); if (ca) new MutationObserver(() => { sig = ""; inner = null; soon(); }).observe(ca, { childList: true, subtree: true });
+  })();
   /* --- 🦶 footer desktop पर हमेशा स्क्रीन के नीचे (सामग्री कम हो तब भी) --- */
   let fz = 0;
   const fitFooter = () => {
