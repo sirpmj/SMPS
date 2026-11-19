@@ -6125,7 +6125,16 @@ if(searchVal){
   /* ======================
      📅 DEFAULT ORDER: latest date on top (sirf display)
      ====================== */
-  const useLatestFirst = !sortColumn && LATEST_FIRST_TABS.includes(currentTab);
+  /* 🔤 Members टैब: शुरू में नाम के हिसाब से A→Z (श्री/श्रीमती/Shri जैसे शब्द छोड़कर); आज का जन्मदिन वाले पहले जैसे सबसे ऊपर */
+  if (!sortColumn && currentTab === "Members" && filteredData.length) {
+    const f0 = filteredData[0], nameCol = (SETTINGS && SETTINGS.MemberColumn && SETTINGS.MemberColumn in f0) ? SETTINGS.MemberColumn : (["Member", "Member Name", "Name", "नाम"].find(k => k in f0) || "");
+    if (nameCol) {
+      const nk = v => String(v || "").replace(/^\s*(श्रीमान|श्रीमती|श्री|shri|shree|smt|mrs?\.?)\s+/i, "").replace(/\s+/g, " ").trim();
+      filteredData = filteredData.slice().sort((a, b) => nk(a[nameCol]).localeCompare(nk(b[nameCol]), "hi", { sensitivity: "base", numeric: true }));
+      const bday = [], others = []; filteredData.forEach(r => (isTodayBirthday(r["Birthday"]) ? bday : others).push(r)); filteredData = [...bday, ...others];
+    }
+  }
+  const useLatestFirst = !sortColumn && LATEST_FIRST_TABS.includes(currentTab) && currentTab !== "Members";
   if (useLatestFirst) {
     filteredData = sortLatestFirst_(filteredData, tableData);
     if (currentTab === "Members") {
