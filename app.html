@@ -2591,6 +2591,13 @@ function isStaffRole_(sheet) {
   const a = (ROLE_ACCESS || {})[currentUser && currentUser.role] || {}, has = n => !!(a[n] && a[n].canAction && a[n].canAction.indexOf("EDIT") >= 0);
   return sheet ? has(sheet) : (has("Members") || has("Boli") || has("Donation"));
 }
+/* 📞 एक सदस्य के कई मोबाइल: "9876543210, 9123456780" या "a / b" — सब नंबर निकालो; WhatsApp वग़ैरह के लिए पहला नंबर */
+function mobilesIn_(val) {
+  const s = String(val == null ? "" : val), out = [], add = n => { if (n && out.indexOf(n) < 0) out.push(n); };
+  s.split(/[,;\/\n\r|&]+|\s+(?:और|व|and)\s+/i).forEach(seg => { const d = seg.replace(/\D/g, ""); if (d.length >= 20 && d.length % 10 === 0) { for (let i = 0; i < d.length; i += 10) add(d.slice(i, i + 10)); } else if (d.length >= 10) add(d.slice(-10)); });
+  return out;
+}
+function firstMob_(val) { const a = mobilesIn_(val); return a.length ? a[0] : String(val == null ? "" : val).replace(/\D/g, "").slice(-10); }
 /* 👤 क्या यह पंक्ति इस लॉगिन सदस्य की है (नाम या मोबाइल से; नाम में श्री/जी/(जगह) का फ़र्क़ चलेगा) */
 function ownRowBasic_(r) {
   const u = currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
@@ -2603,7 +2610,7 @@ function ownRowBasic_(r) {
   for (const k in r) {
     const kk = String(k).trim(), v = r[k];
     if (/^(member|member name|name|नाम|received from|paid by|payer|donor|party|दाता|भुगतानकर्ता)$/i.test(kk) && sameName(v)) return true;
-    if (mob && /mobile|मोबाइल|phone/i.test(kk) && String(v || "").replace(/\D/g, "").slice(-10) === mob) return true;
+    if (mob && /mobile|मोबाइल|phone|whatsapp|व्हाट्सएप|फ़ोन|फोन/i.test(kk) && mobilesIn_(v).indexOf(mob) >= 0) return true;
     if (typeof v === "string" && v.length < 90 && mk.length >= 5 && key(v) === mk) return true;   // किसी भी column में पूरा नाम (जैसे "Received From", "Narration")
   }
   return false;
@@ -5697,10 +5704,10 @@ async function openAddRecordForm(sheetName) {
       const nk = Object.keys(data).find(k => /^name$/i.test(k)), mk = Object.keys(data).find(k => /mobile|phone/i.test(k));
       if (nk && !String(data[nk] || "").trim()) { alert("❌ नाम भरना ज़रूरी है।"); return; }
       if (mk) {
-        const mob = String(data[mk] || "").replace(/\D/g, "").slice(-10);
-        if (mob.length !== 10) { alert("❌ मोबाइल नंबर 10 अंकों का सही डालें।"); return; }
-        data[mk] = mob;
-        const dup = tableData.find(r => String(r[mk] || r["Mobile"] || "").replace(/\D/g, "").slice(-10) === mob);
+        const mobsAll = mobilesIn_(data[mk]), mob = mobsAll[0] || "";
+        if (mobsAll.length < 1 || /[a-zA-Z]/.test(String(data[mk]))) { alert("❌ मोबाइल नंबर 10 अंकों का सही डालें (एक से ज़्यादा हों तो कॉमा से अलग करें)।"); return; }
+        data[mk] = mobsAll.join(", ");
+        const dup = tableData.find(r => mobilesIn_(r[mk] || r["Mobile"] || "").some(n => mobsAll.indexOf(n) >= 0));
         if (dup && !confirm("⚠️ यह मोबाइल (" + mob + ") पहले से सदस्य सूची में है।\n\nफिर भी जोड़ें?")) return;
       }
     }
@@ -6809,7 +6816,7 @@ function hintNotesForAnon_() {
 
 function waDesktopMode_() { try { return localStorage.getItem("smps_wa_mode") === "web" ? "web" : "app"; } catch (e) { return "app"; } }
 function buildWaUrl_(mobileRaw, message) {
-  let mobile = String(mobileRaw || "").replace(/\D/g, "");
+  let mobile = firstMob_(mobileRaw) || String(mobileRaw || "").replace(/\D/g, "");   // 📞 कई नंबर हों तो पहला
   const cc = SETTINGS?.DefaultCountryCode || "91";
   if (mobile.length === 10) mobile = cc + mobile;
   // v1.294: computer par App ya Web chunne ka option (neeche wala chhota button); mobile par hamesha pehle jaisa
@@ -8852,7 +8859,7 @@ if ('serviceWorker' in navigator) {
   const first = s => String(s || "").replace(/\s*\(.*$/, "").replace(/\s+/g, " ").trim();
   const isAct = r => !/pending|inactive|reject/i.test(String(r.Status || r.status || ""));
   const fmtD = v => { try { const d = parseRowDate_(v); if (d && !isNaN(d)) return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear(); } catch (e) {} return String(v || ""); };
-  const members = () => Object.values(MEMBERS || {}).map(r => ({ name: String(r.Member || r.Name || "").trim(), mobile: String(r.Mobile || r.mobile || "").replace(/\D/g, "").slice(-10), st: r }))
+  const members = () => Object.values(MEMBERS || {}).map(r => ({ name: String(r.Member || r.Name || "").trim(), mobile: firstMob_(r.Mobile || r.mobile), st: r }))
     .filter(m => m.name && m.mobile.length === 10 && isAct(m.st));
   const TABS = ["Members", "Meetings", "Announcements", "News", "Boli", "Donation"];
   const NOTES_RE = /^(minutes|meeting[\s_]*notes?|notes?|summary|कार्यवाही|चर्चा)$/i;
@@ -9400,7 +9407,7 @@ if ('serviceWorker' in navigator) {
         if (empty(r[kD]) && empty(r[kN])) return;
         const miss = sel.filter(f => empty(r[f.key]));
         if (!miss.length) return;
-        const mob = String(kM ? r[kM] : "").replace(/\D/g, "").slice(-10), x = { name: nm(r), miss: miss, mob: mob };
+        const mob = firstMob_(kM ? r[kM] : ""), x = { name: nm(r), miss: miss, mob: mob };
         (mob.length === 10 ? rows : noMob).push(x);
       });
       rows.sort((p, q) => p.name.localeCompare(q.name, "hi"));
@@ -9520,7 +9527,7 @@ if ('serviceWorker' in navigator) {
     if (!mem.length) { m.body.innerHTML = "<p>Members में डेटा नहीं है।</p>"; return; }
     const kI = keyOf(mem, /^(member ?id|id)$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kS = keyOf(mem, /^status$/i), kO = keyOf(mem, /occupation|व्यवसाय/i);
     if (!kI || !kN) { m.body.innerHTML = "<p>❌ MemberID / Name column नहीं मिले।</p>"; return; }
-    const blank = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v)), dig = v => String(v || "").replace(/\D/g, "").slice(-10);
+    const blank = v => /^[\s\-–—]*$/.test(String(v == null ? "" : v)), dig = v => firstMob_(v);
     const st = r => String(kS ? r[kS] || "" : ""), rej = r => /reject/i.test(st(r));
     const rows = mem.filter(r => !rej(r));
     const dupMap = {}; rows.forEach(r => { const d = dig(kM && r[kM]); if (d.length === 10) (dupMap[d] = dupMap[d] || []).push(r); });
@@ -9816,7 +9823,7 @@ if ('serviceWorker' in navigator) {
   const tvView_ = tab => (tab === "Members" ? TVLS_.get("smps_tv_view_Members", "card") : "table");
   const tvKey_ = (row, re) => Object.keys(row).find(k => re.test(String(k).trim()));
   const tvIsMoney_ = k => /(amount|received|pledged|paid|credit|debit|payment)/i.test(k) && !/(balance|closing|pending|mode|method|type|date|id$|ref)/i.test(k);
-  const tvMobile10_ = v => String(v || "").replace(/\D/g, "").slice(-10);
+  const tvMobile10_ = v => firstMob_(v);
 
   window.tvAfterRender_ = function () {
     const tc = document.getElementById("tableContainer"); if (!tc) return;
@@ -10184,7 +10191,7 @@ if ('serviceWorker' in navigator) {
       const cm = {};
       rows.forEach(r => { const en = String(r[K.kCity] || "").trim().toLowerCase(), pl = part(r[K.kName]); if (!en || pl.length < 2 || !hasDev_(pl[pl.length - 1])) return; const hi = pl[pl.length - 1]; (cm[en] = cm[en] || {})[hi] = (cm[en][hi] || 0) + 1; });
       const cityHi = en => { const m = cm[String(en || "").trim().toLowerCase()]; return m ? Object.keys(m).sort((x, y) => m[y] - m[x])[0] : ""; };
-      const fm = v => { const d = String(v || "").replace(/\D/g, "").slice(-10); return d.length === 10 ? d.slice(0, 5) + " " + d.slice(5) : String(v || ""); };
+      const fm = v => { const d = firstMob_(v); return d.length === 10 ? d.slice(0, 5) + " " + d.slice(5) : String(v || ""); };
       const recs = rows.map(r => {
         const parts = part(r[K.kName]), cEn = String(r[K.kCity] || "").trim(), vil = String(r[K.kVil] || "").trim(); let cH = "", oH = "";
         if (parts.length >= 2) { oH = parts[0]; cH = parts[parts.length - 1]; } else if (parts.length === 1) { if (cEn && !vil) cH = parts[0]; else oH = parts[0]; }
@@ -10332,7 +10339,7 @@ if ('serviceWorker' in navigator) {
     }
     const kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i);
     const norm = v => { let s = String(v || "").toUpperCase().replace(/\s+/g, "").replace(/POSITIVE|POS/, "+").replace(/NEGATIVE|NEG/, "-").replace(/[–—]/g, "-"); const mm = s.match(/^(AB|A|B|O)([+-])$/); return mm ? mm[1] + mm[2] : ""; };
-    const all = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => ({ g: norm(r[kB]), n: stripPlace_(r[kD] || r[kN] || ""), c: String(kC ? r[kC] || "" : "").trim(), mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10) })).filter(x => x.g && x.n && !/^[\s\-]+$/.test(x.n));
+    const all = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => ({ g: norm(r[kB]), n: stripPlace_(r[kD] || r[kN] || ""), c: String(kC ? r[kC] || "" : "").trim(), mob: firstMob_(kM ? r[kM] || "" : "") })).filter(x => x.g && x.n && !/^[\s\-]+$/.test(x.n));
     if (!all.length) { m.body.innerHTML = "<p>अभी किसी सदस्य ने रक्त समूह नहीं भरा है।</p>"; return; }
     const GR = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], cities = Array.from(new Set(all.map(x => x.c).filter(Boolean))).sort(), st = { g: "", c: "", q: "" };
     m.body.innerHTML = '<div id="blChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div><div style="display:flex;gap:6px;margin-bottom:6px"><select id="blC" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:8px"><option value="">सभी शहर</option>' + cities.map(c => "<option>" + esc(c) + "</option>").join("") + '</select><input id="blQ" type="search" placeholder="नाम खोजें" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:8px"></div><div id="blCnt" style="font-weight:700;margin:4px 0"></div><div id="blList"></div>';
@@ -10428,7 +10435,7 @@ if ('serviceWorker' in navigator) {
       '<label style="display:block;font-size:12px;color:#475569;margin:4px 0 3px">संदेश — {{Name}} (पहला नाम) और {{Event}} अपने-आप लगेंगे; आप बदलेंगे तो अगली बार भी यही रहेगा</label><textarea id="wuTxt" rows="7" style="' + S + '"></textarea><div id="wuInfo" style="font-size:13px;color:#475569;margin:8px 0 4px"></div><div id="wuList"></div>';
     const $ = id => m.body.querySelector("#" + id), fn = n => String(n || "").trim().split(/\s+/)[0];
     const msgFor = x => $("wuTxt").value.replace(/\{\{\s*Name\s*\}\}/gi, fn(x.name)).replace(/\{\{\s*Event\s*\}\}/gi, event);
-    const recips = () => (mode === "thanks" ? P : A).map(x => ({ name: x.name, city: x.city || "", mob: String(x.mobile || "").replace(/\D/g, "").slice(-10) }));
+    const recips = () => (mode === "thanks" ? P : A).map(x => ({ name: x.name, city: x.city || "", mob: firstMob_(x.mobile) }));
     const draw = () => {
       $("wuT").textContent = "🙏 आए हुए को धन्यवाद (" + P.length + ")"; $("wuM").textContent = "💌 न आए को संदेश (" + A.length + ")";
       $("wuT").style.cssText += ";background:" + (mode === "thanks" ? "#15803d;color:#fff" : "#e2e8f0;color:#0f172a"); $("wuM").style.cssText += ";background:" + (mode === "miss" ? "#b45309;color:#fff" : "#e2e8f0;color:#0f172a");
@@ -10552,7 +10559,7 @@ if ('serviceWorker' in navigator) {
     const loadMem = async () => {
       if (memCache) return memCache;
       const mem = (await fetchSheetFast_("Members")) || [], kS = keyOf(mem, /^status$/i), kD = keyOf(mem, /^member$/i), kN = keyOf(mem, /^(name|नाम|member name)$/i), kM = keyOf(mem, /mobile|मोबाइल|phone/i), kC = keyOf(mem, /city|शहर/i), kI = keyOf(mem, /^(member ?id|id)$/i);
-      memCache = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""); return { label: lab, name: stripPlace_(lab), id: String(kI ? r[kI] || "" : "").trim(), mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10), city: String(kC ? r[kC] || "" : "").trim() }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && (x.id || x.mob));
+      memCache = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""); return { label: lab, name: stripPlace_(lab), id: String(kI ? r[kI] || "" : "").trim(), mob: firstMob_(kM ? r[kM] || "" : ""), city: String(kC ? r[kC] || "" : "").trim() }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && (x.id || x.mob));
       return memCache;
     };
     const sug = $("#scSug"); let sugT = 0;
@@ -10658,7 +10665,7 @@ if ('serviceWorker' in navigator) {
     const part = s => { const mm = String(s || "").match(/\(([^)]*)\)\s*$/); return mm ? mm[1].split("-").map(x => x.trim()).filter(Boolean) : []; };
     const recs = mem.filter(r => !(kS && /pending|reject|inactive/i.test(String(r[kS] || "")))).map(r => { const lab = String(r[kD] || r[kN] || ""), pl = part(lab), cEn = String(kC ? r[kC] || "" : "").trim(), vil = String(kV ? r[kV] || "" : "").trim(); let cH = "", oH = "";
       if (pl.length >= 2) { oH = pl[0]; cH = pl[pl.length - 1]; } else if (pl.length === 1) { if (cEn && !vil) cH = pl[0]; else oH = pl[0]; }
-      return { id: String(kI ? r[kI] || "" : ""), name: stripPlace_(lab), city: cH || cEn, origin: oH || vil, gotra: String(kG ? r[kG] || "" : "").trim(), mob: String(kM ? r[kM] || "" : "").replace(/\D/g, "").slice(-10) }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && x.id);
+      return { id: String(kI ? r[kI] || "" : ""), name: stripPlace_(lab), city: cH || cEn, origin: oH || vil, gotra: String(kG ? r[kG] || "" : "").trim(), mob: firstMob_(kM ? r[kM] || "" : "") }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name) && x.id);
     const cities = Array.from(new Set(recs.map(x => x.city).filter(Boolean))).sort((x, y) => x.localeCompare(y, "hi"));
     m.body.innerHTML = '<div style="font-size:13px;color:#475569;margin-bottom:6px">हर बैज “🪪 मेरा कार्ड” जैसे डिज़ाइन में: नाम, MemberID, गोत्र, गाँव / शहर और उपस्थिति वाला QR। A4 के एक पन्ने पर 8 बैज (कटिंग की बिंदु-रेखा के साथ)।</div><label style="display:block;font-size:12.5px;color:#475569">कार्ड पर शीर्षक (जैसे कार्यक्रम का नाम)</label><input id="bgT" type="text" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:8px"><label style="display:block;font-size:12.5px;color:#475569">किनके बैज</label><select id="bgC" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:8px"><option value="">सभी सक्रिय सदस्य (' + recs.length + ')</option>' + cities.map(c => "<option>" + esc(c) + " (" + recs.filter(x => x.city === c).length + ")</option>").join("") + '</select>';
     m.body.querySelector("#bgT").value = event || "स्नेह सम्मेलन";
@@ -11427,7 +11434,7 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
 @media (min-width:1440px) {
   body.uxSide .wrap:has(> #appView[style*="block"]) { display:grid; grid-template-columns:200px minmax(0,1fr); column-gap:14px; align-items:start; align-content:start; grid-auto-rows:max-content; }
   body.uxSide .wrap:has(> #appView[style*="block"]) > * { grid-column:1 / -1; }
-  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs { grid-column:1; grid-row:span 1; height:0; min-height:0; overflow:visible; align-self:start; position:sticky; top:8px; display:flex !important; flex-direction:column; flex-wrap:nowrap; gap:6px; overflow:visible; justify-content:flex-start; padding:0; }
+  body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs { grid-column:1; grid-row:span 1; height:0; min-height:0; overflow:visible; align-self:start; position:sticky; top:62px; display:flex !important; flex-direction:column; flex-wrap:nowrap; gap:6px; overflow:visible; justify-content:flex-start; padding:0; }
   body.uxSide .wrap:has(> #appView[style*="block"]) > #tabs .tab { flex:0 0 auto; width:100%; justify-content:flex-start; text-align:left; white-space:normal; }
   body.uxSide .wrap:has(> #appView[style*="block"]) > #searchWrapper, body.uxSide .wrap:has(> #appView[style*="block"]) > #contentArea, body.uxSide .wrap:has(> #appView[style*="block"]) > #pagination { grid-column:2; min-width:0; }
 }
@@ -11599,8 +11606,18 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   const fitFooter = () => {
     const w = document.querySelector(".wrap"), f = document.getElementById("footer"); if (!w || !f) return;
     if (innerWidth <= 600) { w.style.minHeight = ""; return; }
-    w.style.minHeight = ""; const padB = parseFloat(getComputedStyle(document.body).paddingBottom) || 0, gap = innerHeight - (f.getBoundingClientRect().bottom + scrollY + padB);
-    if (gap > 0) w.style.minHeight = (w.offsetHeight + gap) + "px";
+    w.style.minHeight = "";
+    /* 1) साइडबार के टैब की सूची कंटेंट से लंबी हो तो .wrap उतना लंबा हो (footer टैब के ऊपर न चढ़े) */
+    let need = 0; const t = document.getElementById("tabs"), sw = document.getElementById("searchWrapper");
+    if (t && t.offsetParent !== null && getComputedStyle(w).display === "grid" && document.body.classList.contains("uxSide") && innerWidth >= 1440) {
+      const listH = t.scrollHeight, wTop = w.getBoundingClientRect().top + scrollY, natTop = (sw && sw.offsetParent !== null ? sw.getBoundingClientRect().top : t.getBoundingClientRect().top) + scrollY;
+      need = natTop + listH + 16 - wTop;
+      t.style.position = listH > innerHeight - 80 ? "relative" : "";   // बहुत लंबी सूची हो तो चिपके नहीं (नीचे के टैब पहुँच में रहें)
+    } else if (t) t.style.position = "";
+    /* 2) सामग्री कम हो तो footer स्क्रीन के नीचे */
+    const padB = parseFloat(getComputedStyle(document.body).paddingBottom) || 0, gap = innerHeight - (f.getBoundingClientRect().bottom + scrollY + padB);
+    const byFooter = gap > 0 ? w.offsetHeight + gap : 0, final = Math.max(need, byFooter);
+    if (final > 0) w.style.minHeight = Math.ceil(final) + "px";
   };
   const fitSoon = () => { cancelAnimationFrame(fz); fz = requestAnimationFrame(fitFooter); };
   window.addEventListener("resize", fitSoon); window.addEventListener("load", fitSoon);
