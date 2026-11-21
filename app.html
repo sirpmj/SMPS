@@ -4588,6 +4588,7 @@ async function openMembersDirectory_() {
       ${kOcc ? `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="dirB" style="width:auto;margin:0"> सिर्फ़ व्यवसाय वाले</label>` : ""}
       <button type="button" id="dirP">🖨️ Print / PDF</button>
       <button type="button" id="dirK" style="background:#9a3412">📖 निर्देशिका PDF</button>
+      <button type="button" id="dirBook" style="background:#166534" title="A5 की छोटी फोल्डेबल किताब: A4 पर 2-2 पन्ने, दोनों तरफ़ छापकर बीच से मोड़ें">📗 छोटी बुक (मोड़कर)</button>
     </div>
     <div class="dir-sc"><table class="dir-t"><thead></thead><tbody></tbody></table></div></div>`;
   document.body.appendChild(ov);
@@ -4604,6 +4605,7 @@ async function openMembersDirectory_() {
   [q, g, v, cs, bz].forEach(x => { if (x) x.oninput = x.onchange = draw; });
   ov.querySelector("#dirClose").onclick = () => ov.remove();
   ov.querySelector("#dirK").onclick = () => { const bt = ov.querySelector("#dirK"), t0 = bt.textContent; bt.textContent = "⏳ बन रही है..."; bt.disabled = true; setTimeout(async () => { try { await window.exportDirectoryPdf_({ rows: cur, keys: { kName, kMob, kGotra, kVil, kCity, kOcc } }); } finally { bt.textContent = t0; bt.disabled = false; } }, 50); };
+  ov.querySelector("#dirBook").onclick = () => { const bt = ov.querySelector("#dirBook"), t0 = bt.textContent; bt.textContent = "⏳ बन रही है..."; bt.disabled = true; setTimeout(async () => { try { await window.exportDirectoryPdf_({ rows: cur, booklet: true, keys: { kName, kMob, kGotra, kVil, kCity, kOcc } }); } finally { bt.textContent = t0; bt.disabled = false; } }, 50); };
   ov.querySelector("#dirP").onclick = () => {
     const w = window.open("", "_blank"); if (!w) { alert("Pop-up allow करें।"); return; }
     const flt = [g && g.value ? "गोत्र: " + g.value : "", v && v.value ? "गांव: " + v.value : "", q.value.trim() ? "खोज: " + q.value.trim() : ""].filter(Boolean).join(" | ");
@@ -10038,7 +10040,7 @@ if ('serviceWorker' in navigator) {
     return lines.length ? lines : [""];
   }
   function PdfBuilder_(opt) {
-    const S = opt.scale || 2, L = !!opt.landscape, PW = L ? 1123 : 794, PH = L ? 794 : 1123, M = opt.bare ? { l: 28, r: 28, t: 28, b: 28 } : { l: 34, r: 34, t: 62, b: 50 };
+    const S = opt.scale || 2, L = !!opt.landscape, PW = opt.pw || (L ? 1123 : 794), PH = opt.ph || (L ? 794 : 1123), M = opt.bare ? { l: 28, r: 28, t: 28, b: 28 } : { l: 34, r: 34, t: 62, b: 50 };
     const F = opt.font || '"Mukta","Noto Sans Devanagari","Segoe UI",Arial,sans-serif';
     const mk = () => (typeof document !== "undefined" ? document.createElement("canvas") : null);
     const meas = mk(); meas.width = 10; meas.height = 10; const mg = meas.getContext("2d");
@@ -10184,9 +10186,26 @@ if ('serviceWorker' in navigator) {
   };
 
   /* ---- 📖 सदस्य निर्देशिका (शहर-वार, Hindi, छपने लायक) ---- */
+  /* 📗 छोटी फोल्डेबल बुक: A5 पन्ने बनाकर A4-landscape की शीट पर 2-2 जमाना (saddle-stitch): दोनों तरफ़ छापें, बीच से मोड़ें, बीच में staple */
+  async function bookletImpose_(pages) {
+    const n = pages.length;   // 4 का गुणज
+    const imgs = await Promise.all(pages.map(p => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = p.d; })));
+    const order = [];
+    for (let k = 0; k < n / 4; k++) { order.push([n - 1 - 2 * k, 2 * k]); order.push([2 * k + 1, n - 2 - 2 * k]); }   // आगे: [आख़िरी, पहला] · पीछे: [दूसरा, अंतिम-1]
+    const pdf = PdfBuilder_({ landscape: true, bare: true, quality: 0.9 });
+    pdf.run(b => {
+      order.forEach((pr, i) => {
+        if (i > 0) b.newPage(); if (b.dry) return; const hw = b.PW / 2;
+        b.image(imgs[pr[0]], 0, 0, hw, b.PH); b.image(imgs[pr[1]], hw, 0, hw, b.PH);
+        b.line(hw, 0, hw, 7, "#94a3b8", 0.6); b.line(hw, b.PH - 7, hw, b.PH, "#94a3b8", 0.6);   // मोड़ने का छोटा निशान
+      });
+    });
+    return pdf.pdfBytes();
+  }
   window.exportDirectoryPdf_ = async function (ctx) {
     try {
       await ensureFonts_();
+      const bk = !!ctx.booklet;
       const rows = ctx.rows || [], K = ctx.keys || {}, part = s => { const m = String(s || "").match(/\(([^)]*)\)\s*$/); return m ? m[1].split("-").map(x => x.trim()).filter(Boolean) : []; };
       const cm = {};
       rows.forEach(r => { const en = String(r[K.kCity] || "").trim().toLowerCase(), pl = part(r[K.kName]); if (!en || pl.length < 2 || !hasDev_(pl[pl.length - 1])) return; const hi = pl[pl.length - 1]; (cm[en] = cm[en] || {})[hi] = (cm[en][hi] || 0) + 1; });
@@ -10202,16 +10221,26 @@ if ('serviceWorker' in navigator) {
       const cities = Object.keys(groups).sort((x, y) => x === "अन्य" ? 1 : y === "अन्य" ? -1 : x.localeCompare(y, "hi"));
       cities.forEach(c => groups[c].sort((x, y) => x.name.localeCompare(y.name, "hi")));
       const hasG = recs.some(x => x.gotra), hasO = recs.some(x => x.occ), day = new Date().toLocaleDateString("en-GB");
-      const cols = [{ h: "क्र.", a: "center", max: 38 }, { h: "नाम", bold: true }, { h: "मोबाइल", max: 110 }].concat(hasG ? [{ h: "गोत्र", max: 90 }] : [], [{ h: "गाँव / मूल स्थान", max: 130 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);
-      const pdf = PdfBuilder_({ landscape: false, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day });
+      const cols = [{ h: "क्र.", a: "center", max: bk ? 30 : 38 }, { h: "नाम", bold: true }, { h: "मोबाइल", max: bk ? 92 : 110 }].concat(hasG ? [{ h: "गोत्र", max: bk ? 70 : 90 }] : [], [{ h: "गाँव / मूल स्थान", max: bk ? 100 : 130 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);
+      const pdf = PdfBuilder_(bk ? { landscape: false, pw: 559, ph: 794, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day } : { landscape: false, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day });
       pdf.run(b => {
-        b.y = 150; b.paragraph(SAMAJ_NAME_, 30, 700, "#7c2d12", "center", 4); b.paragraph("सदस्य निर्देशिका", 44, 700, "#111", "center", 10);
-        b.paragraph("कुल " + recs.length + " सदस्य  •  " + day, 16, 500, "#475569", "center", 22);
-        b.paragraph("अनुक्रमणिका", 18, 700, "#9a3412", "left", 4);
-        b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 80 }, { h: "पृष्ठ", a: "center", max: 70 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: 13 });
+        b.y = bk ? 100 : 150; b.paragraph(SAMAJ_NAME_, bk ? 22 : 30, 700, "#7c2d12", "center", 4); b.paragraph("सदस्य निर्देशिका", bk ? 32 : 44, 700, "#111", "center", 8);
+        b.paragraph("कुल " + recs.length + " सदस्य  •  " + day, bk ? 13 : 16, 500, "#475569", "center", bk ? 16 : 22);
+        b.paragraph("अनुक्रमणिका", bk ? 16 : 18, 700, "#9a3412", "left", 4);
+        b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 70 }, { h: "पृष्ठ", a: "center", max: 60 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: bk ? 12 : 13 });
         b.newPage();
-        cities.forEach(c => { b.ensure(120); b.mark("c:" + c); b.band(c, groups[c].length + " सदस्य"); b.table(cols, groups[c].map((x, i) => [i + 1, x.name, x.mob].concat(hasG ? [x.gotra] : [], [x.origin], hasO ? [x.occ] : [])), { size: 11.5 }); });
+        cities.forEach(c => { b.ensure(120); b.mark("c:" + c); b.band(c, groups[c].length + " सदस्य"); b.table(cols, groups[c].map((x, i) => [i + 1, x.name, x.mob].concat(hasG ? [x.gotra] : [], [x.origin], hasO ? [x.occ] : [])), { size: bk ? 10.5 : 11.5 }); });
+        if (bk) {   // कुल पन्ने 4 के गुणज हों: ज़रूरत हो तो "टिप्पणियाँ" पन्ने, फिर पिछला कवर
+          while ((b.page + 1) % 4 !== 0) { b.newPage(); b.paragraph("📝 टिप्पणियाँ", 18, 700, "#9a3412", "left", 10); for (let y = b.y + 10; y < b.PH - 70; y += 28) b.line(b.M.l, y, b.PW - b.M.r, y, "#cbd5e1", 0.7); }
+          b.newPage(); b.y = 250; b.paragraph(SAMAJ_NAME_, 22, 700, "#7c2d12", "center", 6); b.paragraph("सदस्य निर्देशिका  •  " + day, 14, 500, "#475569", "center", 10); b.paragraph("यह निर्देशिका सिर्फ़ समाज के सदस्यों के उपयोग के लिए है।", 12, 400, "#64748b", "center", 6);
+        }
       });
+      if (bk) {
+        const bytes = await bookletImpose_(pdf.jpgs);
+        window.pdfSave_(bytes, "Sadasya_Nirdeshika_Book_" + pdfDay_() + ".pdf");
+        alert("📗 बुक तैयार: " + pdf.jpgs.length + " पन्ने = " + (pdf.jpgs.length / 4) + " कागज़ (" + (pdf.jpgs.length / 2) + " पक्ष). छपाई: A4 · Landscape · दोनों तरफ़ (Duplex, “छोटे किनारे से पलटें / Flip on short edge”) · Scale 100%. फिर बीच से मोड़कर बीच में staple करें।");
+        return;
+      }
       window.pdfSave_(pdf.pdfBytes(), "Sadasya_Nirdeshika_" + pdfDay_() + ".pdf");
     } catch (err) { console.error("exportDirectoryPdf_", err); alert("निर्देशिका PDF नहीं बन पाई: " + (err && err.message || err)); }
   };
