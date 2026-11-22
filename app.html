@@ -2479,7 +2479,7 @@ function forceRelogin_(msg) {
    Popup pehle wala jawab TURANT dikhata hai aur peeche se naya laakar agli baar ke liye bhar deta hai.
    Koi bhi badlav (add/edit/approve/save...) hote hi yeh yaadasht saaf ho jati hai. */
 const RC_TTL_ = { myAccount: 900000, myProfile: 900000, talentList: 900000, pendingMembers: 90000, rsvpList: 90000 };
-const RC_KEEP_ = /^(login|attList|checkinSet|getMessageLog|getFormulaColumns|getFormulaColumnsBulk|readSheets|visit|photoThumb)$/;
+const RC_KEEP_ = /^(login|attList|checkinSet|getMessageLog|getFormulaColumns|getFormulaColumnsBulk|readSheets|visit|photoThumb|activityList)$/;
 const _RC = {}, _INF = {};
 function _rcKey(p) { const o = Object.assign({}, p); delete o.token; return JSON.stringify(o); }
 /* 🎪 सम्मेलन खुलते ही उसके अंदर के popup (उपस्थिति सूची / स्कैनर / स्टैंडी) का डेटा पहले से मँगा लेते हैं; popup खुलते ही वही जवाब मिल जाता है (30 सेकंड, एक बार) */
@@ -2599,10 +2599,10 @@ function mobilesIn_(val) {
 }
 function firstMob_(val) { const a = mobilesIn_(val); return a.length ? a[0] : String(val == null ? "" : val).replace(/\D/g, "").slice(-10); }
 /* 👤 क्या यह पंक्ति इस लॉगिन सदस्य की है (नाम या मोबाइल से; नाम में श्री/जी/(जगह) का फ़र्क़ चलेगा) */
-function ownRowBasic_(r) {
-  const u = currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
+function ownRowBasic_(r, who) {
+  const u = who || currentUser || {}, norm = x => String(x || "").replace(/\s+/g, " ").trim().toLowerCase(),
     key = x => String(x || "").toLowerCase().replace(/\([^)]*\)/g, "").replace(/\b(shri|shree|sh|ji|smt|mr|mrs)\b\.?/g, "").replace(/श्री|श्रीमती|जी/g, "").replace(/[^a-z0-9\u0900-\u097F]+/g, "");
-  const me = norm(u.name), mk = key(u.name), mob = String(u.mobile || "").replace(/\D/g, "").slice(-10);
+  const me = norm(u.name), mk = key(u.name), mobs = (Array.isArray(u.mobiles) && u.mobiles.length ? u.mobiles : [u.mobile]).map(x => String(x || "").replace(/\D/g, "").slice(-10)).filter(x => x.length === 10);
   const sameName = v => { const t = norm(v); return !!t && !!me && (t === me || (mk.length >= 4 && key(v) === mk)); };
   try { if (SETTINGS && SETTINGS.MemberColumn && sameName(r[SETTINGS.MemberColumn])) return true; } catch (e) {}
   try { if (typeof getRowMemberName_ === "function" && sameName(getRowMemberName_(r))) return true; } catch (e) {}
@@ -2610,7 +2610,7 @@ function ownRowBasic_(r) {
   for (const k in r) {
     const kk = String(k).trim(), v = r[k];
     if (/^(member|member name|name|नाम|received from|paid by|payer|donor|party|दाता|भुगतानकर्ता)$/i.test(kk) && sameName(v)) return true;
-    if (mob && /mobile|मोबाइल|phone|whatsapp|व्हाट्सएप|फ़ोन|फोन/i.test(kk) && mobilesIn_(v).indexOf(mob) >= 0) return true;
+    if (mobs.length && /mobile|मोबाइल|phone|whatsapp|व्हाट्सएप|फ़ोन|फोन/i.test(kk) && mobilesIn_(v).some(n => mobs.indexOf(n) >= 0)) return true;
     if (typeof v === "string" && v.length < 90 && mk.length >= 5 && key(v) === mk) return true;   // किसी भी column में पूरा नाम (जैसे "Received From", "Narration")
   }
   return false;
@@ -2623,19 +2623,45 @@ function ownIds_() {
   const set = new Set();
   try {
     const rowsOf = n => (typeof CACHE !== "undefined" && CACHE[n] && CACHE[n].data) || [];
-    ["Boli", "Donation"].forEach(n => rowsOf(n).forEach(r => { if (ownRowBasic_(r) && r["ID"]) set.add(String(r["ID"]).trim()); }));
+    const famL = familyIdentities_(), mineRow = r => ownRowBasic_(r) || famL.some(f => ownRowBasic_(r, f));
+    ["Boli", "Donation"].forEach(n => rowsOf(n).forEach(r => { if (mineRow(r) && r["ID"]) set.add(String(r["ID"]).trim()); }));
     rowsOf("Receipts").forEach(r => {   // रसीद: नाम से, या अपनी बोली/दान की ID से जुड़ी
-      let mine = ownRowBasic_(r); if (!mine) for (const k in r) { const v = r[k]; if (typeof v === "string" && v.trim().length >= 5 && set.has(v.trim())) { mine = true; break; } }
+      let mine = mineRow(r); if (!mine) for (const k in r) { const v = r[k]; if (typeof v === "string" && v.trim().length >= 5 && set.has(v.trim())) { mine = true; break; } }
       if (mine && r["ID"]) set.add(String(r["ID"]).trim());
     });
   } catch (e) {}
   _ownIds = { t: Date.now(), u, set };
   return set;
 }
+/* 👨‍👩‍👧 Members में वैकल्पिक "Family ID" column: एक ही Family ID वाले सदस्य एक-दूसरे का खाता / बोली / दान / रसीद देख सकें */
+let _famId = { t: 0, u: "", list: [] };
+function familyIdentities_() {
+  const u = currentUser && (currentUser.mobile || currentUser.name) || "";
+  if (_famId.u === u && Date.now() - _famId.t < 60000) return _famId.list;
+  const list = [];
+  try {
+    const rows = (typeof CACHE !== "undefined" && CACHE["Members"] && CACHE["Members"].data) || [];
+    if (rows.length) {
+      const fk = Object.keys(rows[0]).find(k => /^\s*(family\s*id|family|परिवार(\s*(id|आईडी|क्रमांक))?)\s*$/i.test(k));
+      if (fk) {
+        const mine = new Set(rows.filter(r => ownRowBasic_(r)).map(r => String(r[fk] || "").trim()).filter(Boolean));
+        if (mine.size) rows.forEach(r => {
+          if (!mine.has(String(r[fk] || "").trim())) return;
+          const nm = (typeof getRowMemberName_ === "function" ? getRowMemberName_(r) : "") || r["Member"] || r["Name"] || "", mobs = [];
+          Object.keys(r).forEach(k => { if (/mobile|मोबाइल|phone|whatsapp|फ़ोन|फोन/i.test(k) && !/verif|status|otp/i.test(k)) mobilesIn_(r[k]).forEach(n => { if (mobs.indexOf(n) < 0) mobs.push(n); }); });
+          if (nm || mobs.length) list.push({ name: String(nm).replace(/\s*\([^)]*\)\s*$/, "").trim(), mobiles: mobs });
+        });
+      }
+    }
+  } catch (e) {}
+  _famId = { t: Date.now(), u, list };
+  return list;
+}
 function ownRow_(r) {
   if (ownRowBasic_(r)) return true;
-  const ids = ownIds_(); if (!ids.size) return false;
-  for (const k in r) { const v = r[k]; if (typeof v === "string") { const t = v.trim(); if (t.length >= 5 && ids.has(t)) return true; } }
+  const ids = ownIds_();
+  if (ids.size) for (const k in r) { const v = r[k]; if (typeof v === "string") { const t = v.trim(); if (t.length >= 5 && ids.has(t)) return true; } }
+  const fam = familyIdentities_(); for (let i = 0; i < fam.length; i++) if (ownRowBasic_(r, fam[i])) return true;
   return false;
 }
 function onlyDigits(s){
@@ -10448,6 +10474,61 @@ if ('serviceWorker' in navigator) {
   /* ===== 🎪 सम्मेलन: QR उपस्थिति · उपस्थिति सूची · नाम-बैज · RSVP ===== */
   const getEv_ = () => { try { return localStorage.getItem("smps_event") || ""; } catch (e) { return ""; } };
   const setEv_ = v => { try { localStorage.setItem("smps_event", v); } catch (e) {} };
+  /* 🔎 सब जगह खोज (Admin / समिति): नाम · मोबाइल (कोई भी) · गाँव · शहर → सदस्य, उसका खाता, बोली / दान / रसीद */
+  window.openGlobalSearch_ = async function (q0) {
+    const m = openModal_("🔎 सब जगह खोज"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.body.innerHTML = '<input id="gsQ" type="text" autocomplete="off" placeholder="नाम / मोबाइल / गाँव / शहर लिखें" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px"><div id="gsL" style="margin-top:8px"></div><div id="gsD"></div>';
+    const $ = id => m.body.querySelector("#" + id), kOf = (rows, re) => Object.keys((rows && rows[0]) || {}).find(k => re.test(k)) || "";
+    const num = v => Number(String(v == null ? "" : v).replace(/[₹,\s]/g, "")) || 0, inr = n => "₹" + Number(n).toLocaleString("en-IN");
+    $("gsL").innerHTML = '<div class="muted">⏳ सदस्य सूची लोड हो रही है…</div>';
+    let rows = []; try { rows = (await fetchSheetFast_("Members")) || []; } catch (e) {}
+    const kD = kOf(rows, /^member$/i), kN = kOf(rows, /^(name|नाम|member name)$/i), kS = kOf(rows, /^status$/i), kC = kOf(rows, /city|शहर/i), kV = kOf(rows, /origin|village|मूल|गाँव|गांव/i), kG = kOf(rows, /gotra|गोत्र/i), kF = kOf(rows, /^\s*(family\s*id|family|परिवार(\s*(id|आईडी|क्रमांक))?)\s*$/i);
+    const mobKeys = Object.keys(rows[0] || {}).filter(k => /mobile|मोबाइल|phone|whatsapp|फ़ोन|फोन/i.test(k) && !/verif|status|otp/i.test(k));
+    const mem = rows.map(r => { const lab = String(r[kD] || r[kN] || ""), mobs = []; mobKeys.forEach(k => mobilesIn_(r[k]).forEach(n => { if (mobs.indexOf(n) < 0) mobs.push(n); })); return { row: r, label: lab, name: stripPlace_(lab), mobs, city: String(kC ? r[kC] || "" : ""), vil: String(kV ? r[kV] || "" : ""), gotra: String(kG ? r[kG] || "" : ""), status: String(kS ? r[kS] || "" : ""), fam: String(kF ? r[kF] || "" : "").trim() }; }).filter(x => x.name && !/^[\s\-]+$/.test(x.name));
+    const match = (x, q) => { const lq = q.toLowerCase(), dq = q.replace(/\D/g, ""); if (dq.length >= 3 && /^[\d\s+\-]+$/.test(q) && x.mobs.some(n => n.indexOf(dq) >= 0)) return true; if (typeof smatch_ === "function" ? smatch_(x.label, lq) : x.label.toLowerCase().includes(lq)) return true; return (x.vil + " " + x.city).toLowerCase().includes(lq); };
+    const showList = () => {
+      const q = $("gsQ").value.trim(), box = $("gsL"); $("gsD").innerHTML = "";
+      if (q.length < 2) { box.innerHTML = '<div class="muted" style="font-size:13px">कम से कम 2 अक्षर / 3 अंक लिखें · कुल ' + mem.length + " सदस्य</div>"; return; }
+      const f = mem.filter(x => match(x, q)).slice(0, 8); box.innerHTML = f.length ? "" : '<div class="muted">कोई नहीं मिला</div>';
+      f.forEach(x => { const b = document.createElement("button"); b.type = "button"; b.style.cssText = "display:block;width:100%;text-align:left;border:1px solid #cbd5e1;background:#fff;color:#0f172a;border-radius:8px;padding:9px 10px;margin-bottom:5px;font-size:14px;cursor:pointer"; b.innerHTML = "<b>" + esc(x.name) + '</b> <span style="color:#64748b">' + esc([x.vil, x.city].filter(Boolean).join(", ")) + (x.mobs[0] ? " · " + esc(x.mobs[0]) : "") + "</span>"; b.onclick = () => detail(x); box.appendChild(b); });
+    };
+    const detail = async x => {
+      const D = $("gsD"); D.innerHTML = '<div class="muted" style="margin-top:8px">⏳ खाता खुल रहा है…</div>';
+      const who = { name: x.name, mobiles: x.mobs }, fam = x.fam ? mem.filter(y => y.fam === x.fam && y !== x) : [];
+      const sums = {}, recent = {};
+      for (const sh of ["Boli", "Donation", "Receipts"]) {
+        let rs = []; try { rs = ((await fetchSheetFast_(sh)) || []).filter(r => ownRowBasic_(r, who)); } catch (e) {}
+        const kp = kOf(rs, /^pledged/i), ka = kOf(rs, /^(paid|received|amount|रकम|राशि)(?!\s*(from|by|to|date))/i), kd = kOf(rs, /^(date|तारीख|दिनांक)/i), kf = kOf(rs, /^(for|purpose|उद्देश्य|विवरण)/i);
+        let p = 0, a = 0; rs.forEach(r => { p += kp ? num(r[kp]) : 0; a += ka ? num(r[ka]) : 0; });
+        sums[sh] = { n: rs.length, p, a };
+        recent[sh] = rs.map(r => ({ d: kd ? parseRowDate_(r[kd]) : null, f: kf ? String(r[kf] || "") : "", v: ka ? num(r[ka]) : (kp ? num(r[kp]) : 0) })).sort((u, v) => (v.d || 0) - (u.d || 0)).slice(0, 4);
+      }
+      const d2 = d => d ? String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + d.getFullYear() : "";
+      const sec = (title, sh) => sums[sh].n ? '<div style="margin-top:8px"><b>' + title + "</b>" + (sh !== "Receipts" ? ' <span class="muted" style="font-size:13px">जमा ' + inr(sums[sh].a) + " / कुल " + inr(sums[sh].p) + (sums[sh].p > sums[sh].a ? " · बाकी " + inr(sums[sh].p - sums[sh].a) : "") + "</span>" : ' <span class="muted" style="font-size:13px">' + sums[sh].n + " रसीद · " + inr(sums[sh].a) + "</span>") + recent[sh].map(r => '<div class="hp-row" style="font-size:13px"><span>' + esc(d2(r.d)) + "</span><span>" + esc(r.f) + '</span><span class="hp-pill">' + inr(r.v) + "</span></div>").join("") + "</div>" : "";
+      D.innerHTML = '<div class="hp-card" style="margin-top:10px"><div style="font-size:17px;font-weight:700">' + esc(x.name) + '</div><div class="muted" style="font-size:13.5px">' + esc([x.vil, x.city, x.gotra, x.status].filter(Boolean).join(" · ")) + "</div>" +
+        '<div style="margin-top:6px">' + (x.mobs.length ? x.mobs.map(n => '📞 <a href="tel:' + n + '">' + n + '</a> <a href="https://wa.me/91' + n + '" target="_blank" rel="noopener">💬</a>').join(" &nbsp; ") : '<span class="muted">मोबाइल दर्ज नहीं</span>') + "</div>" +
+        (fam.length ? '<div style="margin-top:6px;font-size:13.5px">👨‍👩‍👧 परिवार: ' + fam.map(y => esc(y.name)).join(", ") + "</div>" : "") +
+        sec("🔔 बोली", "Boli") + sec("🤝 दान / सहयोग", "Donation") + sec("🧾 रसीदें", "Receipts") +
+        (!sums.Boli.n && !sums.Donation.n && !sums.Receipts.n ? '<div class="muted" style="margin-top:8px">इनका कोई बोली / दान / रसीद नहीं मिला।</div>' : "") +
+        '<div class="hp-btns"><button type="button" class="hp-btn" data-a="kh">📄 पूरा खाता</button></div></div>';
+      const kb = D.querySelector("[data-a=kh]"); if (kb) kb.onclick = () => { try { window.openMemberStatement_(encodeURIComponent(x.label || x.name)); } catch (e) {} };
+    };
+    $("gsQ").oninput = showList; $("gsQ").value = q0 || ""; showList(); try { $("gsQ").focus(); } catch (e) {}
+  };
+  /* 🕒 बदलाव का रिकॉर्ड (सिर्फ़ Admin): किसने, कब, कहाँ, क्या जोड़ा / बदला / हटाया */
+  window.openActivityLog_ = async function () {
+    const m = openModal_("🕒 बदलाव का रिकॉर्ड"); m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
+    m.body.innerHTML = '<div style="display:flex;gap:6px;margin-bottom:8px"><select id="alS" style="flex:none;padding:8px;border:1px solid #cbd5e1;border-radius:8px"><option value="">सब शीट</option></select><input id="alQ" type="text" placeholder="नाम / बदलाव में खोजें" style="flex:1;min-width:0;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:15px"></div><div id="alL"><div class="muted">⏳ लोड हो रहा है…</div></div>';
+    const $ = id => m.body.querySelector("#" + id); let rows = [];
+    try { const r = await callCrudBackend_({ action: "activityList" }); if (!r || !r.success) throw new Error((r && r.msg) || "लोड नहीं हुआ"); rows = r.rows || []; } catch (e) { $("alL").innerHTML = '<div style="color:#b91c1c">❌ ' + esc(e.message || e) + "</div>"; return; }
+    [...new Set(rows.map(r => r.sheet).filter(Boolean))].forEach(sh => { const o = document.createElement("option"); o.value = sh; o.textContent = sh; $("alS").appendChild(o); });
+    const col = a => a === "जोड़ा" ? "#16a34a" : a === "हटाया" ? "#dc2626" : "#0b63d6";
+    const draw = () => {
+      const q = $("alQ").value.trim().toLowerCase(), sh = $("alS").value, f = rows.filter(r => (!sh || r.sheet === sh) && (!q || (r.user + " " + r.detail + " " + r.ref + " " + r.action).toLowerCase().includes(q)));
+      $("alL").innerHTML = f.length ? f.slice(0, 200).map(r => '<div style="border-bottom:1px solid rgba(100,116,139,.25);padding:7px 0;font-size:13px"><div><span style="background:' + col(r.action) + ';color:#fff;border-radius:6px;padding:1px 7px;font-size:12px">' + esc(r.action) + "</span> <b>" + esc(r.sheet) + "</b> " + esc(r.ref) + '<span class="muted" style="float:right">' + esc(r.time) + '</span></div><div class="muted">👤 ' + esc(r.user) + (r.role ? " (" + esc(r.role) + ")" : "") + '</div><div style="word-break:break-word">' + esc(r.detail) + "</div></div>").join("") : '<div class="muted">कोई रिकॉर्ड नहीं</div>';
+    };
+    $("alQ").oninput = draw; $("alS").onchange = draw; draw();
+  };
   /* 🏁 कार्यक्रम का समापन: कुल गिनती + आए हुए को धन्यवाद / न आए को "कमी रही" संदेश (मुफ़्त wa.me — एक-एक tap से) */
   window.openWrapUp_ = async function (event) {
     const m = openModal_("🏁 समापन — " + event); m.body.innerHTML = "<p class='muted'>⏳ गिनती हो रही है...</p>"; m.foot.appendChild(modalBtn_("बंद करें", "#64748b", m.close));
@@ -11651,6 +11732,17 @@ if(/[?&]new=1\b/.test(location.search)||location.hash==="#new"){if(document.read
   const fitSoon = () => { cancelAnimationFrame(fz); fz = requestAnimationFrame(fitFooter); };
   window.addEventListener("resize", fitSoon); window.addEventListener("load", fitSoon);
   new MutationObserver(fitSoon).observe(document.body, { childList: true, subtree: true }); setTimeout(fitSoon, 300); setTimeout(fitSoon, 1500);
+  /* --- 🔎 खोज / 🕒 रिकॉर्ड बटन (Refresh के बगल में) --- */
+  const adminBtns = () => {
+    const rb = document.getElementById("refreshBtn"); if (!rb || !rb.parentNode) return;
+    const mk = (id, txt, title, fn) => { let b = document.getElementById(id); if (!b) { b = document.createElement("button"); b.id = id; b.type = "button"; b.className = rb.className; b.style.cssText = rb.style.cssText; b.textContent = txt; b.title = title; b.onclick = fn; rb.parentNode.insertBefore(b, rb.nextSibling); } return b; };
+    const g = mk("gsBtn", "🔎 खोज", "सब जगह खोज (Ctrl+K)", () => window.openGlobalSearch_ && window.openGlobalSearch_());
+    const a = mk("actBtn", "🕒 रिकॉर्ड", "बदलाव का रिकॉर्ड", () => window.openActivityLog_ && window.openActivityLog_());
+    try { g.style.display = isStaffRole_() ? "" : "none"; a.style.display = isAdminRole_() ? "" : "none"; } catch (e) {}
+  };
+  adminBtns(); setTimeout(adminBtns, 800); setTimeout(adminBtns, 2500);
+  { const av = document.getElementById("appView"); if (av) new MutationObserver(adminBtns).observe(av, { attributes: true, attributeFilter: ["style"] }); }
+  document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) { try { if (isStaffRole_() && document.getElementById("appView") && document.getElementById("appView").style.display !== "none") { e.preventDefault(); window.openGlobalSearch_ && window.openGlobalSearch_(); } } catch (x) {} } });
   /* --- 🔒 admin के औज़ार (अधूरी जानकारी, डेटा सफ़ाई, सम्मेलन, नई मंज़ूरी) सामान्य सदस्य को नहीं दिखें --- */
   const hideAdminTools = () => { try { if (isStaffRole_("Members")) return; ["incBtn", "cleanBtn", "eventBtn", "pendMemBtn"].forEach(id => { const b = document.getElementById(id); if (b && b.style.display !== "none") b.style.display = "none"; }); } catch (e) {} };
   { const sw = document.getElementById("searchWrapper"); if (sw) new MutationObserver(hideAdminTools).observe(sw, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] }); }

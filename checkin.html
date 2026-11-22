@@ -38,6 +38,9 @@ button.guest { background: #0369a1; }
 .sugs { margin: -2px 0 8px; }
 .sugs button.sg { display: block; width: 100%; text-align: left; background: #fff; color: var(--ink); border: 1px solid #cbd5e1; border-radius: 10px; padding: 9px 12px; margin: 0 0 6px; font-size: 16px; font-weight: 700; }
 .sugs button.sg span { display: block; font-size: 13px; font-weight: 400; color: var(--mut); }
+.famlist label { display:flex; align-items:center; gap:10px; margin:0 0 6px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; font-size:17px; font-weight:600; color:var(--ink); background:#fff; }
+.famlist input { width:22px; height:22px; margin:0; flex:none; }
+.famlist .dn { font-weight:400; color:var(--mut); font-size:14px; margin-left:auto; }
 .or { margin: 16px 0 2px; text-align: center; color: var(--mut); font-size: 14px; }
 button { font: inherit; cursor: pointer; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 17px; font-weight: 700; width: 100%; margin-top: 12px; color: #fff; background: var(--brand); }
 button.sec { background: #e2e8f0; color: var(--ink); }
@@ -115,6 +118,7 @@ button:disabled { opacity: .6; cursor: default; }
     <section id="vConf" hidden>
       <h1>क्या आप यही हैं?</h1>
       <div class="who"><div class="nm" id="cNm"></div><div class="sub" id="cSub"></div></div>
+      <div id="cFam" hidden><label>परिवार के जो सदस्य साथ आए हैं (चुनें)</label><div id="cFamList" class="famlist"></div></div>
       <label>साथ में कितने लोग आए हैं? (वैकल्पिक)</label>
       <div class="step"><button type="button" id="gMinus" aria-label="कम करें">−</button><output id="gVal">0</output><button type="button" id="gPlus" aria-label="बढ़ाएँ">+</button></div>
       <div class="msg bad" id="cMsg" hidden></div>
@@ -167,9 +171,19 @@ button:disabled { opacity: .6; cursor: default; }
     $("oNm").textContent = r.member.name; $("oSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · ");
     $("oEv").textContent = EVENT; $("oH").textContent = already ? "आपकी उपस्थिति पहले से दर्ज है" : "स्वागत है! उपस्थिति दर्ज हो गई";
     var t = new Date().toLocaleTimeString("hi-IN", { hour: "2-digit", minute: "2-digit" });
-    $("oNote").textContent = already ? "दोबारा दर्ज करने की ज़रूरत नहीं।" : "समय: " + t + (guests ? " · साथ में " + guests + " लोग" : "");
+    $("oNote").textContent = already ? "दोबारा दर्ज करने की ज़रूरत नहीं।" : "समय: " + t + (r.familyMarked ? " · परिवार के " + r.familyMarked + " सदस्य भी दर्ज" : "") + (guests ? " · साथ में " + guests + " लोग" : "");
     show("vOk");
   }
+  function renderFam(list) {
+    var box = $("cFamList"); box.innerHTML = ""; $("cFam").hidden = !list.length;
+    list.forEach(function (x) {
+      var l = document.createElement("label"), c = document.createElement("input"); c.type = "checkbox"; c.value = x.id; c.disabled = !!x.already;
+      var sp = document.createElement("span"); sp.textContent = x.name; l.appendChild(c); l.appendChild(sp);
+      if (x.already) { var d = document.createElement("span"); d.className = "dn"; d.textContent = "✔ दर्ज"; l.appendChild(d); }
+      box.appendChild(l);
+    });
+  }
+  function famPicked() { return Array.prototype.slice.call(document.querySelectorAll("#cFamList input:checked")).map(function (c) { return c.value; }); }
   $("eRetry").onclick = init;
   $("mGo").onclick = function () {
     var m = $("mobile").value.replace(/\D/g, "").slice(-10); setMsg($("mMsg"), "");
@@ -184,7 +198,7 @@ button:disabled { opacity: .6; cursor: default; }
       }
       MOB = m; try { localStorage.setItem("smps_ci_mobile", m); } catch (e) {}
       if (r.already) { done(r, true); return; }
-      $("cNm").textContent = r.member.name; $("cSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · "); guests = 0; $("gVal").textContent = "0"; setMsg($("cMsg"), ""); show("vConf");
+      $("cNm").textContent = r.member.name; $("cSub").textContent = [r.member.city, r.member.id].filter(Boolean).join(" · "); guests = 0; $("gVal").textContent = "0"; setMsg($("cMsg"), ""); renderFam(r.family || []); show("vConf");
     }).catch(function () { $("mGo").disabled = false; $("mGo").textContent = "आगे बढ़ें →"; setMsg($("mMsg"), "इंटरनेट की दिक्कत — फिर कोशिश करें"); });
   };
   $("mobile").addEventListener("keydown", function (e) { if (e.key === "Enter") $("mGo").click(); });
@@ -193,7 +207,7 @@ button:disabled { opacity: .6; cursor: default; }
   $("cBack").onclick = function () { show("vMob"); };
   $("cGo").onclick = function () {
     $("cGo").disabled = true; $("cGo").textContent = "दर्ज हो रहा है…"; setMsg($("cMsg"), "");
-    call({ step: "mark", mobile: MOB, guests: guests }).then(function (r) {
+    call({ step: "mark", mobile: MOB, guests: guests, with: famPicked() }).then(function (r) {
       $("cGo").disabled = false; $("cGo").textContent = "✔ हाँ, मेरी उपस्थिति दर्ज करें";
       if (!r || !r.success) { setMsg($("cMsg"), (r && r.msg) || "दर्ज नहीं हुआ — फिर कोशिश करें"); return; }
       done(r, r.status === "dup");
