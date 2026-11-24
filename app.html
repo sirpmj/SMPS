@@ -10082,14 +10082,14 @@ if ('serviceWorker' in navigator) {
       g.fillStyle = "#64748b"; g.font = font(11, 400); g.textAlign = "center"; g.fillText("पृष्ठ " + B.page + " / " + (B.total || ""), PW / 2, PH - 16);
       g.textAlign = "left"; g.fillText(opt.date || "", M.l, PH - 16);
     }
-    function startPage() {
+    function startPage(bare) {
       B.page++; B.y = M.t;
       if (B.dry) return;
       cv = mk(); cv.width = Math.round(PW * S); cv.height = Math.round(PH * S); g = cv.getContext("2d"); g.scale(S, S);
-      g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); if (!opt.bare) chrome();
+      g.fillStyle = "#fff"; g.fillRect(0, 0, PW, PH); if (!opt.bare && !bare) chrome();
     }
     function flush() { if (!B.dry && cv) { B.jpgs.push({ d: cv.toDataURL("image/jpeg", opt.quality || 0.85), w: cv.width, h: cv.height }); cv = null; g = null; } }
-    B.newPage = () => { flush(); startPage(); };
+    B.newPage = bare => { flush(); startPage(bare === true); };
     B.ensure = h => { if (B.y + h > PH - M.b) B.newPage(); };
     B.mf = (size, wt) => { mg.font = font(size, wt); return mg; };
     B.text = (s, x, y, size, wt, color, align) => { if (B.dry) return; g.font = font(size, wt); g.fillStyle = color || "#111"; g.textAlign = align || "left"; g.fillText(String(s), x, y); g.textAlign = "left"; };
@@ -10142,8 +10142,8 @@ if ('serviceWorker' in navigator) {
       let x = M.l; B.line(M.l, B.y - 0.5, M.l + avail, B.y - 0.5, "#94a3b8", 1); B.y += 10;
     };
     B.run = layout => {
-      B.dry = true; B.page = 0; B.marks = {}; startPage(); layout(B); B.total = B.page; const pm = B.marks;
-      B.dry = false; B.page = 0; B.jpgs = []; B.prev = pm; B.marks = {}; startPage(); layout(B); flush();
+      B.dry = true; B.page = 0; B.marks = {}; startPage(!!opt.bareFirst); layout(B); B.total = B.page; const pm = B.marks;
+      B.dry = false; B.page = 0; B.jpgs = []; B.prev = pm; B.marks = {}; startPage(!!opt.bareFirst); layout(B); flush();
       return B;
     };
     B.pdfBytes = () => {
@@ -10212,6 +10212,76 @@ if ('serviceWorker' in navigator) {
   };
 
   /* ---- 📖 सदस्य निर्देशिका (शहर-वार, Hindi, छपने लायक) ---- */
+/* 📕 निर्देशिका का आगे और पीछे का कवर: दोहरी सीमा, लोगो, रिबन पर शीर्षक, आँकड़ों के कार्ड, पीछे संपर्क + QR (A5 के 559×794 नाप में बना; A4 पर अपने-आप बड़ा) */
+  function dirFrame_(g, W, H, MAR, GOLD) {
+    const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#fffaf0"); bg.addColorStop(1, "#ffecd2"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+    g.strokeStyle = MAR; g.lineWidth = 6; g.strokeRect(14, 14, W - 28, H - 28); g.strokeStyle = GOLD; g.lineWidth = 1.6; g.strokeRect(25, 25, W - 50, H - 50);
+    [[25, 25], [W - 25, 25], [25, H - 25], [W - 25, H - 25]].forEach(p => { g.fillStyle = GOLD; g.beginPath(); g.moveTo(p[0], p[1] - 8); g.lineTo(p[0] + 8, p[1]); g.lineTo(p[0], p[1] + 8); g.lineTo(p[0] - 8, p[1]); g.closePath(); g.fill(); });
+  }
+  function drawDirCover_(b, o) {
+    if (b.dry) return; const g = b.cx(), u = b.PW / 559, W = 559, H = 794, cx = W / 2, MAR = "#7c2d12", GOLD = "#d4a017";
+    g.save(); g.scale(u, u);
+    const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+    const dia = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill(); };
+    dirFrame_(g, W, H, MAR, GOLD);
+    b.text("🙏 जय श्री यादे माता की 🙏", cx, 68, 15, 600, MAR, "center");
+    /* लोगो — सुनहरी अँगूठी */
+    g.save(); g.shadowColor = "rgba(124,45,18,.35)"; g.shadowBlur = 16; g.shadowOffsetY = 5; g.fillStyle = "#fff"; g.beginPath(); g.arc(cx, 170, 82, 0, 6.2832); g.fill(); g.restore();
+    g.strokeStyle = GOLD; g.lineWidth = 6; g.beginPath(); g.arc(cx, 170, 82, 0, 6.2832); g.stroke(); g.strokeStyle = MAR; g.lineWidth = 1.5; g.beginPath(); g.arc(cx, 170, 74, 0, 6.2832); g.stroke();
+    if (o.logo) { g.save(); g.beginPath(); g.arc(cx, 170, 72, 0, 6.2832); g.clip(); g.drawImage(o.logo, cx - 70, 100, 140, 140); g.restore(); }
+    /* समाज का नाम + पंजीकरण */
+    const nm = o.org || "श्री मेवाड़ प्रजापत समाज, वापी"; let nz = 30; while (nz > 16 && b.mf(nz, 700).measureText(nm).width > W - 90) nz--; b.text(nm, cx, 300, nz, 700, MAR, "center");
+    const reg = "पंजीकरण क्र.: A/1221", rw = b.mf(14, 600).measureText(reg).width + 28; g.fillStyle = "#fef3c7"; rr(cx - rw / 2, 312, rw, 26, 13); g.fill(); g.strokeStyle = GOLD; g.lineWidth = 1.2; rr(cx - rw / 2, 312, rw, 26, 13); g.stroke(); b.text(reg, cx, 331, 14, 600, "#92400e", "center");
+    g.strokeStyle = GOLD; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 150, 362); g.lineTo(cx - 14, 362); g.moveTo(cx + 14, 362); g.lineTo(cx + 150, 362); g.stroke(); dia(cx, 362, 6, MAR); dia(cx - 162, 362, 4, GOLD); dia(cx + 162, 362, 4, GOLD);
+    /* रिबन पर शीर्षक */
+    const ry = 395, rh = 76, rx = 60, rw2 = W - 120;
+    g.fillStyle = "#5b1f0a"; g.beginPath(); g.moveTo(rx - 26, ry + 14); g.lineTo(rx + 20, ry + 14); g.lineTo(rx + 20, ry + rh - 2); g.lineTo(rx - 26, ry + rh - 2); g.lineTo(rx - 12, ry + 8 + rh / 2); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(rx + rw2 + 26, ry + 14); g.lineTo(rx + rw2 - 20, ry + 14); g.lineTo(rx + rw2 - 20, ry + rh - 2); g.lineTo(rx + rw2 + 26, ry + rh - 2); g.lineTo(rx + rw2 + 12, ry + 8 + rh / 2); g.closePath(); g.fill();
+    g.save(); g.shadowColor = "rgba(0,0,0,.3)"; g.shadowBlur = 10; g.shadowOffsetY = 4; g.fillStyle = MAR; rr(rx, ry, rw2, rh, 14); g.fill(); g.restore();
+    g.strokeStyle = GOLD; g.lineWidth = 2.5; rr(rx, ry, rw2, rh, 14); g.stroke(); g.strokeStyle = "rgba(253,230,138,.55)"; g.lineWidth = 1; rr(rx + 5, ry + 5, rw2 - 10, rh - 10, 10); g.stroke();
+    b.text("सदस्य निर्देशिका", cx, ry + 52, 42, 700, "#ffffff", "center");
+    b.text("M E M B E R   D I R E C T O R Y", cx, ry + rh + 30, 13, 600, "#a16207", "center");
+    /* आँकड़ों के कार्ड */
+    const cards = [[String(o.members), "कुल सदस्य"], [String(o.cities), "शहर / क्षेत्र"], [String(o.year), "संस्करण"]], cw = 132, gap = 14, x0 = cx - (cw * 3 + gap * 2) / 2, cy = 545;
+    cards.forEach((c, i) => { const x = x0 + i * (cw + gap); g.save(); g.shadowColor = "rgba(124,45,18,.22)"; g.shadowBlur = 12; g.shadowOffsetY = 4; g.fillStyle = "#fff"; rr(x, cy, cw, 78, 14); g.fill(); g.restore(); g.strokeStyle = "#f3d98b"; g.lineWidth = 1.3; rr(x, cy, cw, 78, 14); g.stroke(); b.text(c[0], x + cw / 2, cy + 40, 28, 700, MAR, "center"); b.text(c[1], x + cw / 2, cy + 63, 13, 500, "#475569", "center"); });
+    /* नीचे की पट्टी */
+    g.fillStyle = MAR; g.fillRect(25, H - 128, W - 50, 103); const gg = g.createLinearGradient(25, 0, W - 25, 0); gg.addColorStop(0, "#b8860b"); gg.addColorStop(0.5, "#f7dc6f"); gg.addColorStop(1, "#b8860b"); g.fillStyle = gg; g.fillRect(25, H - 128, W - 50, 6);
+    b.text("प्रकाशित: " + o.day, cx, H - 86, 16, 600, "#fde68a", "center");
+    b.text("यह निर्देशिका केवल समाज के सदस्यों के उपयोग हेतु है", cx, H - 58, 13, 400, "#fff7ed", "center");
+    b.text("गोपनीयता बनाए रखें — बिना अनुमति साझा न करें", cx, H - 38, 12, 400, "#fed7aa", "center");
+    g.restore();
+  }
+  function drawDirBack_(b, o) {
+    if (b.dry) return; const g = b.cx(), u = b.PW / 559, W = 559, H = 794, cx = W / 2, MAR = "#7c2d12", GOLD = "#d4a017";
+    g.save(); g.scale(u, u);
+    const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+    const dia = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); g.fill(); };
+    dirFrame_(g, W, H, MAR, GOLD);
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(cx, 118, 54, 0, 6.2832); g.fill(); g.strokeStyle = GOLD; g.lineWidth = 4.5; g.stroke();
+    if (o.logo) { g.save(); g.beginPath(); g.arc(cx, 118, 49, 0, 6.2832); g.clip(); g.drawImage(o.logo, cx - 48, 70, 96, 96); g.restore(); }
+    const nm = o.org || "श्री मेवाड़ प्रजापत समाज, वापी"; let nz = 25; while (nz > 14 && b.mf(nz, 700).measureText(nm).width > W - 90) nz--; b.text(nm, cx, 210, nz, 700, MAR, "center");
+    b.text("पंजीकरण क्र.: A/1221", cx, 236, 14, 600, "#92400e", "center");
+    g.strokeStyle = GOLD; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 130, 256); g.lineTo(cx - 12, 256); g.moveTo(cx + 12, 256); g.lineTo(cx + 130, 256); g.stroke(); dia(cx, 256, 5, MAR);
+    /* संपर्क कार्ड */
+    const rows = [["📍 पता", o.address], ["✆ संपर्क", o.contact], ["✉ ईमेल", o.email]].filter(r => r[1]);
+    if (rows.length) {
+      let lines = []; rows.forEach(r => { const wl = pdfWrap_(b.mf(14, 500), String(r[1]), W - 150); lines.push({ k: r[0], v: wl }); });
+      const ch = 40 + lines.reduce((t, x) => t + 22 + x.v.length * 20, 0) + 12; g.save(); g.shadowColor = "rgba(124,45,18,.2)"; g.shadowBlur = 12; g.shadowOffsetY = 4; g.fillStyle = "#fff"; rr(48, 282, W - 96, ch, 14); g.fill(); g.restore(); g.strokeStyle = "#f3d98b"; g.lineWidth = 1.3; rr(48, 282, W - 96, ch, 14); g.stroke();
+      let y = 308; b.text("संपर्क", cx, y, 16, 700, MAR, "center"); y += 14;
+      lines.forEach(L => { y += 16; b.text(L.k, 68, y, 13, 700, "#9a3412", "left"); L.v.forEach(ln => { y += 4; b.text(ln, 68, y + 16, 14, 500, "#111", "left"); y += 16; }); y += 6; });
+      o.__cardBottom = 282 + ch;
+    }
+    /* QR — पोर्टल */
+    const qy = (o.__cardBottom || 282) + 28, qs = 120;
+    if (!(o.qr && o.qr(2))) { if (o.portal) b.text("🌐 पोर्टल: " + o.portal, cx, qy + 30, 12, 500, "#334155", "center"); }
+    if (o.qr) { const qc = o.qr(qs * 2); if (qc) { g.save(); g.shadowColor = "rgba(124,45,18,.25)"; g.shadowBlur = 12; g.shadowOffsetY = 4; g.fillStyle = "#fff"; rr(cx - qs / 2 - 12, qy, qs + 24, qs + 24, 12); g.fill(); g.restore(); g.strokeStyle = GOLD; g.lineWidth = 2; rr(cx - qs / 2 - 12, qy, qs + 24, qs + 24, 12); g.stroke(); g.drawImage(qc, cx - qs / 2, qy + 12, qs, qs); b.text("समाज पोर्टल देखने हेतु स्कैन करें", cx, qy + qs + 46, 13, 600, "#334155", "center"); } }
+    /* नीचे की पट्टी */
+    g.fillStyle = MAR; g.fillRect(25, H - 112, W - 50, 87); const gg = g.createLinearGradient(25, 0, W - 25, 0); gg.addColorStop(0, "#b8860b"); gg.addColorStop(0.5, "#f7dc6f"); gg.addColorStop(1, "#b8860b"); g.fillStyle = gg; g.fillRect(25, H - 112, W - 50, 6);
+    b.text("🙏 धन्यवाद 🙏", cx, H - 78, 18, 700, "#fde68a", "center");
+    b.text("© " + o.year + " " + (o.orgShort || nm) + "। सर्वाधिकार सुरक्षित।", cx, H - 52, 12, 400, "#fff7ed", "center");
+    b.text("इस निर्देशिका की जानकारी का अन्य उपयोग वर्जित है", cx, H - 34, 11, 400, "#fed7aa", "center");
+    g.restore();
+  }
   /* 📗 छोटी फोल्डेबल बुक: A5 पन्ने बनाकर A4-landscape की शीट पर 2-2 जमाना (saddle-stitch): दोनों तरफ़ छापें, बीच से मोड़ें, बीच में staple */
   async function bookletImpose_(pages) {
     const n = pages.length;   // 4 का गुणज
@@ -10248,18 +10318,22 @@ if ('serviceWorker' in navigator) {
       cities.forEach(c => groups[c].sort((x, y) => x.name.localeCompare(y.name, "hi")));
       const hasG = recs.some(x => x.gotra), hasO = recs.some(x => x.occ), day = new Date().toLocaleDateString("en-GB");
       const cols = [{ h: "क्र.", a: "center", max: bk ? 30 : 38 }, { h: "नाम", bold: true }, { h: "मोबाइल", max: bk ? 92 : 110 }].concat(hasG ? [{ h: "गोत्र", max: bk ? 70 : 90 }] : [], [{ h: "गाँव / मूल स्थान", max: bk ? 100 : 130 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);
-      const pdf = PdfBuilder_(bk ? { landscape: false, pw: 559, ph: 794, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day } : { landscape: false, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day });
+      const SS = (typeof SETTINGS !== "undefined" && SETTINGS) || {}, logoI = (() => { const hi = document.querySelector("header img"); return hi && hi.complete && hi.naturalWidth ? hi : null; })() || await loadImg_(new URL("Logo-192.png", location.href).href).catch(() => null);   // पहले पेज के header वाला लोगो (हमेशा लोड)
+      const portalUrl = (location.origin && location.origin !== "null") ? location.origin + location.pathname.replace(/[^/]*$/, "") : "";
+      const dOpt = { portal: portalUrl, logo: logoI, org: SS.SocietyName || SAMAJ_NAME_, orgShort: SS.SocietyName || SAMAJ_NAME_, members: recs.length, cities: cities.length, year: SS.Year || new Date().getFullYear(), day, address: SS.Address || "", contact: SS.Contact || "", email: SS.Email || "", qr: sz => (portalUrl && window.qrCanvas_ ? window.qrCanvas_(portalUrl, sz) : null) };
+      const pdf = PdfBuilder_(bk ? { landscape: false, pw: 559, ph: 794, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day, bareFirst: true } : { landscape: false, org: SAMAJ_NAME_, title: "सदस्य निर्देशिका", date: day, bareFirst: true });
       pdf.run(b => {
-        b.y = bk ? 100 : 150; b.paragraph(SAMAJ_NAME_, bk ? 22 : 30, 700, "#7c2d12", "center", 4); b.paragraph("सदस्य निर्देशिका", bk ? 32 : 44, 700, "#111", "center", 8);
-        b.paragraph("कुल " + recs.length + " सदस्य  •  " + day, bk ? 13 : 16, 500, "#475569", "center", bk ? 16 : 22);
-        b.paragraph("अनुक्रमणिका", bk ? 16 : 18, 700, "#9a3412", "left", 4);
-        b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 70 }, { h: "पृष्ठ", a: "center", max: 60 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: bk ? 12 : 13 });
+        drawDirCover_(b, dOpt);                                  // पन्ना 1: आगे का कवर
+        b.newPage();                                              // पन्ना 2: अनुक्रमणिका
+        b.y = bk ? 70 : 90; b.paragraph("अनुक्रमणिका", bk ? 22 : 26, 700, "#9a3412", "left", 6);
+        b.paragraph("कुल " + recs.length + " सदस्य  •  " + cities.length + " शहर / क्षेत्र  •  " + day, bk ? 12 : 14, 500, "#475569", "left", 12);
+        b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 70 }, { h: "पृष्ठ", a: "center", max: 60 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: bk ? 12.5 : 14 });
+        b.y += 22; b.band("📌 कृपया ध्यान दें", "", "#0369a1");
+        ["यह निर्देशिका केवल समाज के सदस्यों के उपयोग के लिए है। इसे सोशल मीडिया या बाहर साझा न करें।", "जानकारी में कोई बदलाव या सुधार हो तो समाज पोर्टल (मेरी जानकारी) या कार्यालय के माध्यम से करवाएँ।", "नए जुड़े सदस्य और बदलाव अगले संस्करण में शामिल किए जाएँगे।", "किसी सदस्य से संपर्क करते समय सम्मान और मर्यादा का ध्यान रखें। 🙏"].forEach((t, i) => b.paragraph((i + 1) + ".  " + t, bk ? 12 : 14, 400, "#334155", "left", bk ? 6 : 8));
         b.newPage();
         cities.forEach(c => { b.ensure(120); b.mark("c:" + c); b.band(c, groups[c].length + " सदस्य"); b.table(cols, groups[c].map((x, i) => [i + 1, x.name, x.mob].concat(hasG ? [x.gotra] : [], [x.origin], hasO ? [x.occ] : [])), { size: bk ? 10.5 : 11.5 }); });
-        if (bk) {   // कुल पन्ने 4 के गुणज हों: ज़रूरत हो तो "टिप्पणियाँ" पन्ने, फिर पिछला कवर
-          while ((b.page + 1) % 4 !== 0) { b.newPage(); b.paragraph("📝 टिप्पणियाँ", 18, 700, "#9a3412", "left", 10); for (let y = b.y + 10; y < b.PH - 70; y += 28) b.line(b.M.l, y, b.PW - b.M.r, y, "#cbd5e1", 0.7); }
-          b.newPage(); b.y = 250; b.paragraph(SAMAJ_NAME_, 22, 700, "#7c2d12", "center", 6); b.paragraph("सदस्य निर्देशिका  •  " + day, 14, 500, "#475569", "center", 10); b.paragraph("यह निर्देशिका सिर्फ़ समाज के सदस्यों के उपयोग के लिए है।", 12, 400, "#64748b", "center", 6);
-        }
+        if (bk) { while ((b.page + 1) % 4 !== 0) { b.newPage(); b.paragraph("📝 टिप्पणियाँ", 18, 700, "#9a3412", "left", 10); for (let y = b.y + 10; y < b.PH - 70; y += 28) b.line(b.M.l, y, b.PW - b.M.r, y, "#cbd5e1", 0.7); } }
+        b.newPage(true); drawDirBack_(b, dOpt);                  // आख़िरी पन्ना: पीछे का कवर
       });
       if (bk) {
         const bytes = await bookletImpose_(pdf.jpgs);
