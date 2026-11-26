@@ -10114,9 +10114,9 @@ if ('serviceWorker' in navigator) {
       const mgN = B.mf(size, 400), want = cols.map((c, i) => {
         B.mf(size, 700); let w = mg.measureText(c.h).width + 2 * pad; B.mf(size, 400);
         rows.slice(0, 400).forEach(r => { w = Math.max(w, mg.measureText(String(r[i] == null ? "" : r[i]).replace(/\s+/g, " ")).width + 2 * pad); });
-        return Math.min(w, c.max || avail * 0.5);
+        return c.fixed ? Math.min(w + 3, c.max || avail * 0.6) : Math.min(w, c.max || avail * 0.5);
       });
-      const minw = cols.map(c => c.min || 34); let tot = want.reduce((a, b) => a + b, 0), W;
+      const minw = cols.map((c, i) => c.fixed ? want[i] : (c.min || 34)); let tot = want.reduce((a, b) => a + b, 0), W;
       if (tot <= avail) { const ex = avail - tot; W = want.map(w => w + ex * (w / tot)); }
       else {
         const flex = want.map((w, i) => Math.max(0, w - minw[i])), fs = flex.reduce((a, b) => a + b, 0), need = tot - avail;
@@ -10317,7 +10317,7 @@ if ('serviceWorker' in navigator) {
       const cities = Object.keys(groups).sort((x, y) => x === "अन्य" ? 1 : y === "अन्य" ? -1 : x.localeCompare(y, "hi"));
       cities.forEach(c => groups[c].sort((x, y) => x.name.localeCompare(y.name, "hi")));
       const hasG = recs.some(x => x.gotra), hasO = recs.some(x => x.occ), day = new Date().toLocaleDateString("en-GB");
-      const cols = [{ h: "क्र.", a: "center", max: bk ? 30 : 38 }, { h: "नाम", bold: true }, { h: "मोबाइल", max: bk ? 92 : 110 }].concat(hasG ? [{ h: "गोत्र", max: bk ? 70 : 90 }] : [], [{ h: "गाँव / मूल स्थान", max: bk ? 100 : 130 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);
+      const cols = [{ h: "क्र.", a: "center", fixed: true, max: 44 }, { h: "नाम", bold: true }, { h: "मोबाइल", fixed: true, max: 150 }].concat(hasG ? [{ h: "गोत्र", fixed: true, max: 130 }] : [], [{ h: "गाँव / मूल स्थान", max: bk ? 110 : 140 }], hasO ? [{ h: "व्यवसाय / फर्म" }] : []);   // मोबाइल / गोत्र हमेशा एक ही line में
       const SS = (typeof SETTINGS !== "undefined" && SETTINGS) || {}, logoI = (() => { const hi = document.querySelector("header img"); return hi && hi.complete && hi.naturalWidth ? hi : null; })() || await loadImg_(new URL("Logo-192.png", location.href).href).catch(() => null);   // पहले पेज के header वाला लोगो (हमेशा लोड)
       const portalUrl = (location.origin && location.origin !== "null") ? location.origin + location.pathname.replace(/[^/]*$/, "") : "";
       const dOpt = { portal: portalUrl, logo: logoI, org: SS.SocietyName || SAMAJ_NAME_, orgShort: SS.SocietyName || SAMAJ_NAME_, members: recs.length, cities: cities.length, year: SS.Year || new Date().getFullYear(), day, address: SS.Address || "", contact: SS.Contact || "", email: SS.Email || "", qr: sz => (portalUrl && window.qrCanvas_ ? window.qrCanvas_(portalUrl, sz) : null) };
@@ -10328,11 +10328,12 @@ if ('serviceWorker' in navigator) {
         b.y = bk ? 70 : 90; b.paragraph("अनुक्रमणिका", bk ? 22 : 26, 700, "#9a3412", "left", 6);
         b.paragraph("कुल " + recs.length + " सदस्य  •  " + cities.length + " शहर / क्षेत्र  •  " + day, bk ? 12 : 14, 500, "#475569", "left", 12);
         b.table([{ h: "शहर", bold: true }, { h: "सदस्य", a: "center", max: 70 }, { h: "पृष्ठ", a: "center", max: 60 }], cities.map(c => [c, groups[c].length, b.prev["c:" + c] || ""]), { size: bk ? 12.5 : 14 });
-        b.y += 22; b.band("📌 कृपया ध्यान दें", "", "#0369a1");
-        ["यह निर्देशिका केवल समाज के सदस्यों के उपयोग के लिए है। इसे सोशल मीडिया या बाहर साझा न करें।", "जानकारी में कोई बदलाव या सुधार हो तो समाज पोर्टल (मेरी जानकारी) या कार्यालय के माध्यम से करवाएँ।", "नए जुड़े सदस्य और बदलाव अगले संस्करण में शामिल किए जाएँगे।", "किसी सदस्य से संपर्क करते समय सम्मान और मर्यादा का ध्यान रखें। 🙏"].forEach((t, i) => b.paragraph((i + 1) + ".  " + t, bk ? 12 : 14, 400, "#334155", "left", bk ? 6 : 8));
+        const NOTES = ["यह निर्देशिका केवल समाज के सदस्यों के उपयोग के लिए है। इसे सोशल मीडिया या बाहर साझा न करें।", "जानकारी में कोई बदलाव या सुधार हो तो समाज पोर्टल (मेरी जानकारी) या कार्यालय के माध्यम से करवाएँ।", "नए जुड़े सदस्य और बदलाव अगले संस्करण में शामिल किए जाएँगे।", "किसी सदस्य से संपर्क करते समय सम्मान और मर्यादा का ध्यान रखें। 🙏"];
+        const drawNotes = () => { b.band("📌 कृपया ध्यान दें", "", "#0369a1"); NOTES.forEach((t, i) => b.paragraph((i + 1) + ".  " + t, bk ? 12 : 14, 400, "#334155", "left", bk ? 6 : 8)); };
+        let notesDone = false; if (b.y + 22 + 36 + NOTES.length * (bk ? 34 : 40) < b.PH - b.M.b) { b.y += 22; drawNotes(); notesDone = true; }
         b.newPage();
         cities.forEach(c => { b.ensure(120); b.mark("c:" + c); b.band(c, groups[c].length + " सदस्य"); b.table(cols, groups[c].map((x, i) => [i + 1, x.name, x.mob].concat(hasG ? [x.gotra] : [], [x.origin], hasO ? [x.occ] : [])), { size: bk ? 10.5 : 11.5 }); });
-        if (bk) { while ((b.page + 1) % 4 !== 0) { b.newPage(); b.paragraph("📝 टिप्पणियाँ", 18, 700, "#9a3412", "left", 10); for (let y = b.y + 10; y < b.PH - 70; y += 28) b.line(b.M.l, y, b.PW - b.M.r, y, "#cbd5e1", 0.7); } }
+        if (bk) { while ((b.page + 1) % 4 !== 0) { b.newPage(); if (!notesDone) { drawNotes(); notesDone = true; b.y += 16; } b.paragraph("📝 टिप्पणियाँ", 18, 700, "#9a3412", "left", 10); for (let y = b.y + 10; y < b.PH - 70; y += 28) b.line(b.M.l, y, b.PW - b.M.r, y, "#cbd5e1", 0.7); } }
         b.newPage(true); drawDirBack_(b, dOpt);                  // आख़िरी पन्ना: पीछे का कवर
       });
       if (bk) {
